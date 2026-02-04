@@ -24,10 +24,32 @@ const { expressApp } = require('../../functions/index.js');
 
 const app = express();
 
-const trustProxy = process.env.TRUST_PROXY;
+function normalizeTrustProxy(value) {
+  if (typeof value === 'undefined') {
+    return undefined;
+  }
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized) {
+    return undefined;
+  }
+  if (['false', '0', 'no', 'off'].includes(normalized)) {
+    return false;
+  }
+  if (['true', '1', 'yes', 'on'].includes(normalized)) {
+    return 1;
+  }
+  if (/^\d+$/.test(normalized)) {
+    return Number(normalized);
+  }
+  return value;
+}
+
+const trustProxy = normalizeTrustProxy(process.env.TRUST_PROXY);
 if (typeof trustProxy !== 'undefined') {
   app.set('trust proxy', trustProxy);
 } else if (isServerless) {
+  app.set('trust proxy', 1);
+} else if (process.env.NODE_ENV !== 'production') {
   app.set('trust proxy', 1);
 } else {
   app.set('trust proxy', false);
