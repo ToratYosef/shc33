@@ -1361,7 +1361,15 @@ function createOrdersRouter({
         );
       }
 
-      await Promise.all(notificationPromises);
+      const notificationResults = await Promise.allSettled(notificationPromises);
+      notificationResults.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          console.error(
+            `Order notification ${index + 1} failed:`,
+            result.reason?.message || result.reason
+          );
+        }
+      });
 
       const toSave = {
         ...orderData,
