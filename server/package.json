@@ -5,6 +5,7 @@
   "main": "src/server.js",
   "type": "commonjs",
   "scripts": {
+    "build": "echo \"No build step required\"",
     "dev": "node src/server.js",
     "start": "node src/server.js"
   },
