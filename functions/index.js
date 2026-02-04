@@ -2793,7 +2793,14 @@ async function sendPushNotification(tokens, title, body, data = {}) {
     // Prune invalid tokens from Firestore
     if (tokensToRemove.length > 0) {
       console.log(`Pruning ${tokensToRemove.length} invalid FCM tokens.`);
-      await admin.messaging().deleteRegistrationTokens(tokensToRemove);
+      const deleteTokensFn = admin.messaging().deleteRegistrationTokens;
+      if (typeof deleteTokensFn === 'function') {
+        await deleteTokensFn.call(admin.messaging(), tokensToRemove);
+      } else {
+        console.warn(
+          'Skipping token cleanup because admin.messaging().deleteRegistrationTokens is unavailable.'
+        );
+      }
       
       // OPTIONAL: Also delete token documents from the 'fcmTokens' subcollection
       // This part requires knowing the Admin UID, which we don't have here. 
