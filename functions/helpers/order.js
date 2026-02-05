@@ -1,5 +1,6 @@
 const { getFirestore } = require('firebase-admin/firestore');
 const db = getFirestore();
+const { randomUUID } = require('crypto');
 const { ordersCollection } = require('../db/db');
 
 /**
@@ -32,7 +33,13 @@ async function generateNextOrderNumber() {
         return newOrderNumber;
     } catch (e) {
         console.error("Transaction to generate order number failed:", e);
-        throw new Error("Failed to generate a unique order number. Please try again.");
+
+        const fallbackOrderId = `SHC-FB-${Date.now()}-${randomUUID().slice(0, 8).toUpperCase()}`;
+        console.warn(
+            "Falling back to non-sequential order ID due to counter transaction failure:",
+            fallbackOrderId
+        );
+        return fallbackOrderId;
     }
 }
 
