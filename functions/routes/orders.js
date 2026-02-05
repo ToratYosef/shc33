@@ -1494,6 +1494,16 @@ function createOrdersRouter({
       res.status(201).json(responsePayload);
     } catch (err) {
       console.error('Error submitting order:', err);
+
+      if (isTransientFirestoreError(err)) {
+        return res.status(503).json({
+          error:
+            'We are having a temporary issue saving your order. Please retry in a moment. If this continues, contact support and mention this timestamp.',
+          retryable: true,
+          code: 'TEMPORARY_ORDER_SUBMIT_FAILURE',
+        });
+      }
+
       const statusCode = err.status || 500;
       res.status(statusCode).json({ error: err.message || 'Failed to submit order' });
     }
