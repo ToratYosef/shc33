@@ -49,10 +49,8 @@ if (typeof trustProxy !== 'undefined') {
   app.set('trust proxy', trustProxy);
 } else if (isServerless) {
   app.set('trust proxy', 1);
-} else if (process.env.NODE_ENV !== 'production') {
-  app.set('trust proxy', 1);
 } else {
-  app.set('trust proxy', false);
+  app.set('trust proxy', 1);
 }
 
 const corsOrigins = (process.env.CORS_ORIGIN || '')
