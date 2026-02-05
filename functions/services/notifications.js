@@ -27,66 +27,17 @@ async function sendEmail(mailOptions) {
 }
 
 async function sendAdminPushNotification(title, body, data = {}) {
-    try {
-        const adminsSnapshot = await adminsCollection.get();
-        let allTokens = [];
-
-        for (const adminDoc of adminsSnapshot.docs) {
-            const adminUid = adminDoc.id;
-            const fcmTokensRef = adminsCollection.doc(adminUid).collection("fcmTokens");
-            const tokensSnapshot = await fcmTokensRef.get();
-            tokensSnapshot.forEach((doc) => {
-                allTokens.push(doc.id); // doc.id is the FCM token itself
-            });
-        }
-
-        if (allTokens.length === 0) {
-            console.log("No FCM tokens found for any admin. Cannot send push notification.");
-            return;
-        }
-
-        const message = {
-            notification: {
-                title: title,
-                body: body,
-            },
-            data: data, // Custom data payload
-            tokens: allTokens,
-        };
-
-        const response = await messaging.sendEachForMulticast(message);
-        console.log("Successfully sent FCM messages:", response.successCount, "failures:", response.failureCount);
-        if (response.failureCount > 0) {
-            response.responses.forEach((resp, idx) => {
-                if (!resp.success) {
-                    console.error(`Failed to send FCM to token ${allTokens[idx]}: ${resp.error}`);
-                }
-            });
-        }
-    } catch (error) {
-        console.error("Error sending FCM push notification:", error);
-    }
+    console.warn(
+        "Skipping Firebase admin push notification; Firebase notifications are disabled."
+    );
+    return null;
 }
 
 async function addAdminFirestoreNotification(message, relatedDocType = null, relatedDocId = null, relatedUserId = null) {
-    try {
-        const adminsSnapshot = await adminsCollection.get();
-        const promises = adminsSnapshot.docs.map(async (adminDoc) => {
-            const notificationsCollectionRef = adminsCollection.doc(adminDoc.id).collection("notifications");
-            await notificationsCollectionRef.add({
-                message: message,
-                isRead: false,
-                createdAt: db.FieldValue.serverTimestamp(),
-                relatedDocType: relatedDocType,
-                relatedDocId: relatedDocId,
-                relatedUserId: relatedUserId,
-            });
-        });
-        await Promise.all(promises);
-        console.log(`Firestore notifications added for all admins.`);
-    } catch (error) {
-        console.error("Error adding Firestore notifications:", error);
-    }
+    console.warn(
+        "Skipping Firebase Firestore notification; Firebase notifications are disabled."
+    );
+    return null;
 }
 
 module.exports = {
