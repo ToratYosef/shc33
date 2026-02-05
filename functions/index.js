@@ -584,6 +584,11 @@ const handleVerifyAddress = async (req, res) => {
     return res.status(400).json({ error: "Missing required address fields." });
   }
 
+  const shipengineKey = getShipEngineApiKey();
+  if (!shipengineKey) {
+    return res.status(500).json({ error: "ShipEngine API key not configured." });
+  }
+
   const payload = [
     {
       address_line1: streetAddress,
@@ -594,22 +599,6 @@ const handleVerifyAddress = async (req, res) => {
       country_code: country || "US",
     },
   ];
-
-  const shipengineKey = getShipEngineApiKey();
-  if (!shipengineKey) {
-    return res.json({
-      status: "unverified",
-      originalAddress: payload[0],
-      matchedAddress: null,
-      messages: [
-        {
-          code: "shipengine_not_configured",
-          message: "Address validation is temporarily unavailable.",
-          type: "warning",
-        },
-      ],
-    });
-  }
 
   try {
     const response = await axios.post(
@@ -634,18 +623,9 @@ const handleVerifyAddress = async (req, res) => {
       "ShipEngine address validation failed:",
       error.response?.data || error.message
     );
-    return res.json({
-      status: "unverified",
-      originalAddress: payload[0],
-      matchedAddress: null,
-      messages: [
-        {
-          code: "validation_unavailable",
-          message: "Address validation is temporarily unavailable.",
-          type: "warning",
-          detail: error.response?.data || error.message,
-        },
-      ],
+    return res.status(502).json({
+      error: "Address validation failed.",
+      detail: error.response?.data || error.message,
     });
   }
 };
@@ -1860,39 +1840,25 @@ const stateAbbreviations = {
 };
 
 async function generateNextOrderNumber() {
-  const counterRef = db.collection("counters").doc("ordersCurrentNumber");
-  const orderNumberStart = 30000;
+  const counterRef = db.collection("counters").doc("orders");
+  const incrementByOne = admin.firestore.FieldValue.increment(1);
 
   try {
-    const newOrderNumber = await db.runTransaction(async (transaction) => {
-      const counterDoc = await transaction.get(counterRef);
+    await counterRef.set({ currentNumber: incrementByOne }, { merge: true });
 
-      const currentNumber = counterDoc.exists
-        ? counterDoc.data().currentNumber ?? orderNumberStart
-        : orderNumberStart;
+    const counterDoc = await counterRef.get();
+    const nextNumberRaw = Number(counterDoc.data()?.currentNumber);
+    const nextNumber = Number.isFinite(nextNumberRaw) ? nextNumberRaw : 1;
+    const currentNumber = Math.max(0, nextNumber - 1);
+    const paddedNumber = String(currentNumber).padStart(5, "0");
 
-      transaction.set(
-        counterRef,
-        { currentNumber: currentNumber + 1 },
-        { merge: true }
-      );
-
-      const paddedNumber = String(currentNumber).padStart(5, "0");
-      return `SHC-${paddedNumber}`;
-    });
-
-    return newOrderNumber;
+    return `SHC-${paddedNumber}`;
   } catch (e) {
-    console.error("Transaction to generate order number failed:", e);
-
-    const fallbackOrderId = `SHC-FB-${Date.now()}-${randomUUID().slice(0, 8).toUpperCase()}`;
-    console.warn(
-      "Falling back to non-sequential order ID due to counter transaction failure:",
-      fallbackOrderId
-    );
-    return fallbackOrderId;
+    console.error("Failed to generate order number:", e);
+    throw new Error("Failed to generate a unique order number. Please try again.");
   }
 }
+
 function formatStatusLabel(value) {
   if (!value) return "";
   return String(value)
