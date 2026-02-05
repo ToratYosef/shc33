@@ -53,20 +53,27 @@ if (typeof trustProxy !== 'undefined') {
   app.set('trust proxy', 1);
 }
 
+const defaultCorsOrigins = [
+  'https://secondhandcell.com',
+  'https://www.secondhandcell.com',
+];
+
 const corsOrigins = (process.env.CORS_ORIGIN || '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
+
+const allowedCorsOrigins = new Set([
+  ...defaultCorsOrigins,
+  ...corsOrigins,
+]);
 
 const corsOptions = {
   origin(origin, callback) {
     if (!origin) {
       return callback(null, true);
     }
-    if (corsOrigins.length === 0) {
-      return callback(new Error('CORS origin not configured'));
-    }
-    if (corsOrigins.includes(origin)) {
+    if (allowedCorsOrigins.has(origin)) {
       return callback(null, true);
     }
     return callback(new Error('Not allowed by CORS'));
