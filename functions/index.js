@@ -1,4 +1,4 @@
-const functions = require("firebase-functions/v1");
+const functions = require("firebase-functions");
 const express = require("express");
 const cors = require("cors");
 const admin = require("firebase-admin"); // <-- Required here
