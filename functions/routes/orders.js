@@ -1049,6 +1049,11 @@ function createOrdersRouter({
         return Number.isFinite(numeric) ? numeric : null;
       };
 
+      const formatAmount = (value) => {
+        const normalized = normalizeAmount(value);
+        return (normalized ?? 0).toFixed(2);
+      };
+
       const normalizeItems = (items = []) => {
         if (!Array.isArray(items)) return [];
         return items
@@ -1310,7 +1315,7 @@ function createOrdersRouter({
         .replace(/\*\*DEVICE_NAME\*\*/g, orderData.device || 'Unknown device')
         .replace(/\*\*STORAGE\*\*/g, orderData.storage || 'N/A')
         .replace(/\*\*CARRIER\*\*/g, orderData.carrier || 'Not provided')
-        .replace(/\*\*ESTIMATED_QUOTE\*\*/g, (orderData.estimatedQuote || 0).toFixed(2))
+        .replace(/\*\*ESTIMATED_QUOTE\*\*/g, formatAmount(orderData.estimatedQuote))
         .replace(/\*\*PAYMENT_METHOD\*\*/g, orderData.paymentMethod || 'Not provided')
         .replace(/\*\*PAYMENT_INFO\*\*/g, paymentInfo)
         .replace(/\*\*SHIPPING_ADDRESS\*\*/g, shippingAddress)
