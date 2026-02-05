@@ -8,7 +8,7 @@ const { ordersCollection } = require('../db/db');
  * @returns {Promise<string>} The next unique, sequential order number (e.g., "SHC-30000", then "SHC-30001").
  */
 async function generateNextOrderNumber() {
-    const counterRef = db.collection("counters").doc("orders");
+    const counterRef = db.collection("counters").doc("ordersCurrentNumber");
     const orderNumberStart = 30000;
     const counterFloor = orderNumberStart;
 

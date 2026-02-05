@@ -1840,7 +1840,7 @@ const stateAbbreviations = {
 };
 
 async function generateNextOrderNumber() {
-  const counterRef = db.collection("counters").doc("orders");
+  const counterRef = db.collection("counters").doc("ordersCurrentNumber");
 
   const orderNumberStart = 30000;
   const counterFloor = orderNumberStart;
