@@ -1841,7 +1841,9 @@ const stateAbbreviations = {
 
 async function generateNextOrderNumber() {
   const counterRef = db.collection("counters").doc("orders");
-  const incrementByOne = admin.firestore.FieldValue.increment(1);
+
+  const orderNumberStart = 30000;
+  const counterFloor = orderNumberStart + 1;
   const maxCounterAttempts = 5;
   const maxFallbackAttempts = 20;
 
@@ -1854,11 +1856,18 @@ async function generateNextOrderNumber() {
 
   for (let attempt = 1; attempt <= maxCounterAttempts; attempt += 1) {
     try {
-      await counterRef.set({ currentNumber: incrementByOne }, { merge: true });
-      const counterDoc = await counterRef.get();
-      const nextNumberRaw = Number(counterDoc.data()?.currentNumber);
-      const nextNumber = Number.isFinite(nextNumberRaw) ? nextNumberRaw : 1;
-      const candidate = buildOrderNumber(Math.max(0, nextNumber - 1));
+      const currentNumber = await db.runTransaction(async (transaction) => {
+        const counterDoc = await transaction.get(counterRef);
+        const rawCurrent = Number(counterDoc.data()?.currentNumber);
+        const currentValue = Number.isFinite(rawCurrent) ? rawCurrent : 0;
+        const nextValue = Math.max(currentValue + 1, counterFloor);
+
+        transaction.set(counterRef, { currentNumber: nextValue }, { merge: true });
+
+        return nextValue - 1;
+      });
+
+      const candidate = buildOrderNumber(currentNumber);
 
       if (!(await orderNumberExists(candidate))) {
         return candidate;
@@ -1873,8 +1882,10 @@ async function generateNextOrderNumber() {
     }
   }
 
+  const fallbackPoolSize = 100000 - orderNumberStart;
   for (let attempt = 1; attempt <= maxFallbackAttempts; attempt += 1) {
-    const randomValue = Math.floor(Math.random() * 100000);
+    const randomValue =
+      orderNumberStart + Math.floor(Math.random() * fallbackPoolSize);
     const candidate = buildOrderNumber(randomValue);
 
     try {
