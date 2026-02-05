@@ -1057,6 +1057,7 @@ function createOrdersRouter({
       const normalizeItems = (items = []) => {
         if (!Array.isArray(items)) return [];
         return items
+          .filter((item) => item && typeof item === 'object' && !Array.isArray(item))
           .map((item) => ({
             ...item,
             qty: Number(item.qty) || 1,
