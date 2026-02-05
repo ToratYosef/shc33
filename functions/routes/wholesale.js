@@ -1,15 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const functions = require('firebase-functions/v1');
-const admin = require('firebase-admin');
+const { admin, initFirebaseAdmin } = require('../helpers/firebaseAdmin');
 const axios = require('axios');
 const { URLSearchParams } = require('url');
 const { DEFAULT_CARRIER_CODE } = require('../helpers/shipengine');
 
-// RESTORE FIX: Ensure app is initialized before using 'admin.firestore()'
-if (admin.apps.length === 0) {
-    admin.initializeApp();
-}
+initFirebaseAdmin();
 
 const db = admin.firestore(); 
 const inventoryCollection = db.collection('wholesaleInventory');

@@ -1,7 +1,7 @@
 const functions = require("firebase-functions/v1");
 const express = require("express");
 const cors = require("cors");
-const admin = require("firebase-admin"); // <-- Required here
+const { admin, initFirebaseAdmin } = require("./helpers/firebaseAdmin");
 const axios = require("axios");
 const nodemailer = require("nodemailer");
 const { randomUUID } = require("crypto");
@@ -29,9 +29,7 @@ const wholesaleRouter = require('./routes/wholesale'); // <-- wholesale.js is lo
 const createEmailsRouter = require('./routes/emails');
 const createOrdersRouter = require('./routes/orders');
 
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
+initFirebaseAdmin();
 const {
   reserveFakeProfiles,
   buildFakeOrderPayload,
