@@ -584,11 +584,6 @@ const handleVerifyAddress = async (req, res) => {
     return res.status(400).json({ error: "Missing required address fields." });
   }
 
-  const shipengineKey = getShipEngineApiKey();
-  if (!shipengineKey) {
-    return res.status(500).json({ error: "ShipEngine API key not configured." });
-  }
-
   const payload = [
     {
       address_line1: streetAddress,
@@ -599,6 +594,22 @@ const handleVerifyAddress = async (req, res) => {
       country_code: country || "US",
     },
   ];
+
+  const shipengineKey = getShipEngineApiKey();
+  if (!shipengineKey) {
+    return res.json({
+      status: "unverified",
+      originalAddress: payload[0],
+      matchedAddress: null,
+      messages: [
+        {
+          code: "shipengine_not_configured",
+          message: "Address validation is temporarily unavailable.",
+          type: "warning",
+        },
+      ],
+    });
+  }
 
   try {
     const response = await axios.post(
@@ -623,9 +634,18 @@ const handleVerifyAddress = async (req, res) => {
       "ShipEngine address validation failed:",
       error.response?.data || error.message
     );
-    return res.status(502).json({
-      error: "Address validation failed.",
-      detail: error.response?.data || error.message,
+    return res.json({
+      status: "unverified",
+      originalAddress: payload[0],
+      matchedAddress: null,
+      messages: [
+        {
+          code: "validation_unavailable",
+          message: "Address validation is temporarily unavailable.",
+          type: "warning",
+          detail: error.response?.data || error.message,
+        },
+      ],
     });
   }
 };
