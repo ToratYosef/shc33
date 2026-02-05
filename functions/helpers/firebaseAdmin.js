@@ -1,3 +1,4 @@
+const { createPrivateKey } = require('crypto');
 const admin = require('firebase-admin');
 
 function stripWrappingQuotes(value) {
@@ -16,18 +17,59 @@ function stripWrappingQuotes(value) {
   return trimmed;
 }
 
-function tryExtractPrivateKeyFromJson(value) {
+function normalizeScalarEnv(value) {
+  if (typeof value !== 'string') {
+    return value || null;
+  }
+
+  const normalized = stripWrappingQuotes(value);
+  return normalized || null;
+}
+
+function decodeBase64Utf8(value) {
+  if (!value || typeof value !== 'string' || !/^[A-Za-z0-9+/=\s]+$/.test(value)) {
+    return null;
+  }
+
+  try {
+    const decoded = Buffer.from(value, 'base64').toString('utf8').trim();
+    return decoded || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function parseJsonIfPossible(value) {
   if (!value || typeof value !== 'string') {
     return null;
   }
 
   try {
-    const parsed = JSON.parse(value);
-    if (parsed && typeof parsed.private_key === 'string') {
-      return parsed.private_key;
-    }
+    return JSON.parse(value);
   } catch (error) {
-    // Value is not JSON.
+    return null;
+  }
+}
+
+function parseServiceAccountPayload(rawValue) {
+  if (!rawValue || typeof rawValue !== 'string') {
+    return null;
+  }
+
+  const normalizedRaw = stripWrappingQuotes(rawValue);
+  const directJson = parseJsonIfPossible(normalizedRaw);
+  if (directJson && typeof directJson === 'object') {
+    return directJson;
+  }
+
+  const decoded = decodeBase64Utf8(normalizedRaw);
+  if (!decoded) {
+    return null;
+  }
+
+  const decodedJson = parseJsonIfPossible(decoded);
+  if (decodedJson && typeof decodedJson === 'object') {
+    return decodedJson;
   }
 
   return null;
@@ -39,29 +81,53 @@ function normalizePrivateKey(privateKeyValue) {
   }
 
   let key = stripWrappingQuotes(privateKeyValue);
+  key = key.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
 
-  const keyFromJson = tryExtractPrivateKeyFromJson(key);
-  if (keyFromJson) {
-    key = keyFromJson;
-  }
-
-  key = key.replace(/\\n/g, '\n');
-
-  if (!key.includes('BEGIN') && /^[A-Za-z0-9+/=\s]+$/.test(key)) {
-    try {
-      const decoded = Buffer.from(key, 'base64').toString('utf8').trim();
-      const decodedJsonPrivateKey = tryExtractPrivateKeyFromJson(decoded);
-      if (decodedJsonPrivateKey) {
-        key = decodedJsonPrivateKey;
-      } else if (decoded.includes('BEGIN')) {
-        key = decoded;
-      }
-    } catch (error) {
-      // Keep original key if decoding fails.
-    }
+  const jsonPayload = parseJsonIfPossible(key) || parseJsonIfPossible(decodeBase64Utf8(key));
+  if (jsonPayload && typeof jsonPayload.private_key === 'string') {
+    key = jsonPayload.private_key;
+    key = key.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
   }
 
   return stripWrappingQuotes(key);
+}
+
+function isValidPrivateKey(privateKey) {
+  if (!privateKey || typeof privateKey !== 'string') {
+    return false;
+  }
+
+  try {
+    createPrivateKey({ key: privateKey, format: 'pem' });
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+function resolveExplicitServiceAccount() {
+  const serviceAccountPayload =
+    parseServiceAccountPayload(process.env.FIREBASE_SERVICE_ACCOUNT_JSON) ||
+    parseServiceAccountPayload(process.env.FIREBASE_SERVICE_ACCOUNT) ||
+    parseServiceAccountPayload(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+
+  if (!serviceAccountPayload) {
+    return null;
+  }
+
+  const projectId = normalizeScalarEnv(serviceAccountPayload.project_id);
+  const clientEmail = normalizeScalarEnv(serviceAccountPayload.client_email);
+  const privateKey = normalizePrivateKey(serviceAccountPayload.private_key);
+
+  if (!projectId || !clientEmail || !isValidPrivateKey(privateKey)) {
+    return null;
+  }
+
+  return {
+    projectId,
+    clientEmail,
+    privateKey,
+  };
 }
 
 function initFirebaseAdmin() {
@@ -69,26 +135,44 @@ function initFirebaseAdmin() {
     return admin.app();
   }
 
-  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL || process.env.GOOGLE_CLIENT_EMAIL;
-  const privateKey = normalizePrivateKey(
+  const storageBucket = normalizeScalarEnv(process.env.FIREBASE_STORAGE_BUCKET) || undefined;
+
+  const envProjectId =
+    normalizeScalarEnv(process.env.FIREBASE_PROJECT_ID) ||
+    normalizeScalarEnv(process.env.GCLOUD_PROJECT) ||
+    normalizeScalarEnv(process.env.GCP_PROJECT);
+  const envClientEmail =
+    normalizeScalarEnv(process.env.FIREBASE_CLIENT_EMAIL) ||
+    normalizeScalarEnv(process.env.GOOGLE_CLIENT_EMAIL);
+  const envPrivateKey = normalizePrivateKey(
     process.env.FIREBASE_PRIVATE_KEY || process.env.GOOGLE_PRIVATE_KEY
   );
-  const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || undefined;
 
-  if (projectId && clientEmail && privateKey) {
+  const explicitServiceAccount =
+    resolveExplicitServiceAccount() ||
+    (envProjectId && envClientEmail && isValidPrivateKey(envPrivateKey)
+      ? {
+          projectId: envProjectId,
+          clientEmail: envClientEmail,
+          privateKey: envPrivateKey,
+        }
+      : null);
+
+  if (explicitServiceAccount) {
     admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId,
-        clientEmail,
-        privateKey,
-      }),
+      credential: admin.credential.cert(explicitServiceAccount),
       storageBucket,
     });
-  } else {
-    admin.initializeApp({ storageBucket });
+    return admin.app();
   }
 
+  if (envProjectId || envClientEmail || envPrivateKey) {
+    console.warn(
+      'Firebase credential environment variables were provided but could not be parsed as a valid service account key. Falling back to Application Default Credentials.'
+    );
+  }
+
+  admin.initializeApp({ storageBucket });
   return admin.app();
 }
 
