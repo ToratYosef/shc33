@@ -274,12 +274,21 @@ function createOrdersRouter({
       },
     };
   }
+  const resolvedStorageBucketName = [
+    process.env.FIREBASE_STORAGE_BUCKET,
+    process.env.STORAGE_BUCKET,
+    process.env.GCLOUD_STORAGE_BUCKET,
+    admin.apps?.[0]?.options?.storageBucket,
+  ].find((value) => typeof value === 'string' && value.trim());
+
   let storageBucket = null;
 
-  try {
-    storageBucket = admin.storage().bucket();
-  } catch (error) {
-    console.warn('Bulk print storage bucket unavailable:', error?.message || error);
+  if (resolvedStorageBucketName) {
+    try {
+      storageBucket = admin.storage().bucket(resolvedStorageBucketName.trim());
+    } catch (error) {
+      console.warn('Bulk print storage bucket unavailable:', error?.message || error);
+    }
   }
 
   function applyPrintBundleCorsHeaders(res, origin) {
