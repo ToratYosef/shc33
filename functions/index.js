@@ -1843,7 +1843,7 @@ async function generateNextOrderNumber() {
   const counterRef = db.collection("counters").doc("orders");
 
   const orderNumberStart = 30000;
-  const counterFloor = orderNumberStart + 1;
+  const counterFloor = orderNumberStart;
   const maxCounterAttempts = 5;
   const maxFallbackAttempts = 20;
 
@@ -1858,13 +1858,24 @@ async function generateNextOrderNumber() {
     try {
       const currentNumber = await db.runTransaction(async (transaction) => {
         const counterDoc = await transaction.get(counterRef);
-        const rawCurrent = Number(counterDoc.data()?.currentNumber);
-        const currentValue = Number.isFinite(rawCurrent) ? rawCurrent : 0;
+        const rawCurrent = Number(
+          counterDoc.data()?.currentNumber ?? counterDoc.data()?.lastNumber
+        );
+        const currentValue = Number.isFinite(rawCurrent)
+          ? rawCurrent
+          : counterFloor - 1;
         const nextValue = Math.max(currentValue + 1, counterFloor);
 
-        transaction.set(counterRef, { currentNumber: nextValue }, { merge: true });
+        transaction.set(
+          counterRef,
+          {
+            currentNumber: nextValue,
+            lastNumber: admin.firestore.FieldValue.delete(),
+          },
+          { merge: true }
+        );
 
-        return nextValue - 1;
+        return nextValue;
       });
 
       const candidate = buildOrderNumber(currentNumber);

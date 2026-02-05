@@ -10,13 +10,17 @@ const { ordersCollection } = require('../db/db');
 async function generateNextOrderNumber() {
     const counterRef = db.collection("counters").doc("orders");
     const orderNumberStart = 30000;
-    const counterFloor = orderNumberStart + 1;
+    const counterFloor = orderNumberStart;
 
     try {
         const nextOrderNumber = await db.runTransaction(async (transaction) => {
             const counterDoc = await transaction.get(counterRef);
-            const rawCurrent = Number(counterDoc.data()?.currentNumber);
-            const currentValue = Number.isFinite(rawCurrent) ? rawCurrent : 0;
+            const rawCurrent = Number(
+                counterDoc.data()?.currentNumber ?? counterDoc.data()?.lastNumber
+            );
+            const currentValue = Number.isFinite(rawCurrent)
+                ? rawCurrent
+                : counterFloor - 1;
             const nextValue = Math.max(currentValue + 1, counterFloor);
 
             transaction.set(
@@ -25,7 +29,7 @@ async function generateNextOrderNumber() {
                 { merge: true }
             );
 
-            return nextValue - 1;
+            return nextValue;
         });
 
         const paddedNumber = String(nextOrderNumber).padStart(5, "0");
