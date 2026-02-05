@@ -1,17 +1,48 @@
 const admin = require('firebase-admin');
 
+function stripWrappingQuotes(value) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+
+  return trimmed;
+}
+
+function tryExtractPrivateKeyFromJson(value) {
+  if (!value || typeof value !== 'string') {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed.private_key === 'string') {
+      return parsed.private_key;
+    }
+  } catch (error) {
+    // Value is not JSON.
+  }
+
+  return null;
+}
+
 function normalizePrivateKey(privateKeyValue) {
   if (!privateKeyValue || typeof privateKeyValue !== 'string') {
     return null;
   }
 
-  let key = privateKeyValue.trim();
+  let key = stripWrappingQuotes(privateKeyValue);
 
-  if (
-    (key.startsWith('"') && key.endsWith('"')) ||
-    (key.startsWith("'") && key.endsWith("'"))
-  ) {
-    key = key.slice(1, -1);
+  const keyFromJson = tryExtractPrivateKeyFromJson(key);
+  if (keyFromJson) {
+    key = keyFromJson;
   }
 
   key = key.replace(/\\n/g, '\n');
@@ -19,7 +50,10 @@ function normalizePrivateKey(privateKeyValue) {
   if (!key.includes('BEGIN') && /^[A-Za-z0-9+/=\s]+$/.test(key)) {
     try {
       const decoded = Buffer.from(key, 'base64').toString('utf8').trim();
-      if (decoded.includes('BEGIN')) {
+      const decodedJsonPrivateKey = tryExtractPrivateKeyFromJson(decoded);
+      if (decodedJsonPrivateKey) {
+        key = decodedJsonPrivateKey;
+      } else if (decoded.includes('BEGIN')) {
         key = decoded;
       }
     } catch (error) {
@@ -27,7 +61,7 @@ function normalizePrivateKey(privateKeyValue) {
     }
   }
 
-  return key;
+  return stripWrappingQuotes(key);
 }
 
 function initFirebaseAdmin() {
