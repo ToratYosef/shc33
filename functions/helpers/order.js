@@ -8,28 +8,28 @@ const { ordersCollection } = require('../db/db');
  * @returns {Promise<string>} The next unique, sequential order number (e.g., "SHC-30000", then "SHC-30001").
  */
 async function generateNextOrderNumber() {
-    const counterRef = db.collection("counters").doc("orders");
+    const counterRef = db.collection("counters").doc("ordersCurrentNumber");
     const orderNumberStart = 30000;
-    const counterFloor = orderNumberStart + 1;
 
     try {
-        const nextOrderNumber = await db.runTransaction(async (transaction) => {
+        const newOrderNumber = await db.runTransaction(async (transaction) => {
             const counterDoc = await transaction.get(counterRef);
-            const rawCurrent = Number(counterDoc.data()?.currentNumber);
-            const currentValue = Number.isFinite(rawCurrent) ? rawCurrent : 0;
-            const nextValue = Math.max(currentValue + 1, counterFloor);
+
+            const currentNumber = counterDoc.exists
+                ? counterDoc.data().currentNumber ?? orderNumberStart
+                : orderNumberStart;
 
             transaction.set(
                 counterRef,
-                { currentNumber: nextValue },
+                { currentNumber: currentNumber + 1 },
                 { merge: true }
             );
 
-            return nextValue - 1;
+            const paddedNumber = String(currentNumber).padStart(5, "0");
+            return `SHC-${paddedNumber}`;
         });
 
-        const paddedNumber = String(nextOrderNumber).padStart(5, "0");
-        return `SHC-${paddedNumber}`;
+        return newOrderNumber;
     } catch (e) {
         console.error("Transaction to generate order number failed:", e);
         throw new Error("Failed to generate a unique order number. Please try again.");

@@ -1840,72 +1840,33 @@ const stateAbbreviations = {
 };
 
 async function generateNextOrderNumber() {
-  const counterRef = db.collection("counters").doc("orders");
-
+  const counterRef = db.collection("counters").doc("ordersCurrentNumber");
   const orderNumberStart = 30000;
-  const counterFloor = orderNumberStart + 1;
-  const maxCounterAttempts = 5;
-  const maxFallbackAttempts = 20;
 
-  const buildOrderNumber = (value) => `SHC-${String(value).padStart(5, "0")}`;
+  try {
+    const newOrderNumber = await db.runTransaction(async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
 
-  const orderNumberExists = async (orderNumber) => {
-    const orderDoc = await ordersCollection.doc(orderNumber).get();
-    return orderDoc.exists;
-  };
+      const currentNumber = counterDoc.exists
+        ? counterDoc.data().currentNumber ?? orderNumberStart
+        : orderNumberStart;
 
-  for (let attempt = 1; attempt <= maxCounterAttempts; attempt += 1) {
-    try {
-      const currentNumber = await db.runTransaction(async (transaction) => {
-        const counterDoc = await transaction.get(counterRef);
-        const rawCurrent = Number(counterDoc.data()?.currentNumber);
-        const currentValue = Number.isFinite(rawCurrent) ? rawCurrent : 0;
-        const nextValue = Math.max(currentValue + 1, counterFloor);
-
-        transaction.set(counterRef, { currentNumber: nextValue }, { merge: true });
-
-        return nextValue - 1;
-      });
-
-      const candidate = buildOrderNumber(currentNumber);
-
-      if (!(await orderNumberExists(candidate))) {
-        return candidate;
-      }
-
-      console.warn(`Generated duplicate order number candidate (${candidate}), retrying.`);
-    } catch (error) {
-      console.error(
-        `Counter-based order number generation failed on attempt ${attempt}/${maxCounterAttempts}:`,
-        error
+      transaction.set(
+        counterRef,
+        { currentNumber: currentNumber + 1 },
+        { merge: true }
       );
-    }
+
+      const paddedNumber = String(currentNumber).padStart(5, "0");
+      return `SHC-${paddedNumber}`;
+    });
+
+    return newOrderNumber;
+  } catch (e) {
+    console.error("Transaction to generate order number failed:", e);
+    throw new Error("Failed to generate a unique order number. Please try again.");
   }
-
-  const fallbackPoolSize = 100000 - orderNumberStart;
-  for (let attempt = 1; attempt <= maxFallbackAttempts; attempt += 1) {
-    const randomValue =
-      orderNumberStart + Math.floor(Math.random() * fallbackPoolSize);
-    const candidate = buildOrderNumber(randomValue);
-
-    try {
-      if (!(await orderNumberExists(candidate))) {
-        console.warn(
-          `Using fallback order number ${candidate} after counter generation failures.`
-        );
-        return candidate;
-      }
-    } catch (error) {
-      console.error(
-        `Fallback order number uniqueness check failed on attempt ${attempt}/${maxFallbackAttempts}:`,
-        error
-      );
-    }
-  }
-
-  throw new Error("Failed to generate a unique order number. Please try again.");
 }
-
 function formatStatusLabel(value) {
   if (!value) return "";
   return String(value)
