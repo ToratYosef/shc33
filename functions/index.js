@@ -1841,6 +1841,7 @@ const stateAbbreviations = {
 
 async function generateNextOrderNumber() {
   const counterRef = db.collection("counters").doc("orders");
+
   const orderNumberStart = 30000;
   const counterFloor = orderNumberStart + 1;
   const maxCounterAttempts = 5;
