@@ -92,6 +92,47 @@ function createOrdersRouter({
     return error;
   }
 
+  function isTransientFirestoreError(error) {
+    if (!error) return false;
+    const code = Number(error.code);
+    if ([2, 4, 8, 10, 13, 14].includes(code)) {
+      return true;
+    }
+
+    const message = String(error.message || '').toLowerCase();
+    return (
+      message.includes('getting metadata from plugin failed') ||
+      message.includes('deadline exceeded') ||
+      message.includes('econnreset') ||
+      message.includes('etimedout') ||
+      message.includes('unavailable')
+    );
+  }
+
+  async function withRetry(operationName, operationFn, { attempts = 3, delayMs = 250 } = {}) {
+    let lastError;
+
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        return await operationFn();
+      } catch (error) {
+        lastError = error;
+        const shouldRetry = attempt < attempts && isTransientFirestoreError(error);
+        if (!shouldRetry) {
+          throw error;
+        }
+
+        console.warn(
+          `${operationName} failed on attempt ${attempt}/${attempts}; retrying:`,
+          error?.message || error
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+      }
+    }
+
+    throw lastError;
+  }
+
   async function reservePromoCodeUsage({
     code,
     orderId,
@@ -1127,18 +1168,30 @@ function createOrdersRouter({
 
       if (normalizedPromoCode) {
         try {
-          appliedPromo = await reservePromoCodeUsage({
-            code: normalizedPromoCode,
-            orderId,
-            shippingPreference: orderData.shippingPreference,
-            shippingInfo: orderData.shippingInfo,
-          });
-        } catch (promoError) {
-          console.error(
-            `Promo code validation failed for order ${orderId}:`,
-            promoError
+          appliedPromo = await withRetry(
+            `Promo code validation for order ${orderId}`,
+            () =>
+              reservePromoCodeUsage({
+                code: normalizedPromoCode,
+                orderId,
+                shippingPreference: orderData.shippingPreference,
+                shippingInfo: orderData.shippingInfo,
+              }),
+            { attempts: 2, delayMs: 200 }
           );
-          throw promoError;
+        } catch (promoError) {
+          if (isTransientFirestoreError(promoError)) {
+            console.warn(
+              `Skipping promo reservation for order ${orderId} due to transient Firestore error:`,
+              promoError?.message || promoError
+            );
+          } else {
+            console.error(
+              `Promo code validation failed for order ${orderId}:`,
+              promoError
+            );
+            throw promoError;
+          }
         }
       }
 
@@ -1339,53 +1392,6 @@ function createOrdersRouter({
         html: adminEmailHtml,
       };
 
-      const notificationPromises = [
-        transporter.sendMail(customerMailOptions),
-        transporter.sendMail(adminMailOptions),
-        sendAdminPushNotification(
-          '⚡ New Order Placed!',
-          `Order #${orderId} for ${orderData.device} from ${orderData.shippingInfo.fullName}.`,
-          {
-            orderId: orderId,
-            userId: orderData.userId || 'guest',
-            relatedDocType: 'order',
-            relatedDocId: orderId,
-            relatedUserId: orderData.userId,
-          }
-        ).catch((e) => console.error('FCM Send Error (New Order):', e)),
-      ];
-
-      const adminsSnapshot = await adminsCollection.get();
-      adminsSnapshot.docs.forEach((adminDoc) => {
-        notificationPromises.push(
-          addAdminFirestoreNotification(
-            adminDoc.id,
-            `New Order: #${orderId} from ${orderData.shippingInfo.fullName}.`,
-            'order',
-            orderId,
-            orderData.userId
-          ).catch((e) =>
-            console.error('Firestore Notification Error (New Order):', e)
-          )
-        );
-      });
-
-      if (autoLabelResult?.customerMailOptions) {
-        notificationPromises.push(
-          transporter.sendMail(autoLabelResult.customerMailOptions)
-        );
-      }
-
-      const notificationResults = await Promise.allSettled(notificationPromises);
-      notificationResults.forEach((result, index) => {
-        if (result.status === 'rejected') {
-          console.error(
-            `Order notification ${index + 1} failed:`,
-            result.reason?.message || result.reason
-          );
-        }
-      });
-
       const toSave = {
         ...orderData,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -1396,7 +1402,75 @@ function createOrdersRouter({
       if (autoLabelResult?.orderUpdates) {
         Object.assign(toSave, autoLabelResult.orderUpdates);
       }
-      await writeOrderBoth(orderId, toSave);
+      await withRetry(
+        `Persist order ${orderId}`,
+        () => writeOrderBoth(orderId, toSave),
+        { attempts: 3, delayMs: 300 }
+      );
+
+      try {
+        const notificationPromises = [
+          transporter.sendMail(customerMailOptions),
+          transporter.sendMail(adminMailOptions),
+          sendAdminPushNotification(
+            '⚡ New Order Placed!',
+            `Order #${orderId} for ${orderData.device} from ${orderData.shippingInfo.fullName}.`,
+            {
+              orderId: orderId,
+              userId: orderData.userId || 'guest',
+              relatedDocType: 'order',
+              relatedDocId: orderId,
+              relatedUserId: orderData.userId,
+            }
+          ).catch((e) => console.error('FCM Send Error (New Order):', e)),
+        ];
+
+        let adminsSnapshot = null;
+        try {
+          adminsSnapshot = await withRetry(
+            `Load admins for order ${orderId} notifications`,
+            () => adminsCollection.get(),
+            { attempts: 2, delayMs: 200 }
+          );
+        } catch (adminLoadError) {
+          console.error(
+            `Failed to load admins for order ${orderId} notifications:`,
+            adminLoadError
+          );
+        }
+
+        adminsSnapshot?.docs?.forEach((adminDoc) => {
+          notificationPromises.push(
+            addAdminFirestoreNotification(
+              adminDoc.id,
+              `New Order: #${orderId} from ${orderData.shippingInfo.fullName}.`,
+              'order',
+              orderId,
+              orderData.userId
+            ).catch((e) =>
+              console.error('Firestore Notification Error (New Order):', e)
+            )
+          );
+        });
+
+        if (autoLabelResult?.customerMailOptions) {
+          notificationPromises.push(
+            transporter.sendMail(autoLabelResult.customerMailOptions)
+          );
+        }
+
+        const notificationResults = await Promise.allSettled(notificationPromises);
+        notificationResults.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            console.error(
+              `Order notification ${index + 1} failed:`,
+              result.reason?.message || result.reason
+            );
+          }
+        });
+      } catch (notificationError) {
+        console.error(`Post-submit notifications failed for order ${orderId}:`, notificationError);
+      }
 
       const responsePayload = {
         message: 'Order submitted',
