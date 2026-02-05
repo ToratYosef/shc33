@@ -92,6 +92,13 @@ if (shouldRateLimit) {
     max: Number(process.env.RATE_LIMIT_MAX || 300),
     standardHeaders: true,
     legacyHeaders: false,
+    keyGenerator: (req) => {
+      const trustProxySetting = app.get('trust proxy');
+      if (trustProxySetting) {
+        return req.ip;
+      }
+      return req.socket?.remoteAddress || req.ip || 'unknown';
+    },
   });
 
   app.use(limiter);
