@@ -1841,30 +1841,58 @@ const stateAbbreviations = {
 
 async function generateNextOrderNumber() {
   const counterRef = db.collection("counters").doc("orders");
+  const incrementByOne = admin.firestore.FieldValue.increment(1);
+  const maxCounterAttempts = 5;
+  const maxFallbackAttempts = 20;
 
-  try {
-    const newOrderNumber = await db.runTransaction(async (transaction) => {
-      const counterDoc = await transaction.get(counterRef);
+  const buildOrderNumber = (value) => `SHC-${String(value).padStart(5, "0")}`;
 
-      const currentNumber = counterDoc.exists
-        ? counterDoc.data().currentNumber ?? 0
-        : 0;
+  const orderNumberExists = async (orderNumber) => {
+    const orderDoc = await ordersCollection.doc(orderNumber).get();
+    return orderDoc.exists;
+  };
 
-      transaction.set(
-        counterRef,
-        { currentNumber: currentNumber + 1 },
-        { merge: true }
+  for (let attempt = 1; attempt <= maxCounterAttempts; attempt += 1) {
+    try {
+      await counterRef.set({ currentNumber: incrementByOne }, { merge: true });
+      const counterDoc = await counterRef.get();
+      const nextNumberRaw = Number(counterDoc.data()?.currentNumber);
+      const nextNumber = Number.isFinite(nextNumberRaw) ? nextNumberRaw : 1;
+      const candidate = buildOrderNumber(Math.max(0, nextNumber - 1));
+
+      if (!(await orderNumberExists(candidate))) {
+        return candidate;
+      }
+
+      console.warn(`Generated duplicate order number candidate (${candidate}), retrying.`);
+    } catch (error) {
+      console.error(
+        `Counter-based order number generation failed on attempt ${attempt}/${maxCounterAttempts}:`,
+        error
       );
-
-      const paddedNumber = String(currentNumber).padStart(5, "0");
-      return `SHC-${paddedNumber}`;
-    });
-
-    return newOrderNumber;
-  } catch (e) {
-    console.error("Transaction to generate order number failed:", e);
-    throw new Error("Failed to generate a unique order number. Please try again.");
+    }
   }
+
+  for (let attempt = 1; attempt <= maxFallbackAttempts; attempt += 1) {
+    const randomValue = Math.floor(Math.random() * 100000);
+    const candidate = buildOrderNumber(randomValue);
+
+    try {
+      if (!(await orderNumberExists(candidate))) {
+        console.warn(
+          `Using fallback order number ${candidate} after counter generation failures.`
+        );
+        return candidate;
+      }
+    } catch (error) {
+      console.error(
+        `Fallback order number uniqueness check failed on attempt ${attempt}/${maxFallbackAttempts}:`,
+        error
+      );
+    }
+  }
+
+  throw new Error("Failed to generate a unique order number. Please try again.");
 }
 
 function formatStatusLabel(value) {
