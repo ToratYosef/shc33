@@ -4,7 +4,7 @@ const {
   sendReminderEmail,
   sendExpiringReminderEmail,
   sendKitReminderEmail,
-} = require('../../../functions/index.js');
+} = require('../../functions/index.js');
 
 const router = express.Router();
 

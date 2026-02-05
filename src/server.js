@@ -20,7 +20,7 @@ const adminUsersRouter = require('./routes/adminUsers');
 const supportRouter = require('./routes/support');
 const { notFoundHandler, errorHandler } = require('./utils/errors');
 
-const { expressApp } = require('../../functions/index.js');
+const { expressApp } = require('../functions/index.js');
 
 const app = express();
 
