@@ -121,16 +121,16 @@ const apiBasePath = (() => {
     ? process.env.API_BASE_PATH.trim()
     : '';
   if (!raw) {
-    return '/';
+    return '/server';
   }
   if (raw.startsWith('http://') || raw.startsWith('https://')) {
-    return '/';
+    return '/server';
   }
   if (raw.includes('(') || raw.includes(')') || raw.includes('*') || raw.includes(':splat') || raw.includes('/:')) {
-    return '/';
+    return '/server';
   }
   if (raw === ':' || raw === '/:') {
-    return '/';
+    return '/server';
   }
   if (!raw.startsWith('/')) {
     return `/${raw}`;

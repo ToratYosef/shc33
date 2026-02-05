@@ -1841,28 +1841,20 @@ const stateAbbreviations = {
 
 async function generateNextOrderNumber() {
   const counterRef = db.collection("counters").doc("orders");
+  const incrementByOne = admin.firestore.FieldValue.increment(1);
 
   try {
-    const newOrderNumber = await db.runTransaction(async (transaction) => {
-      const counterDoc = await transaction.get(counterRef);
+    await counterRef.set({ currentNumber: incrementByOne }, { merge: true });
 
-      const currentNumber = counterDoc.exists
-        ? counterDoc.data().currentNumber ?? 0
-        : 0;
+    const counterDoc = await counterRef.get();
+    const nextNumberRaw = Number(counterDoc.data()?.currentNumber);
+    const nextNumber = Number.isFinite(nextNumberRaw) ? nextNumberRaw : 1;
+    const currentNumber = Math.max(0, nextNumber - 1);
+    const paddedNumber = String(currentNumber).padStart(5, "0");
 
-      transaction.set(
-        counterRef,
-        { currentNumber: currentNumber + 1 },
-        { merge: true }
-      );
-
-      const paddedNumber = String(currentNumber).padStart(5, "0");
-      return `SHC-${paddedNumber}`;
-    });
-
-    return newOrderNumber;
+    return `SHC-${paddedNumber}`;
   } catch (e) {
-    console.error("Transaction to generate order number failed:", e);
+    console.error("Failed to generate order number:", e);
     throw new Error("Failed to generate a unique order number. Please try again.");
   }
 }
