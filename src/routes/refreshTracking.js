@@ -1,5 +1,5 @@
 const express = require('express');
-const { refreshTracking } = require('../../../functions/index.js');
+const { refreshTracking } = require('../../functions/index.js');
 
 const router = express.Router();
 
