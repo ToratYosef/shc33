@@ -14,23 +14,76 @@ function firebaseNotificationsEnabled() {
 }
 
 // Set up Nodemailer transporter using the Firebase Functions config
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    pool: true,
-    maxConnections: Number(process.env.EMAIL_MAX_CONNECTIONS || 5),
-    maxMessages: Number(process.env.EMAIL_MAX_MESSAGES || 100),
-    connectionTimeout: Number(process.env.EMAIL_CONNECTION_TIMEOUT_MS || 8000),
-    greetingTimeout: Number(process.env.EMAIL_GREETING_TIMEOUT_MS || 8000),
-    socketTimeout: Number(process.env.EMAIL_SOCKET_TIMEOUT_MS || 15000),
-    auth: {
-        user: functions.config().email.user,
-        pass: functions.config().email.pass,
-    },
-});
+function createEmailTransportConfig({ pooled = true, preferAlternatePort = false } = {}) {
+    const explicitHost = (process.env.EMAIL_SMTP_HOST || process.env.EMAIL_HOST || '').trim();
+    const explicitPort = Number(process.env.EMAIL_SMTP_PORT || process.env.EMAIL_PORT || 0) || null;
+    const explicitSecure = typeof process.env.EMAIL_SMTP_SECURE === 'string'
+        ? ['1', 'true', 'yes', 'on'].includes(process.env.EMAIL_SMTP_SECURE.trim().toLowerCase())
+        : null;
+
+    const port = explicitPort || (preferAlternatePort ? 587 : 465);
+    const secure = explicitSecure === null ? port === 465 : explicitSecure;
+
+    const config = {
+        pool: pooled,
+        maxConnections: Number(process.env.EMAIL_MAX_CONNECTIONS || 5),
+        maxMessages: Number(process.env.EMAIL_MAX_MESSAGES || 100),
+        connectionTimeout: Number(process.env.EMAIL_CONNECTION_TIMEOUT_MS || 8000),
+        greetingTimeout: Number(process.env.EMAIL_GREETING_TIMEOUT_MS || 8000),
+        socketTimeout: Number(process.env.EMAIL_SOCKET_TIMEOUT_MS || 15000),
+        auth: {
+            user: functions.config().email.user,
+            pass: functions.config().email.pass,
+        },
+    };
+
+    if (explicitHost) {
+        config.host = explicitHost;
+        config.port = port;
+        config.secure = secure;
+        if (!secure) {
+            config.requireTLS = true;
+        }
+    } else {
+        config.host = 'smtp.gmail.com';
+        config.port = port;
+        config.secure = secure;
+        if (!secure) {
+            config.requireTLS = true;
+        }
+        config.service = 'gmail';
+    }
+
+    return config;
+}
+
+const transporter = nodemailer.createTransport(createEmailTransportConfig({ pooled: true }));
+
+async function sendMailWithFallback(mailOptions) {
+    try {
+        return await transporter.sendMail(mailOptions);
+    } catch (error) {
+        const isTimeout = error && (error.code === 'ETIMEDOUT' || error.command === 'CONN');
+        if (!isTimeout) {
+            throw error;
+        }
+
+        console.error('Primary SMTP attempt timed out; retrying with alternate port.', {
+            code: error.code,
+            command: error.command,
+            message: error.message,
+        });
+
+        const retryTransporter = nodemailer.createTransport(
+            createEmailTransportConfig({ pooled: false, preferAlternatePort: true })
+        );
+        return retryTransporter.sendMail(mailOptions);
+    }
+}
 
 async function sendEmail(mailOptions) {
     try {
-        await transporter.sendMail(mailOptions);
+        await sendMailWithFallback(mailOptions);
         console.log('Email sent successfully');
     } catch (error) {
         console.error('Error sending email:', error);
