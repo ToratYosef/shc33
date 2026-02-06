@@ -1370,15 +1370,20 @@ function createOrdersRouter({
         );
       }
 
-      const notificationResults = await Promise.allSettled(notificationPromises);
-      notificationResults.forEach((result, index) => {
-        if (result.status === 'rejected') {
-          console.error(
-            `Order notification ${index + 1} failed:`,
-            result.reason?.message || result.reason
-          );
-        }
-      });
+      Promise.allSettled(notificationPromises)
+        .then((notificationResults) => {
+          notificationResults.forEach((result, index) => {
+            if (result.status === 'rejected') {
+              console.error(
+                `Order notification ${index + 1} failed:`,
+                result.reason?.message || result.reason
+              );
+            }
+          });
+        })
+        .catch((notificationError) => {
+          console.error('Unexpected order notification error:', notificationError);
+        });
 
       const toSave = {
         ...orderData,
