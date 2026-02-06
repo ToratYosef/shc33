@@ -4,6 +4,7 @@ const admin = require('firebase-admin');
 module.exports = function createEmailsRouter({
   transporter,
   ensureEmailTransporterReady,
+  emailFromAddress,
   sendMultipleTestEmails,
   CONDITION_EMAIL_TEMPLATES,
   CONDITION_EMAIL_FROM_ADDRESS,
@@ -17,6 +18,11 @@ module.exports = function createEmailsRouter({
   }
 
   const router = express.Router();
+  const resolvedFromAddress =
+    emailFromAddress ||
+    process.env.EMAIL_FROM ||
+    process.env.EMAIL_USER ||
+    "no-reply@secondhandcell.com";
 
   router.post('/send-email', async (req, res) => {
     try {
@@ -35,7 +41,7 @@ module.exports = function createEmailsRouter({
       }
 
       const mailOptions = {
-        from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+        from: resolvedFromAddress,
         to,
         subject,
         html,
