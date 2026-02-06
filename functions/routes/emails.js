@@ -17,6 +17,14 @@ module.exports = function createEmailsRouter({
 
   const router = express.Router();
 
+  function queueEmail(label, task) {
+    Promise.resolve()
+      .then(task)
+      .catch((error) => {
+        console.error(`${label}:`, error);
+      });
+  }
+
   router.post('/send-email', async (req, res) => {
     try {
       const { to, bcc, subject, html } = req.body || {};
@@ -35,11 +43,11 @@ module.exports = function createEmailsRouter({
         bcc: Array.isArray(bcc) ? bcc : bcc ? [bcc] : [],
       };
 
-      await transporter.sendMail(mailOptions);
-      res.status(200).json({ message: 'Email sent successfully.' });
+      queueEmail('Error sending email', () => transporter.sendMail(mailOptions));
+      res.status(202).json({ message: 'Email queued successfully.' });
     } catch (error) {
-      console.error('Error sending email:', error);
-      res.status(500).json({ error: 'Failed to send email.' });
+      console.error('Error queueing email:', error);
+      res.status(500).json({ error: 'Failed to queue email.' });
     }
   });
 
@@ -95,45 +103,47 @@ module.exports = function createEmailsRouter({
         mailOptions.bcc = CONDITION_EMAIL_BCC_RECIPIENTS;
       }
 
-      await transporter.sendMail(mailOptions);
+      queueEmail('Failed to send condition email', async () => {
+        await transporter.sendMail(mailOptions);
 
-      const serverTimestamp = admin.firestore.FieldValue.serverTimestamp();
-      const updatePayload = {
-        lastCustomerEmailSentAt: serverTimestamp,
-        lastConditionEmailReason: reason,
-        ...(notes && notes.trim() ? { lastConditionEmailNotes: notes.trim() } : {}),
-      };
+        const serverTimestamp = admin.firestore.FieldValue.serverTimestamp();
+        const updatePayload = {
+          lastCustomerEmailSentAt: serverTimestamp,
+          lastConditionEmailReason: reason,
+          ...(notes && notes.trim() ? { lastConditionEmailNotes: notes.trim() } : {}),
+        };
 
-      if (reason === 'outstanding_balance') {
-        updatePayload.balanceEmailSentAt = serverTimestamp;
-        if ((order.status || '').toLowerCase() === 'received') {
-          updatePayload.status = 'emailed';
+        if (reason === 'outstanding_balance') {
+          updatePayload.balanceEmailSentAt = serverTimestamp;
+          if ((order.status || '').toLowerCase() === 'received') {
+            updatePayload.status = 'emailed';
+          }
         }
-      }
 
-      await updateOrderBoth(
-        req.params.id,
-        updatePayload,
-        {
-          autoLogStatus: false,
-          logEntries: [
-            {
-              type: 'email',
-              message: `Sent ${labelText || subject} email to customer.`,
-              metadata: {
-                reason,
-                label: labelText || null,
-                notes: notes && notes.trim() ? notes.trim() : null,
+        await updateOrderBoth(
+          req.params.id,
+          updatePayload,
+          {
+            autoLogStatus: false,
+            logEntries: [
+              {
+                type: 'email',
+                message: `Sent ${labelText || subject} email to customer.`,
+                metadata: {
+                  reason,
+                  label: labelText || null,
+                  notes: notes && notes.trim() ? notes.trim() : null,
+                },
               },
-            },
-          ],
-        }
-      );
+            ],
+          }
+        );
+      });
 
-      res.json({ message: 'Email sent successfully.' });
+      res.status(202).json({ message: 'Condition email queued successfully.' });
     } catch (error) {
-      console.error('Failed to send condition email:', error);
-      res.status(500).json({ error: 'Failed to send condition email.' });
+      console.error('Failed to queue condition email:', error);
+      res.status(500).json({ error: 'Failed to queue condition email.' });
     }
   });
 

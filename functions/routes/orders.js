@@ -1333,53 +1333,6 @@ function createOrdersRouter({
         html: adminEmailHtml,
       };
 
-      const notificationPromises = [
-        transporter.sendMail(customerMailOptions),
-        transporter.sendMail(adminMailOptions),
-        sendAdminPushNotification(
-          '⚡ New Order Placed!',
-          `Order #${orderId} for ${orderData.device} from ${orderData.shippingInfo.fullName}.`,
-          {
-            orderId: orderId,
-            userId: orderData.userId || 'guest',
-            relatedDocType: 'order',
-            relatedDocId: orderId,
-            relatedUserId: orderData.userId,
-          }
-        ).catch((e) => console.error('FCM Send Error (New Order):', e)),
-      ];
-
-      const adminsSnapshot = await adminsCollection.get();
-      adminsSnapshot.docs.forEach((adminDoc) => {
-        notificationPromises.push(
-          addAdminFirestoreNotification(
-            adminDoc.id,
-            `New Order: #${orderId} from ${orderData.shippingInfo.fullName}.`,
-            'order',
-            orderId,
-            orderData.userId
-          ).catch((e) =>
-            console.error('Firestore Notification Error (New Order):', e)
-          )
-        );
-      });
-
-      if (autoLabelResult?.customerMailOptions) {
-        notificationPromises.push(
-          transporter.sendMail(autoLabelResult.customerMailOptions)
-        );
-      }
-
-      const notificationResults = await Promise.allSettled(notificationPromises);
-      notificationResults.forEach((result, index) => {
-        if (result.status === 'rejected') {
-          console.error(
-            `Order notification ${index + 1} failed:`,
-            result.reason?.message || result.reason
-          );
-        }
-      });
-
       const toSave = {
         ...orderData,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -1412,6 +1365,57 @@ function createOrdersRouter({
       }
 
       res.status(201).json(responsePayload);
+
+      Promise.resolve()
+        .then(async () => {
+          const notificationPromises = [
+            transporter.sendMail(customerMailOptions),
+            transporter.sendMail(adminMailOptions),
+            sendAdminPushNotification(
+              '⚡ New Order Placed!',
+              `Order #${orderId} for ${orderData.device} from ${orderData.shippingInfo.fullName}.`,
+              {
+                orderId,
+                userId: orderData.userId || 'guest',
+                relatedDocType: 'order',
+                relatedDocId: orderId,
+                relatedUserId: orderData.userId,
+              }
+            ),
+          ];
+
+          const adminsSnapshot = await adminsCollection.get();
+          adminsSnapshot.docs.forEach((adminDoc) => {
+            notificationPromises.push(
+              addAdminFirestoreNotification(
+                adminDoc.id,
+                `New Order: #${orderId} from ${orderData.shippingInfo.fullName}.`,
+                'order',
+                orderId,
+                orderData.userId
+              )
+            );
+          });
+
+          if (autoLabelResult?.customerMailOptions) {
+            notificationPromises.push(
+              transporter.sendMail(autoLabelResult.customerMailOptions)
+            );
+          }
+
+          const notificationResults = await Promise.allSettled(notificationPromises);
+          notificationResults.forEach((result, index) => {
+            if (result.status === 'rejected') {
+              console.error(
+                `Order notification ${index + 1} failed:`,
+                result.reason?.message || result.reason
+              );
+            }
+          });
+        })
+        .catch((notificationError) => {
+          console.error('Unexpected order notification error:', notificationError);
+        });
     } catch (err) {
       console.error('Error submitting order:', err);
       const statusCode = err.status || 500;
