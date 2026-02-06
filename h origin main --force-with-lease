@@ -1,0 +1,24 @@
+*   [33m70ee66c[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Merge pull request #30 from ToratYosef/codex/refactor-functions-into-separate-files-k364j5
+[31m|[m[32m\[m  
+[31m|[m * [33m95cc361[m[33m ([m[1;31morigin/codex/refactor-functions-into-separate-files-k364j5[m[33m)[m Fix shipengine helper imports
+* [32m|[m   [33mc5cd6e3[m Merge pull request #29 from ToratYosef/codex/refactor-functions-into-separate-files
+[32m|[m[34m\[m [32m\[m  
+[32m|[m [34m|[m[32m/[m  
+[32m|[m[32m/[m[34m|[m   
+[32m|[m * [33m22567bd[m[33m ([m[1;31morigin/codex/refactor-functions-into-separate-files[m[33m)[m Speed up admin order updates
+[32m|[m[32m/[m  
+*   [33mb285c3f[m Merge pull request #28 from ToratYosef/codex/fix-parsing-of-firebase_private_key-8eiwtp
+[35m|[m[36m\[m  
+[35m|[m *   [33mc383697[m[33m ([m[1;31morigin/codex/fix-parsing-of-firebase_private_key-8eiwtp[m[33m)[m Merge branch 'main' into codex/fix-parsing-of-firebase_private_key-8eiwtp
+[35m|[m [1;31m|[m[35m\[m  
+[35m|[m [1;31m|[m[35m/[m  
+[35m|[m[35m/[m[1;31m|[m   
+* [1;31m|[m   [33mb04d286[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Merge pull request #27 from ToratYosef/codex/fix-parsing-of-firebase_private_key-2msipa
+[1;33m|[m[1;34m\[m [1;31m\[m  
+[1;33m|[m * [1;31m|[m [33m9833bf1[m[33m ([m[1;31morigin/codex/fix-parsing-of-firebase_private_key-2msipa[m[33m)[m Speed up order submit and re-enable Firebase admin notifications
+* [1;34m|[m [1;31m|[m   [33m89f3465[m Merge pull request #26 from ToratYosef/codex/fix-parsing-of-firebase_private_key
+[1;34m|[m[1;36m\[m [1;34m\[m [1;31m\[m  
+[1;34m|[m [1;36m|[m[1;34m/[m [1;31m/[m  
+[1;34m|[m[1;34m/[m[1;36m|[m [1;31m|[m   
+[1;34m|[m * [1;31m|[m [33m67c2707[m[33m ([m[1;31morigin/codex/fix-parsing-of-firebase_private_key[m[33m)[m Normalize Firebase private key env parsing
+[1;34m|[m[1;34m/[m [1;31m/[m  
