@@ -976,6 +976,15 @@ const transporter = nodemailer.createTransport({
   tls: {
     servername: "smtp.gmail.com",
   },
+  pool: true,
+  maxConnections: Number(process.env.EMAIL_POOL_MAX_CONNECTIONS || 3),
+  maxMessages: Number(process.env.EMAIL_POOL_MAX_MESSAGES || 100),
+  connectionTimeout: Number(process.env.EMAIL_CONNECTION_TIMEOUT_MS || 10000),
+  greetingTimeout: Number(process.env.EMAIL_GREETING_TIMEOUT_MS || 10000),
+  socketTimeout: Number(process.env.EMAIL_SOCKET_TIMEOUT_MS || 20000),
+  tls: {
+    servername: "smtp.gmail.com",
+  },
 });
 
 let transporterVerified = false;
