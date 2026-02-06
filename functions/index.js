@@ -44,6 +44,11 @@ const chatsCollection = db.collection("chats");
 const devicesCollection = db.collection("devices");
 const supportTicketsCollection = db.collection("support_tickets");
 
+function firebaseNotificationsEnabled() {
+  const raw = String(process.env.FIREBASE_NOTIFICATIONS_ENABLED || 'true').trim().toLowerCase();
+  return !['0', 'false', 'off', 'no'].includes(raw);
+}
+
 const FAKE_ORDER_TARGET_PER_DAY = Number(process.env.FAKE_ORDER_TARGET_PER_DAY || 20);
 const FAKE_ORDER_MAX_PER_RUN = Number(process.env.FAKE_ORDER_MAX_PER_RUN || 3);
 const FAKE_ORDER_TZ_OFFSET_MINUTES = Number(process.env.FAKE_ORDER_TZ_OFFSET_MINUTES ?? -300);
@@ -2741,10 +2746,34 @@ function getReturnCountdownStartMillis(order = {}) {
 
 // Custom function to send FCM push notification to a specific token or list of tokens
 async function sendPushNotification(tokens, title, body, data = {}) {
-  console.warn(
-    'Skipping Firebase push notification send; Firebase notifications are disabled.'
-  );
-  return null;
+  if (!firebaseNotificationsEnabled()) {
+    console.warn('Skipping Firebase push notification send; FIREBASE_NOTIFICATIONS_ENABLED is false.');
+    return null;
+  }
+
+  const normalizedTokens = Array.isArray(tokens)
+    ? tokens.filter(Boolean)
+    : (tokens ? [tokens] : []);
+
+  if (!normalizedTokens.length) {
+    return null;
+  }
+
+  const response = await admin.messaging().sendEachForMulticast({
+    notification: { title, body },
+    data,
+    tokens: normalizedTokens,
+  });
+
+  if (response.failureCount > 0) {
+    response.responses.forEach((resp, idx) => {
+      if (!resp.success) {
+        console.error(`Failed to send FCM to token ${normalizedTokens[idx]}:`, resp.error?.message || resp.error);
+      }
+    });
+  }
+
+  return response;
 }
 
 async function sendLabelReminderEmail(order, { tier = 1 } = {}) {
@@ -2797,10 +2826,32 @@ async function sendLabelReminderEmail(order, { tier = 1 } = {}) {
 
 // Re-using and slightly updating the old sendAdminPushNotification to fetch ALL admin tokens.
 async function sendAdminPushNotification(title, body, data = {}) {
-  console.warn(
-    'Skipping Firebase admin push notification; Firebase notifications are disabled.'
-  );
-  return null;
+  if (!firebaseNotificationsEnabled()) {
+    console.warn('Skipping Firebase admin push notification; FIREBASE_NOTIFICATIONS_ENABLED is false.');
+    return null;
+  }
+
+  const adminsSnapshot = await adminsCollection.get();
+  const allTokens = [];
+
+  for (const adminDoc of adminsSnapshot.docs) {
+    const tokensSnapshot = await adminsCollection
+      .doc(adminDoc.id)
+      .collection('fcmTokens')
+      .get();
+
+    tokensSnapshot.forEach((tokenDoc) => {
+      if (tokenDoc.id) {
+        allTokens.push(tokenDoc.id);
+      }
+    });
+  }
+
+  if (!allTokens.length) {
+    return null;
+  }
+
+  return sendPushNotification(allTokens, title, body, data);
 }
 
 async function addAdminFirestoreNotification(
@@ -2810,10 +2861,31 @@ async function addAdminFirestoreNotification(
   relatedDocId = null,
   relatedUserId = null
 ) {
-  console.warn(
-    'Skipping Firebase Firestore notification; Firebase notifications are disabled.'
+  if (!firebaseNotificationsEnabled()) {
+    console.warn('Skipping Firebase Firestore notification; FIREBASE_NOTIFICATIONS_ENABLED is false.');
+    return null;
+  }
+
+  const payload = {
+    message,
+    isRead: false,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    relatedDocType,
+    relatedDocId,
+    relatedUserId,
+  };
+
+  if (adminUid) {
+    await adminsCollection.doc(adminUid).collection('notifications').add(payload);
+    return 1;
+  }
+
+  const adminsSnapshot = await adminsCollection.get();
+  const writes = adminsSnapshot.docs.map((adminDoc) =>
+    adminsCollection.doc(adminDoc.id).collection('notifications').add(payload)
   );
-  return null;
+  await Promise.all(writes);
+  return writes.length;
 }
 
 async function createShipEngineLabel(fromAddress, toAddress, labelReference, packageData) {

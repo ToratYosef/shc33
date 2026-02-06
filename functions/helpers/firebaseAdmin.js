@@ -39,6 +39,20 @@ function decodeBase64Utf8(value) {
   }
 }
 
+function decodePrivateKeyCandidate(value) {
+  const decoded = decodeBase64Utf8(value);
+  if (!decoded) {
+    return null;
+  }
+
+  const normalized = decoded.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+  if (normalized.includes('BEGIN PRIVATE KEY') || normalized.includes('BEGIN RSA PRIVATE KEY')) {
+    return normalized;
+  }
+
+  return null;
+}
+
 function parseJsonIfPossible(value) {
   if (!value || typeof value !== 'string') {
     return null;
@@ -89,6 +103,11 @@ function normalizePrivateKey(privateKeyValue) {
     key = key.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
   }
 
+  const decodedPem = decodePrivateKeyCandidate(key);
+  if (decodedPem) {
+    key = decodedPem;
+  }
+
   return stripWrappingQuotes(key);
 }
 
@@ -109,7 +128,8 @@ function resolveExplicitServiceAccount() {
   const serviceAccountPayload =
     parseServiceAccountPayload(process.env.FIREBASE_SERVICE_ACCOUNT_JSON) ||
     parseServiceAccountPayload(process.env.FIREBASE_SERVICE_ACCOUNT) ||
-    parseServiceAccountPayload(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+    parseServiceAccountPayload(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) ||
+    parseServiceAccountPayload(process.env.FIREBASE_PRIVATE_KEY);
 
   if (!serviceAccountPayload) {
     return null;
