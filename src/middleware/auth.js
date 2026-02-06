@@ -1,5 +1,50 @@
 const { admin, db } = require('../services/firestore');
 
+const ADMIN_CACHE_TTL_MS = Number(process.env.ADMIN_CACHE_TTL_MS || 5 * 60 * 1000);
+const shouldCacheAdmin = Number.isFinite(ADMIN_CACHE_TTL_MS) && ADMIN_CACHE_TTL_MS > 0;
+const adminCache = new Map();
+
+function getCachedAdmin(uid) {
+  if (!shouldCacheAdmin) {
+    return undefined;
+  }
+
+  const entry = adminCache.get(uid);
+  if (!entry) {
+    return undefined;
+  }
+
+  if (entry.expiresAt <= Date.now()) {
+    adminCache.delete(uid);
+    return undefined;
+  }
+
+  return entry.isAdmin;
+}
+
+function setCachedAdmin(uid, isAdmin) {
+  if (!shouldCacheAdmin) {
+    return;
+  }
+
+  adminCache.set(uid, {
+    isAdmin,
+    expiresAt: Date.now() + ADMIN_CACHE_TTL_MS,
+  });
+}
+
+async function resolveAdminStatus(uid) {
+  const cached = getCachedAdmin(uid);
+  if (typeof cached === 'boolean') {
+    return cached;
+  }
+
+  const adminDoc = await db.collection('admins').doc(uid).get();
+  const isAdmin = adminDoc.exists;
+  setCachedAdmin(uid, isAdmin);
+  return isAdmin;
+}
+
 function parseBearerToken(req) {
   const header = req.headers.authorization || '';
   const [scheme, token] = header.split(' ');
@@ -85,8 +130,8 @@ async function requireAdmin(req, res, next) {
       return next();
     }
 
-    const adminDoc = await db.collection('admins').doc(user.uid).get();
-    if (!adminDoc.exists) {
+    const isAdmin = await resolveAdminStatus(user.uid);
+    if (!isAdmin) {
       return res.status(403).json({
         ok: false,
         error: 'Admin privileges required for this action.',

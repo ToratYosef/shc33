@@ -3,6 +3,8 @@ const admin = require('firebase-admin');
 
 module.exports = function createEmailsRouter({
   transporter,
+  ensureEmailTransporterReady,
+  emailFromAddress,
   sendMultipleTestEmails,
   CONDITION_EMAIL_TEMPLATES,
   CONDITION_EMAIL_FROM_ADDRESS,
@@ -16,9 +18,20 @@ module.exports = function createEmailsRouter({
   }
 
   const router = express.Router();
+  const resolvedFromAddress =
+    emailFromAddress ||
+    process.env.EMAIL_FROM ||
+    process.env.EMAIL_USER ||
+    "no-reply@secondhandcell.com";
 
   router.post('/send-email', async (req, res) => {
     try {
+      if (ensureEmailTransporterReady) {
+        const ready = await ensureEmailTransporterReady();
+        if (!ready) {
+          return res.status(500).json({ error: 'Email service is not configured.' });
+        }
+      }
       const { to, bcc, subject, html } = req.body || {};
 
       if (!to || !subject || !html) {
@@ -28,7 +41,7 @@ module.exports = function createEmailsRouter({
       }
 
       const mailOptions = {
-        from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+        from: resolvedFromAddress,
         to,
         subject,
         html,
@@ -51,6 +64,12 @@ module.exports = function createEmailsRouter({
     }
 
     try {
+      if (ensureEmailTransporterReady) {
+        const ready = await ensureEmailTransporterReady();
+        if (!ready) {
+          return res.status(500).json({ error: 'Email service is not configured.' });
+        }
+      }
       const testResult = await sendMultipleTestEmails(email, emailTypes);
       console.log('Test emails sent. Types:', emailTypes);
       res.status(200).json(testResult);
@@ -62,6 +81,12 @@ module.exports = function createEmailsRouter({
 
   router.post('/orders/:id/send-condition-email', async (req, res) => {
     try {
+      if (ensureEmailTransporterReady) {
+        const ready = await ensureEmailTransporterReady();
+        if (!ready) {
+          return res.status(500).json({ error: 'Email service is not configured.' });
+        }
+      }
       const { reason, notes, label: labelText } = req.body || {};
       if (!reason || !CONDITION_EMAIL_TEMPLATES[reason]) {
         return res.status(400).json({ error: 'A valid email reason is required.' });
