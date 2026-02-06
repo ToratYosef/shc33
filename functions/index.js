@@ -935,17 +935,9 @@ app.post("/checkImei", async (req, res) => {
   return res.json({ ok: true, result: normalized });
 });
 
-function createEmailTransportConfig({ pooled = true, preferAlternatePort = false } = {}) {
-  const explicitHost = (process.env.EMAIL_SMTP_HOST || process.env.EMAIL_HOST || '').trim();
-  const explicitPort = Number(process.env.EMAIL_SMTP_PORT || process.env.EMAIL_PORT || 0) || null;
-  const explicitSecure = typeof process.env.EMAIL_SMTP_SECURE === 'string'
-    ? ['1', 'true', 'yes', 'on'].includes(process.env.EMAIL_SMTP_SECURE.trim().toLowerCase())
-    : null;
-
-  const port = explicitPort || (preferAlternatePort ? 587 : 465);
-  const secure = explicitSecure === null ? port === 465 : explicitSecure;
-
+function createEmailTransportConfig({ pooled = true } = {}) {
   const config = {
+    service: 'gmail',
     pool: pooled,
     maxConnections: Number(process.env.EMAIL_MAX_CONNECTIONS || 5),
     maxMessages: Number(process.env.EMAIL_MAX_MESSAGES || 100),
@@ -957,23 +949,6 @@ function createEmailTransportConfig({ pooled = true, preferAlternatePort = false
       pass: process.env.EMAIL_PASS,
     },
   };
-
-  if (explicitHost) {
-    config.host = explicitHost;
-    config.port = port;
-    config.secure = secure;
-    if (!secure) {
-      config.requireTLS = true;
-    }
-  } else {
-    config.host = 'smtp.gmail.com';
-    config.port = port;
-    config.secure = secure;
-    if (!secure) {
-      config.requireTLS = true;
-    }
-    config.service = 'gmail';
-  }
 
   return config;
 }
@@ -989,14 +964,14 @@ async function sendMailWithFallback(mailOptions) {
       throw error;
     }
 
-    console.error('Primary SMTP attempt timed out; retrying with alternate port.', {
+    console.error('Primary SMTP attempt timed out; retrying with fresh Gmail transport.', {
       code: error.code,
       command: error.command,
       message: error.message,
     });
 
     const retryTransporter = nodemailer.createTransport(
-      createEmailTransportConfig({ pooled: false, preferAlternatePort: true })
+      createEmailTransportConfig({ pooled: false })
     );
     return retryTransporter.sendMail(mailOptions);
   }
