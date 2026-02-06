@@ -14,17 +14,51 @@ function firebaseNotificationsEnabled() {
 }
 
 // Set up Nodemailer transporter using the Firebase Functions config
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: functions.config().email.user,
-        pass: functions.config().email.pass,
-    },
-});
+function createEmailTransportConfig({ pooled = true } = {}) {
+    const config = {
+        service: 'gmail',
+        pool: pooled,
+        maxConnections: Number(process.env.EMAIL_MAX_CONNECTIONS || 5),
+        maxMessages: Number(process.env.EMAIL_MAX_MESSAGES || 100),
+        connectionTimeout: Number(process.env.EMAIL_CONNECTION_TIMEOUT_MS || 8000),
+        greetingTimeout: Number(process.env.EMAIL_GREETING_TIMEOUT_MS || 8000),
+        socketTimeout: Number(process.env.EMAIL_SOCKET_TIMEOUT_MS || 15000),
+        auth: {
+            user: functions.config().email.user,
+            pass: functions.config().email.pass,
+        },
+    };
+
+    return config;
+}
+
+const transporter = nodemailer.createTransport(createEmailTransportConfig({ pooled: true }));
+
+async function sendMailWithFallback(mailOptions) {
+    try {
+        return await transporter.sendMail(mailOptions);
+    } catch (error) {
+        const isTimeout = error && (error.code === 'ETIMEDOUT' || error.command === 'CONN');
+        if (!isTimeout) {
+            throw error;
+        }
+
+        console.error('Primary SMTP attempt timed out; retrying with fresh Gmail transport.', {
+            code: error.code,
+            command: error.command,
+            message: error.message,
+        });
+
+        const retryTransporter = nodemailer.createTransport(
+            createEmailTransportConfig({ pooled: false })
+        );
+        return retryTransporter.sendMail(mailOptions);
+    }
+}
 
 async function sendEmail(mailOptions) {
     try {
-        await transporter.sendMail(mailOptions);
+        await sendMailWithFallback(mailOptions);
         console.log('Email sent successfully');
     } catch (error) {
         console.error('Error sending email:', error);

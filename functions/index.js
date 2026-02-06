@@ -935,13 +935,47 @@ app.post("/checkImei", async (req, res) => {
   return res.json({ ok: true, result: normalized });
 });
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+function createEmailTransportConfig({ pooled = true } = {}) {
+  const config = {
+    service: 'gmail',
+    pool: pooled,
+    maxConnections: Number(process.env.EMAIL_MAX_CONNECTIONS || 5),
+    maxMessages: Number(process.env.EMAIL_MAX_MESSAGES || 100),
+    connectionTimeout: Number(process.env.EMAIL_CONNECTION_TIMEOUT_MS || 8000),
+    greetingTimeout: Number(process.env.EMAIL_GREETING_TIMEOUT_MS || 8000),
+    socketTimeout: Number(process.env.EMAIL_SOCKET_TIMEOUT_MS || 15000),
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  };
+
+  return config;
+}
+
+const transporter = nodemailer.createTransport(createEmailTransportConfig({ pooled: true }));
+
+async function sendMailWithFallback(mailOptions) {
+  try {
+    return await transporter.sendMail(mailOptions);
+  } catch (error) {
+    const isTimeout = error && (error.code === 'ETIMEDOUT' || error.command === 'CONN');
+    if (!isTimeout) {
+      throw error;
+    }
+
+    console.error('Primary SMTP attempt timed out; retrying with fresh Gmail transport.', {
+      code: error.code,
+      command: error.command,
+      message: error.message,
+    });
+
+    const retryTransporter = nodemailer.createTransport(
+      createEmailTransportConfig({ pooled: false })
+    );
+    return retryTransporter.sendMail(mailOptions);
+  }
+}
 
 const EMAIL_LOGO_URL =
   "https://secondhandcell.com/assets/logo.webp";
@@ -1373,7 +1407,7 @@ async function sendVoidNotificationEmail(order, results, options = {}) {
   });
 
   // Send to admin
-  await transporter.sendMail({
+  await sendMailWithFallback({
     from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
     to: recipient,
     subject,
@@ -1383,7 +1417,7 @@ async function sendVoidNotificationEmail(order, results, options = {}) {
 
   // Send to customer
   if (order.shippingInfo && order.shippingInfo.email) {
-    await transporter.sendMail({
+    await sendMailWithFallback({
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
       to: order.shippingInfo.email,
       subject,
@@ -1623,7 +1657,7 @@ async function cancelOrderAndNotify(order, options = {}) {
     `;
 
     try {
-      await transporter.sendMail({
+      await sendMailWithFallback({
         from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
         to: updatedOrder.shippingInfo.email,
         subject: `Order #${updatedOrder.id} has been cancelled`,
@@ -2788,7 +2822,7 @@ async function sendLabelReminderEmail(order, { tier = 1 } = {}) {
 
   const { subject, html } = buildLabelReminderEmail(order.id, order);
 
-  await transporter.sendMail({
+  await sendMailWithFallback({
     from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
     to: email,
     subject,
@@ -3184,7 +3218,7 @@ async function sendMultipleTestEmails(email, emailTypes) {
       html: htmlBody,
     };
 
-    return transporter.sendMail(mailOptions);
+    return sendMailWithFallback(mailOptions);
   });
 
   await Promise.all(mailPromises);
@@ -3192,7 +3226,7 @@ async function sendMultipleTestEmails(email, emailTypes) {
 }
 
 const emailsRouter = createEmailsRouter({
-  transporter,
+  transporter: { sendMail: sendMailWithFallback },
   sendMultipleTestEmails,
   CONDITION_EMAIL_TEMPLATES,
   CONDITION_EMAIL_FROM_ADDRESS,
@@ -3236,7 +3270,7 @@ const ordersRouter = createOrdersRouter({
     sendVoidNotificationEmail,
   },
   createShipEngineLabel,
-  transporter,
+  transporter: { sendMail: sendMailWithFallback },
 });
 
 app.use('/', ordersRouter);
@@ -3366,7 +3400,7 @@ app.put("/orders/:id/status", async (req, res) => {
             .replace(/\*\*CUSTOMER_NAME\*\*/g, customerName)
             .replace(/\*\*ORDER_ID\*\*/g, order.id);
 
-          customerNotificationPromise = transporter.sendMail({
+          customerNotificationPromise = sendMailWithFallback({
             from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
             to: order.shippingInfo.email,
             subject: "Your SecondHandCell Device Has Arrived",
@@ -3388,7 +3422,7 @@ app.put("/orders/:id/status", async (req, res) => {
             "**PAYMENT_METHOD**": formatDisplayText(order.paymentMethod, "Not specified"),
           });
 
-          customerNotificationPromise = transporter.sendMail({
+          customerNotificationPromise = sendMailWithFallback({
             from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
             to: order.shippingInfo.email,
             subject: "Your SecondHandCell Order is Complete",
@@ -3404,11 +3438,15 @@ app.put("/orders/:id/status", async (req, res) => {
         }
       }
 
-      await customerNotificationPromise;
-
-      if (emailLogMessage) {
-        await recordCustomerEmail(orderId, emailLogMessage, emailMetadata);
-      }
+      customerNotificationPromise
+        .then(async () => {
+          if (emailLogMessage) {
+            await recordCustomerEmail(orderId, emailLogMessage, emailMetadata);
+          }
+        })
+        .catch((emailError) => {
+          console.error(`Failed to send customer status email for order ${orderId}:`, emailError);
+        });
     }
 
     const responseMessage = notifyCustomer
@@ -3448,7 +3486,7 @@ app.post('/orders/:id/send-review-request', async (req, res) => {
       "**ORDER_TOTAL**": formatCurrencyValue(payoutAmount),
     });
 
-    await transporter.sendMail({
+    await sendMailWithFallback({
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
       to: customerEmail,
       subject: 'Quick review? Share your SecondHandCell experience',
@@ -3868,7 +3906,7 @@ async function sendDeviceReceivedNotification(order, options = {}) {
   });
 
   try {
-    await transporter.sendMail({
+    await sendMailWithFallback({
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
       to: email,
       subject: 'Your SecondHandCell Device Has Arrived',
@@ -3941,7 +3979,7 @@ async function maybeSendReturnReminder(order) {
   `;
 
   try {
-    await transporter.sendMail({
+    await sendMailWithFallback({
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
       to: email,
       subject: `Reminder: 2 days left to send your device for order #${order.id}`,
@@ -4070,7 +4108,7 @@ async function maybeAutoCancelAgingOrder(order, options = {}) {
   `;
 
   try {
-    await transporter.sendMail({
+    await sendMailWithFallback({
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
       to: email,
       subject: `Order #${cancelledOrder.id} was voided after 25 days`,
@@ -4202,7 +4240,7 @@ app.post("/orders/:id/re-offer", async (req, res) => {
       `,
     });
 
-    await transporter.sendMail({
+    await sendMailWithFallback({
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
       to: order.shippingInfo.email,
       subject: `Re-offer for Order #${order.id}`,
@@ -4300,7 +4338,7 @@ app.post("/orders/:id/return-label", async (req, res) => {
       `,
     };
 
-    await transporter.sendMail(customerMailOptions);
+    await sendMailWithFallback(customerMailOptions);
 
     await recordCustomerEmail(
       order.id,
@@ -4422,7 +4460,7 @@ app.post("/orders/:id/auto-requote", async (req, res) => {
       `,
     });
 
-    await transporter.sendMail({
+    await sendMailWithFallback({
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
       to: customerEmail,
       subject: `Order #${order.id} finalized at adjusted payout`,
@@ -4532,7 +4570,7 @@ app.post("/accept-offer-action", async (req, res) => {
       <p>We've received your confirmation, and payment processing will now begin.</p>
     `;
 
-    await transporter.sendMail({
+    await sendMailWithFallback({
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
       to: orderData.shippingInfo.email,
       subject: `Offer Accepted for Order #${orderData.id}`,
@@ -4580,7 +4618,7 @@ app.post("/return-phone-action", async (req, res) => {
       <p>We have received your request to decline the revised offer and have your device returned. We are now processing your request and will send a return shipping label to your email shortly.</p>
     `;
 
-    await transporter.sendMail({
+    await sendMailWithFallback({
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
       to: orderData.shippingInfo.email,
       subject: `Return Requested for Order #${orderData.id}`,
@@ -4769,7 +4807,7 @@ exports.autoAcceptOffers = functions.pubsub
         <p>The SecondHandCell Team</p>
       `;
 
-      await transporter.sendMail({
+      await sendMailWithFallback({
         from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
         to: orderData.shippingInfo.email,
         subject: `Revised Offer Auto-Accepted for Order #${orderData.id}`,
@@ -4970,7 +5008,7 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
     );
 
     // 7. Send the email
-    await transporter.sendMail({
+    await sendMailWithFallback({
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
       to: order.shippingInfo?.email,
       subject,
@@ -5183,7 +5221,7 @@ exports.sendExpiringReminderEmail = functions.https.onCall(async (data, context)
 </body>
 </html>`;
 
-    await transporter.sendMail({
+    await sendMailWithFallback({
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
       to: customerEmail,
       subject: '⏳ Your SecondHandCell Quote Is Almost Expired',
@@ -5349,7 +5387,7 @@ exports.sendKitReminderEmail = functions.https.onCall(async (data, context) => {
 </body>
 </html>`;
 
-    await transporter.sendMail({
+    await sendMailWithFallback({
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
       to: customerEmail,
       subject: '📦 Friendly reminder: Ship your SecondHandCell kit',
@@ -5566,7 +5604,7 @@ exports.onNewChatCreated = functions.firestore
     `;
     
     try {
-      await transporter.sendMail({
+      await sendMailWithFallback({
         from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
         to: 'sales@secondhandcell.com',
         subject: `New Chat Started - ${userIdentifier}`,
@@ -5672,7 +5710,7 @@ exports.onSupportTicketCreated = functions.firestore
     `;
 
     try {
-      await transporter.sendMail({
+      await sendMailWithFallback({
         from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
         to: 'sales@secondhandcell.com',
         subject: `New Support Ticket ${ticketNumber}`,
@@ -5918,7 +5956,7 @@ async function sendWholesaleEmail({ to, subject, html, text }) {
   }
 
   try {
-    await transporter.sendMail(mailOptions);
+    await sendMailWithFallback(mailOptions);
   } catch (error) {
     console.error("Failed to send wholesale notification email:", error);
   }
