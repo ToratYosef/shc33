@@ -1,5 +1,31 @@
 const admin = require('firebase-admin');
 
+function stripWrappingQuotes(value) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+
+  return trimmed;
+}
+
+function normalizePrivateKey(rawPrivateKey) {
+  if (!rawPrivateKey || typeof rawPrivateKey !== 'string') {
+    return rawPrivateKey;
+  }
+
+  return stripWrappingQuotes(rawPrivateKey)
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\r');
+}
+
 function initFirebaseAdmin() {
   if (admin.apps.length) {
     return admin.app();
@@ -13,7 +39,7 @@ function initFirebaseAdmin() {
   } = process.env;
 
   if (FIREBASE_PROJECT_ID && FIREBASE_CLIENT_EMAIL && FIREBASE_PRIVATE_KEY) {
-    const privateKey = FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
+    const privateKey = normalizePrivateKey(FIREBASE_PRIVATE_KEY);
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId: FIREBASE_PROJECT_ID,
