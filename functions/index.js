@@ -547,6 +547,8 @@ const allowedOrigins = [
   "https://buyback-a0f05.web.app",
   "https://secondhandcell.com",
   "https://www.secondhandcell.com",
+  "https://admin.secondhandcell.com",
+  "http://admin.secondhandcell.com",
 ];
 
 const isAllowedOrigin = (origin) => {
