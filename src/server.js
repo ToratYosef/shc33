@@ -57,7 +57,8 @@ const defaultCorsOrigins = [
   'https://secondhandcell.com',
   'https://www.secondhandcell.com',
   'https://admin.secondhandcell.com',
-  'https://api.secondhandcell.com'
+  'http://admin.secondhandcell.com',
+  'https://api.secondhandcell.com',
 ];
 
 const corsOrigins = (process.env.CORS_ORIGIN || '')
