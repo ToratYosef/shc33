@@ -2829,34 +2829,54 @@ async function sendLabelReminderEmail(order, { tier = 1 } = {}) {
 }
 
 // Re-using and slightly updating the old sendAdminPushNotification to fetch ALL admin tokens.
-async function sendAdminPushNotification(title, body, data = {}) {
+// Custom function to send FCM push notification to a specific token or list of tokens
+async function sendPushNotification(tokens, title, body, data = {}) {
   if (!firebaseNotificationsEnabled()) {
-    console.warn('Skipping Firebase admin push notification; FIREBASE_NOTIFICATIONS_ENABLED is false.');
+    console.warn(
+      "Skipping Firebase push notification send; FIREBASE_NOTIFICATIONS_ENABLED is false."
+    );
     return null;
   }
 
-  const adminsSnapshot = await adminsCollection.get();
-  const allTokens = [];
+  const normalizedTokens = Array.isArray(tokens)
+    ? tokens.filter(Boolean)
+    : tokens
+      ? [tokens]
+      : [];
 
-  for (const adminDoc of adminsSnapshot.docs) {
-    const tokensSnapshot = await adminsCollection
-      .doc(adminDoc.id)
-      .collection('fcmTokens')
-      .get();
+  if (!normalizedTokens.length) {
+    return null;
+  }
 
-    tokensSnapshot.forEach((tokenDoc) => {
-      if (tokenDoc.id) {
-        allTokens.push(tokenDoc.id);
+  // ✅ FCM requires `data` values to be STRINGS ONLY
+  const safeData = {};
+  if (data && typeof data === "object") {
+    for (const [k, v] of Object.entries(data)) {
+      if (v === undefined || v === null) continue;
+      safeData[String(k)] = typeof v === "string" ? v : JSON.stringify(v);
+    }
+  }
+
+  const response = await admin.messaging().sendEachForMulticast({
+    notification: { title, body },
+    data: safeData, // ✅ safe
+    tokens: normalizedTokens,
+  });
+
+  if (response.failureCount > 0) {
+    response.responses.forEach((resp, idx) => {
+      if (!resp.success) {
+        console.error(
+          `Failed to send FCM to token ${normalizedTokens[idx]}:`,
+          resp.error?.message || resp.error
+        );
       }
     });
   }
 
-  if (!allTokens.length) {
-    return null;
-  }
-
-  return sendPushNotification(allTokens, title, body, data);
+  return response;
 }
+
 
 async function addAdminFirestoreNotification(
   adminUid,
