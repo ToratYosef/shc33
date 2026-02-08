@@ -1,3 +1,4 @@
+// /shc33/src/server.js
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
@@ -11,45 +12,37 @@ if (!isServerless) {
   require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 }
 
-const { requireAuth, optionalAuth, requireAdmin } = require('./middleware/auth');
+const { requireAuth, requireAdmin } = require('./middleware/auth');
+
 const profileRouter = require('./routes/profile');
 const remindersRouter = require('./routes/reminders');
 const refreshTrackingRouter = require('./routes/refreshTracking');
 const manualFulfillRouter = require('./routes/manualFulfill');
 const adminUsersRouter = require('./routes/adminUsers');
 const supportRouter = require('./routes/support');
+
 const { notFoundHandler, errorHandler } = require('./utils/errors');
 
+// Firebase-functions Express app (contains /verify-address, /submit-order, etc.)
 const { expressApp } = require('../functions/index.js');
 
 const app = express();
 
 function normalizeTrustProxy(value) {
-  if (typeof value === 'undefined') {
-    return undefined;
-  }
+  if (typeof value === 'undefined') return undefined;
   const normalized = String(value).trim().toLowerCase();
-  if (!normalized) {
-    return undefined;
-  }
-  if (['false', '0', 'no', 'off'].includes(normalized)) {
-    return false;
-  }
-  if (['true', '1', 'yes', 'on'].includes(normalized)) {
-    return 1;
-  }
-  if (/^\d+$/.test(normalized)) {
-    return Number(normalized);
-  }
+  if (!normalized) return undefined;
+  if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+  if (['true', '1', 'yes', 'on'].includes(normalized)) return 1;
+  if (/^\d+$/.test(normalized)) return Number(normalized);
   return value;
 }
 
 const trustProxy = normalizeTrustProxy(process.env.TRUST_PROXY);
 if (typeof trustProxy !== 'undefined') {
   app.set('trust proxy', trustProxy);
-} else if (isServerless) {
-  app.set('trust proxy', 1);
 } else {
+  // default on VPS + most serverless: trust first proxy
   app.set('trust proxy', 1);
 }
 
@@ -64,19 +57,12 @@ const corsOrigins = (process.env.CORS_ORIGIN || '')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-const allowedCorsOrigins = new Set([
-  ...defaultCorsOrigins,
-  ...corsOrigins,
-]);
+const allowedCorsOrigins = new Set([...defaultCorsOrigins, ...corsOrigins]);
 
 const corsOptions = {
   origin(origin, callback) {
-    if (!origin) {
-      return callback(null, true);
-    }
-    if (allowedCorsOrigins.has(origin)) {
-      return callback(null, true);
-    }
+    if (!origin) return callback(null, true);
+    if (allowedCorsOrigins.has(origin)) return callback(null, true);
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -84,14 +70,13 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use((req, res, next) => {
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
   return next();
 });
 
 const shouldRateLimit =
   !isServerless || String(process.env.RATE_LIMIT_ENABLE || '').toLowerCase() === 'true';
+
 if (shouldRateLimit) {
   const limiter = rateLimit({
     windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 900000),
@@ -100,69 +85,60 @@ if (shouldRateLimit) {
     legacyHeaders: false,
     keyGenerator: (req) => {
       const trustProxySetting = app.get('trust proxy');
-      if (trustProxySetting) {
-        return req.ip;
-      }
+      if (trustProxySetting) return req.ip;
       return req.socket?.remoteAddress || req.ip || 'unknown';
     },
   });
 
   app.use(limiter);
 }
+
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '1mb' }));
 
-app.get('/', (req, res) => {
-  res.status(200).json({ ok: true });
-});
-
+// Root health (not under /api)
+app.get('/', (req, res) => res.status(200).json({ ok: true }));
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
+// Decide where API lives (defaults to /server if env missing)
 const apiBasePath = (() => {
   const raw = typeof process.env.API_BASE_PATH === 'string'
     ? process.env.API_BASE_PATH.trim()
     : '';
-  if (!raw) {
-    return '/server';
-  }
-  if (raw.startsWith('http://') || raw.startsWith('https://')) {
-    return '/server';
-  }
+  if (!raw) return '/server';
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return '/server';
   if (raw.includes('(') || raw.includes(')') || raw.includes('*') || raw.includes(':splat') || raw.includes('/:')) {
     return '/server';
   }
-  if (raw === ':' || raw === '/:') {
-    return '/server';
-  }
-  if (!raw.startsWith('/')) {
-    return `/${raw}`;
-  }
+  if (raw === ':' || raw === '/:') return '/server';
+  if (!raw.startsWith('/')) return `/${raw}`;
   return raw;
 })();
 
-const apiRouter = express.Router();
+const mountPath = isServerless && apiBasePath === '/api' ? '/' : apiBasePath;
 
-const publicExactPaths = new Set([
-  '/verify-address',
-  '/submit-order',
-  '/email-support',
-  '/submit-chat-feedback',
-]);
-const publicPrefixPaths = ['/promo-codes/', '/wholesale'];
-apiRouter.get('/health', (req, res) => res.json({ ok: true }));
-apiRouter.use((req, res, next) => {
-  if (req.method === 'OPTIONS') {
-    return next();
-  }
-  const path = req.path;
-  const isPublic =
-    publicExactPaths.has(path) ||
-    publicPrefixPaths.some((prefix) => path.startsWith(prefix));
-  if (isPublic) {
-    return next();
-  }
+/**
+ * IMPORTANT:
+ * Split routers so public endpoints NEVER hit requireAuth.
+ */
+
+// ---------- PUBLIC (NO AUTH) ----------
+const publicRouter = express.Router();
+
+// Public health under API base
+publicRouter.get('/health', (req, res) => res.json({ ok: true }));
+
+// Mount functions Express app publicly (verify-address, submit-order, etc.)
+publicRouter.use(expressApp);
+
+// ---------- PRIVATE (AUTH REQUIRED) ----------
+const privateRouter = express.Router();
+
+privateRouter.use((req, res, next) => {
+  if (req.method === 'OPTIONS') return next();
   return requireAuth(req, res, next);
 });
 
+// Admin gate for specific routes
 const adminExactPaths = new Set([
   '/checkImei',
   '/create-admin',
@@ -175,39 +151,34 @@ const adminPrefixPaths = [
   '/admin/reminders',
 ];
 
-apiRouter.use((req, res, next) => {
-  const path = req.path;
+privateRouter.use((req, res, next) => {
+  const p = req.path;
   const shouldRequireAdmin =
-    adminExactPaths.has(path) ||
-    adminPrefixPaths.some((prefix) => path.startsWith(prefix));
-  if (!shouldRequireAdmin) {
-    return next();
-  }
+    adminExactPaths.has(p) ||
+    adminPrefixPaths.some((prefix) => p.startsWith(prefix));
+  if (!shouldRequireAdmin) return next();
   return requireAdmin(req, res, next);
 });
 
-apiRouter.get('/health', (req, res) => {
-  res.json({ ok: true });
-});
+// Protected routers
+privateRouter.use(profileRouter);
+privateRouter.use(remindersRouter);
+privateRouter.use(refreshTrackingRouter);
+privateRouter.use(manualFulfillRouter);
+privateRouter.use(adminUsersRouter);
+privateRouter.use(supportRouter);
 
-apiRouter.use(profileRouter);
-apiRouter.use(remindersRouter);
-apiRouter.use(refreshTrackingRouter);
-apiRouter.use(manualFulfillRouter);
-apiRouter.use(adminUsersRouter);
-apiRouter.use(supportRouter);
-
-apiRouter.use('/functions', expressApp);
-
-const mountPath = isServerless && apiBasePath === '/api' ? '/' : apiBasePath;
-app.use(mountPath, apiRouter);
+// Mount both at the same base path
+app.use(mountPath, publicRouter);
+app.use(mountPath, privateRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
 
 if (!isServerless && require.main === module) {
   const port = Number(process.env.PORT || 3001);
-  app.listen(port, () => {
+  // bind localhost only (recommended)
+  app.listen(port, '127.0.0.1', () => {
     console.log(`API server listening on port ${port}`);
   });
 }
