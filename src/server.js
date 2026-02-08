@@ -158,7 +158,7 @@ apiRouter.use((req, res, next) => {
     publicExactPaths.has(path) ||
     publicPrefixPaths.some((prefix) => path.startsWith(prefix));
   if (isPublic) {
-    return optionalAuth(req, res, next);
+    return next();
   }
   return requireAuth(req, res, next);
 });
