@@ -2761,7 +2761,7 @@ async function sendPushNotification(tokens, title, body, data = {}) {
 
   const response = await admin.messaging().sendEachForMulticast({
     notification: { title, body },
-    data,
+    data: stringifyData(data),
     tokens: normalizedTokens,
   });
 
