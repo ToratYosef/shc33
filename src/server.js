@@ -56,6 +56,7 @@ if (typeof trustProxy !== 'undefined') {
 const defaultCorsOrigins = [
   'https://secondhandcell.com',
   'https://www.secondhandcell.com',
+  'https://api.secondhandcell.com',
 ];
 
 const corsOrigins = (process.env.CORS_ORIGIN || '')
