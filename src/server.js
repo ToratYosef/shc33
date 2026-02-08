@@ -107,7 +107,12 @@ if (shouldRateLimit) {
     },
   });
 
-  app.use(limiter);
+  app.use((req, res, next) => {
+    if (typeof res.on !== 'function') {
+      return next();
+    }
+    return limiter(req, res, next);
+  });
 }
 
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '1mb' }));

@@ -2547,7 +2547,7 @@ function stringifyData(obj = {}) {
   const out = {};
   for (const [k, v] of Object.entries(obj)) {
     if (v === undefined || v === null) continue;
-    out[String(k)] = typeof v === 'string' ? v : String(v);
+    out[String(k)] = typeof v === 'string' ? v : JSON.stringify(v);
   }
   return out;
 }
@@ -2762,7 +2762,7 @@ async function sendPushNotification(tokens, title, body, data = {}) {
 
   const response = await admin.messaging().sendEachForMulticast({
     notification: { title, body },
-    data,
+    data: stringifyData(data),
     tokens: normalizedTokens,
   });
 
