@@ -26,12 +26,13 @@ const { notFoundHandler, errorHandler } = require('./utils/errors');
 // Firebase-functions Express app (contains /verify-address, /submit-order, etc.)
 const { expressApp } = require('../functions/index.js');
 
-const app = express();   // ← must exist first
+const app = express();
 
+// --------- REQUEST LOGGING (LIVE PM2 LOGS) ---------
 app.use((req, res, next) => {
   const start = Date.now();
 
-  res.on("finish", () => {
+  res.on('finish', () => {
     console.log(
       `${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`
     );
@@ -39,8 +40,6 @@ app.use((req, res, next) => {
 
   next();
 });
-
-
 
 function normalizeTrustProxy(value) {
   if (typeof value === 'undefined') return undefined;
@@ -89,7 +88,8 @@ app.use((req, res, next) => {
 });
 
 const shouldRateLimit =
-  !isServerless || String(process.env.RATE_LIMIT_ENABLE || '').toLowerCase() === 'true';
+  !isServerless ||
+  String(process.env.RATE_LIMIT_ENABLE || '').toLowerCase() === 'true';
 
 if (shouldRateLimit) {
   const limiter = rateLimit({
@@ -104,12 +104,7 @@ if (shouldRateLimit) {
     },
   });
 
-  app.use((req, res, next) => {
-    if (typeof res.on !== 'function') {
-      return next();
-    }
-    return limiter(req, res, next);
-  });
+  app.use(limiter);
 }
 
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '1mb' }));
@@ -120,12 +115,19 @@ app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 // Decide where API lives (defaults to /server if env missing)
 const apiBasePath = (() => {
-  const raw = typeof process.env.API_BASE_PATH === 'string'
-    ? process.env.API_BASE_PATH.trim()
-    : '';
+  const raw =
+    typeof process.env.API_BASE_PATH === 'string'
+      ? process.env.API_BASE_PATH.trim()
+      : '';
   if (!raw) return '/server';
   if (raw.startsWith('http://') || raw.startsWith('https://')) return '/server';
-  if (raw.includes('(') || raw.includes(')') || raw.includes('*') || raw.includes(':splat') || raw.includes('/:')) {
+  if (
+    raw.includes('(') ||
+    raw.includes(')') ||
+    raw.includes('*') ||
+    raw.includes(':splat') ||
+    raw.includes('/:')
+  ) {
     return '/server';
   }
   if (raw === ':' || raw === '/:') return '/server';
@@ -158,11 +160,7 @@ privateRouter.use((req, res, next) => {
 });
 
 // Admin gate for specific routes
-const adminExactPaths = new Set([
-  '/checkImei',
-  '/create-admin',
-  '/send-email',
-]);
+const adminExactPaths = new Set(['/checkImei', '/create-admin', '/send-email']);
 const adminPrefixPaths = [
   '/orders/needs-printing',
   '/merge-print',
@@ -173,8 +171,7 @@ const adminPrefixPaths = [
 privateRouter.use((req, res, next) => {
   const p = req.path;
   const shouldRequireAdmin =
-    adminExactPaths.has(p) ||
-    adminPrefixPaths.some((prefix) => p.startsWith(prefix));
+    adminExactPaths.has(p) || adminPrefixPaths.some((prefix) => p.startsWith(prefix));
   if (!shouldRequireAdmin) return next();
   return requireAdmin(req, res, next);
 });
