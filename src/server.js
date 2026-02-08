@@ -206,7 +206,8 @@ app.use(errorHandler);
 
 if (!isServerless && require.main === module) {
   const port = Number(process.env.PORT || 3001);
-  app.listen(port, () => {
+  const host = process.env.HOST || '0.0.0.0';
+  app.listen(port, host, () => {
     console.log(`API server listening on port ${port}`);
   });
 }

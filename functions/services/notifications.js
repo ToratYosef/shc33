@@ -13,12 +13,69 @@ function firebaseNotificationsEnabled() {
     return !['0', 'false', 'off', 'no'].includes(raw);
 }
 
-// Set up Nodemailer transporter using the Firebase Functions config
+function loadEmailConfig() {
+    let firebaseEmailConfig = {};
+    try {
+        firebaseEmailConfig = functions.config()?.email || {};
+    } catch (error) {
+        console.warn("Unable to read Firebase email config:", error.message);
+    }
+
+    const rawPass = process.env.EMAIL_PASS ?? firebaseEmailConfig.pass ?? "";
+    const sanitizedPass = rawPass ? String(rawPass).replace(/\s+/g, "") : "";
+
+    return {
+        user: String(process.env.EMAIL_USER ?? firebaseEmailConfig.user ?? "").trim(),
+        pass: sanitizedPass,
+        service: String(process.env.SMTP_SERVICE ?? firebaseEmailConfig.service ?? "").trim(),
+        host: String(process.env.SMTP_HOST ?? firebaseEmailConfig.host ?? "").trim(),
+        port: String(process.env.SMTP_PORT ?? firebaseEmailConfig.port ?? "").trim(),
+        secure: String(process.env.SMTP_SECURE ?? firebaseEmailConfig.secure ?? "").trim(),
+    };
+}
+
+function parseBoolean(value) {
+    if (value === undefined || value === null || value === "") {
+        return undefined;
+    }
+    const normalized = String(value).trim().toLowerCase();
+    if (["true", "1", "yes", "on"].includes(normalized)) {
+        return true;
+    }
+    if (["false", "0", "no", "off"].includes(normalized)) {
+        return false;
+    }
+    return undefined;
+}
+
+const emailConfig = loadEmailConfig();
+const defaultEmailHost = "smtp.gmail.com";
+const resolvedEmailHost = emailConfig.host || defaultEmailHost;
+const resolvedEmailPort = Number(
+    emailConfig.port ||
+        (resolvedEmailHost === "smtp.gmail.com" ? 465 : 587)
+);
+const resolvedEmailSecure =
+    parseBoolean(emailConfig.secure) ??
+    (resolvedEmailPort === 465);
+const resolvedEmailService =
+    emailConfig.service ||
+    (resolvedEmailHost === "smtp.gmail.com" ? "gmail" : "");
+
 const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: functions.config().email.user,
-        pass: functions.config().email.pass,
+    ...(resolvedEmailService ? { service: resolvedEmailService } : {}),
+    host: resolvedEmailHost,
+    port: resolvedEmailPort,
+    secure: resolvedEmailSecure,
+    auth: emailConfig.user && emailConfig.pass ? {
+        user: emailConfig.user,
+        pass: emailConfig.pass,
+    } : undefined,
+    connectionTimeout: Number(process.env.EMAIL_CONNECTION_TIMEOUT_MS || 10000),
+    greetingTimeout: Number(process.env.EMAIL_GREETING_TIMEOUT_MS || 10000),
+    socketTimeout: Number(process.env.EMAIL_SOCKET_TIMEOUT_MS || 20000),
+    tls: {
+        servername: resolvedEmailHost,
     },
 });
 

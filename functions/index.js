@@ -951,6 +951,10 @@ function loadEmailConfig() {
     pass: sanitizedPass,
     name: String(process.env.EMAIL_NAME ?? firebaseEmailConfig.name ?? "").trim(),
     from: String(process.env.EMAIL_FROM ?? firebaseEmailConfig.from ?? "").trim(),
+    service: String(process.env.SMTP_SERVICE ?? firebaseEmailConfig.service ?? "").trim(),
+    host: String(process.env.SMTP_HOST ?? firebaseEmailConfig.host ?? "").trim(),
+    port: String(process.env.SMTP_PORT ?? firebaseEmailConfig.port ?? "").trim(),
+    secure: String(process.env.SMTP_SECURE ?? firebaseEmailConfig.secure ?? "").trim(),
   };
 }
 
@@ -961,11 +965,38 @@ const EMAIL_FROM_ADDRESS =
   emailConfig.user ||
   "no-reply@secondhandcell.com";
 
+function parseBoolean(value) {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+  const normalized = String(value).trim().toLowerCase();
+  if (["true", "1", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["false", "0", "no", "off"].includes(normalized)) {
+    return false;
+  }
+  return undefined;
+}
+
+const defaultEmailHost = "smtp.gmail.com";
+const resolvedEmailHost = emailConfig.host || defaultEmailHost;
+const resolvedEmailPort = Number(
+  emailConfig.port ||
+    (resolvedEmailHost === "smtp.gmail.com" ? 465 : 587)
+);
+const resolvedEmailSecure =
+  parseBoolean(emailConfig.secure) ??
+  (resolvedEmailPort === 465);
+const resolvedEmailService =
+  emailConfig.service ||
+  (resolvedEmailHost === "smtp.gmail.com" ? "gmail" : "");
+
 const transporter = nodemailer.createTransport({
-  service: "gmail",
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
+  ...(resolvedEmailService ? { service: resolvedEmailService } : {}),
+  host: resolvedEmailHost,
+  port: resolvedEmailPort,
+  secure: resolvedEmailSecure,
   auth: emailConfig.user && emailConfig.pass ? { user: emailConfig.user, pass: emailConfig.pass } : undefined,
   pool: true,
   maxConnections: Number(process.env.EMAIL_POOL_MAX_CONNECTIONS || 3),
@@ -974,16 +1005,7 @@ const transporter = nodemailer.createTransport({
   greetingTimeout: Number(process.env.EMAIL_GREETING_TIMEOUT_MS || 10000),
   socketTimeout: Number(process.env.EMAIL_SOCKET_TIMEOUT_MS || 20000),
   tls: {
-    servername: "smtp.gmail.com",
-  },
-  pool: true,
-  maxConnections: Number(process.env.EMAIL_POOL_MAX_CONNECTIONS || 3),
-  maxMessages: Number(process.env.EMAIL_POOL_MAX_MESSAGES || 100),
-  connectionTimeout: Number(process.env.EMAIL_CONNECTION_TIMEOUT_MS || 10000),
-  greetingTimeout: Number(process.env.EMAIL_GREETING_TIMEOUT_MS || 10000),
-  socketTimeout: Number(process.env.EMAIL_SOCKET_TIMEOUT_MS || 20000),
-  tls: {
-    servername: "smtp.gmail.com",
+    servername: resolvedEmailHost,
   },
 });
 
