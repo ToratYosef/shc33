@@ -148,7 +148,7 @@ const publicExactPaths = new Set([
   '/submit-chat-feedback',
 ]);
 const publicPrefixPaths = ['/promo-codes/', '/wholesale'];
-
+apiRouter.get('/health', (req, res) => res.json({ ok: true }));
 apiRouter.use((req, res, next) => {
   if (req.method === 'OPTIONS') {
     return next();
@@ -197,7 +197,7 @@ apiRouter.use(manualFulfillRouter);
 apiRouter.use(adminUsersRouter);
 apiRouter.use(supportRouter);
 
-apiRouter.use(expressApp);
+apiRouter.use('/functions', expressApp);
 
 const mountPath = isServerless && apiBasePath === '/api' ? '/' : apiBasePath;
 app.use(mountPath, apiRouter);
