@@ -28,15 +28,18 @@ const { expressApp } = require('../functions/index.js');
 
 const app = express();
 
-// --------- REQUEST LOGGING (LIVE PM2 LOGS) ---------
+// --------- REQUEST LOGGING (SAFE IN ALL CONTEXTS) ---------
 app.use((req, res, next) => {
   const start = Date.now();
 
-  res.on('finish', () => {
-    console.log(
-      `${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`
-    );
-  });
+  // In some adapters/serverless handlers, res may not be a real Node response.
+  if (res && typeof res.on === 'function') {
+    res.on('finish', () => {
+      console.log(
+        `${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`
+      );
+    });
+  }
 
   next();
 });
