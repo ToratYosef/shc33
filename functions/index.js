@@ -49,6 +49,21 @@ function firebaseNotificationsEnabled() {
   return !['0', 'false', 'off', 'no'].includes(raw);
 }
 
+function isAuthDisabled() {
+  const raw = String(process.env.DISABLE_AUTH || '').trim().toLowerCase();
+  return ['1', 'true', 'yes', 'on'].includes(raw);
+}
+
+function getCallableAuth(context) {
+  if (context?.auth) {
+    return context.auth;
+  }
+  if (isAuthDisabled()) {
+    return { uid: 'public', token: { email: 'public@localhost' } };
+  }
+  return null;
+}
+
 const FAKE_ORDER_TARGET_PER_DAY = Number(process.env.FAKE_ORDER_TARGET_PER_DAY || 20);
 const FAKE_ORDER_MAX_PER_RUN = Number(process.env.FAKE_ORDER_MAX_PER_RUN || 3);
 const FAKE_ORDER_TZ_OFFSET_MINUTES = Number(process.env.FAKE_ORDER_TZ_OFFSET_MINUTES ?? -300);
@@ -4941,17 +4956,22 @@ exports.autoSendLabelReminderEmails = functions.pubsub
 
 // Send Reminder Email for label_generated orders
 exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
+  let authContext = null;
   try {
+    authContext = getCallableAuth(context);
+
     // 1. Verify user is authenticated
-    if (!context.auth) {
+    if (!authContext) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be logged in');
     }
 
     // 2. Verify user is an admin by checking admins collection
-    const adminDoc = await adminsCollection.doc(context.auth.uid).get();
-    if (!adminDoc.exists) {
-      console.warn(`Unauthorized reminder email attempt by user: ${context.auth.uid}`);
-      throw new functions.https.HttpsError('permission-denied', 'Only admins can send reminder emails');
+    if (!isAuthDisabled()) {
+      const adminDoc = await adminsCollection.doc(authContext.uid).get();
+      if (!adminDoc.exists) {
+        console.warn(`Unauthorized reminder email attempt by user: ${authContext.uid}`);
+        throw new functions.https.HttpsError('permission-denied', 'Only admins can send reminder emails');
+      }
     }
 
     const { orderId } = data;
@@ -5011,8 +5031,8 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
     // 8. Log admin action for audit trail
     const auditLog = {
       action: 'send_reminder_email',
-      adminUid: context.auth.uid,
-      adminEmail: context.auth.token.email || 'unknown',
+      adminUid: authContext.uid,
+      adminEmail: authContext.token?.email || 'unknown',
       orderId: sanitizedOrderId,
       orderStatus: order.status,
       recipientEmail: order.shippingInfo?.email,
@@ -5022,7 +5042,7 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
     
     await db.collection('adminAuditLogs').add(auditLog);
     
-    console.log(`[AUDIT] Admin ${context.auth.uid} sent reminder email for order ${sanitizedOrderId} to ${order.shippingInfo?.email}`);
+    console.log(`[AUDIT] Admin ${authContext.uid} sent reminder email for order ${sanitizedOrderId} to ${order.shippingInfo?.email}`);
     
     return { 
       success: true, 
@@ -5032,12 +5052,12 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
     console.error('Error sending reminder email:', error);
     
     // Log failed attempts for security monitoring
-    if (context?.auth) {
+    if (authContext) {
       try {
         await db.collection('adminAuditLogs').add({
           action: 'send_reminder_email',
-          adminUid: context.auth.uid,
-          adminEmail: context.auth.token?.email || 'unknown',
+          adminUid: authContext.uid,
+          adminEmail: authContext.token?.email || 'unknown',
           orderId: data?.orderId || 'unknown',
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
           success: false,
@@ -5058,14 +5078,18 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
 });
 
 exports.sendExpiringReminderEmail = functions.https.onCall(async (data, context) => {
+  let authContext = null;
   try {
-    if (!context.auth) {
+    authContext = getCallableAuth(context);
+    if (!authContext) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be logged in');
     }
 
-    const adminDoc = await adminsCollection.doc(context.auth.uid).get();
-    if (!adminDoc.exists) {
-      throw new functions.https.HttpsError('permission-denied', 'Only admins can send reminder emails');
+    if (!isAuthDisabled()) {
+      const adminDoc = await adminsCollection.doc(authContext.uid).get();
+      if (!adminDoc.exists) {
+        throw new functions.https.HttpsError('permission-denied', 'Only admins can send reminder emails');
+      }
     }
 
     const { orderId } = data || {};
@@ -5226,8 +5250,8 @@ exports.sendExpiringReminderEmail = functions.https.onCall(async (data, context)
 
     await db.collection('adminAuditLogs').add({
       action: 'send_expiring_reminder_email',
-      adminUid: context.auth.uid,
-      adminEmail: context.auth.token?.email || 'unknown',
+      adminUid: authContext.uid,
+      adminEmail: authContext.token?.email || 'unknown',
       orderId: sanitizedOrderId,
       orderStatus: order.status,
       recipientEmail: customerEmail,
@@ -5239,12 +5263,12 @@ exports.sendExpiringReminderEmail = functions.https.onCall(async (data, context)
   } catch (error) {
     console.error('Error sending expiring reminder email:', error);
 
-    if (context?.auth) {
+    if (authContext) {
       try {
         await db.collection('adminAuditLogs').add({
           action: 'send_expiring_reminder_email',
-          adminUid: context.auth.uid,
-          adminEmail: context.auth.token?.email || 'unknown',
+          adminUid: authContext.uid,
+          adminEmail: authContext.token?.email || 'unknown',
           orderId: data?.orderId || 'unknown',
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
           success: false,
@@ -5265,14 +5289,18 @@ exports.sendExpiringReminderEmail = functions.https.onCall(async (data, context)
 });
 
 exports.sendKitReminderEmail = functions.https.onCall(async (data, context) => {
+  let authContext = null;
   try {
-    if (!context.auth) {
+    authContext = getCallableAuth(context);
+    if (!authContext) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be logged in');
     }
 
-    const adminDoc = await adminsCollection.doc(context.auth.uid).get();
-    if (!adminDoc.exists) {
-      throw new functions.https.HttpsError('permission-denied', 'Only admins can send reminder emails');
+    if (!isAuthDisabled()) {
+      const adminDoc = await adminsCollection.doc(authContext.uid).get();
+      if (!adminDoc.exists) {
+        throw new functions.https.HttpsError('permission-denied', 'Only admins can send reminder emails');
+      }
     }
 
     const { orderId } = data || {};
@@ -5392,8 +5420,8 @@ exports.sendKitReminderEmail = functions.https.onCall(async (data, context) => {
 
     await db.collection('adminAuditLogs').add({
       action: 'send_kit_reminder_email',
-      adminUid: context.auth.uid,
-      adminEmail: context.auth.token?.email || 'unknown',
+      adminUid: authContext.uid,
+      adminEmail: authContext.token?.email || 'unknown',
       orderId: sanitizedOrderId,
       orderStatus: order.status,
       recipientEmail: customerEmail,
@@ -5405,12 +5433,12 @@ exports.sendKitReminderEmail = functions.https.onCall(async (data, context) => {
   } catch (error) {
     console.error('Error sending kit reminder email:', error);
 
-    if (context?.auth) {
+    if (authContext) {
       try {
         await db.collection('adminAuditLogs').add({
           action: 'send_kit_reminder_email',
-          adminUid: context.auth.uid,
-          adminEmail: context.auth.token?.email || 'unknown',
+          adminUid: authContext.uid,
+          adminEmail: authContext.token?.email || 'unknown',
           orderId: data?.orderId || 'unknown',
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
           success: false,

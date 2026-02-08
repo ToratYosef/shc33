@@ -1,5 +1,21 @@
 const { admin, db } = require('../services/firestore');
 
+function isAuthDisabled() {
+  const raw = String(process.env.DISABLE_AUTH || '').trim().toLowerCase();
+  return ['1', 'true', 'yes', 'on'].includes(raw);
+}
+
+function ensurePublicUser(req) {
+  if (!req.user) {
+    req.user = { uid: 'public', claims: {}, isAdmin: true };
+  }
+  if (!req.user.claims) {
+    req.user.claims = {};
+  }
+  req.user.isAdmin = true;
+  return req.user;
+}
+
 function parseBearerToken(req) {
   const header = req.headers.authorization || '';
   const [scheme, token] = header.split(' ');
@@ -34,6 +50,10 @@ async function resolveUser(req) {
 }
 
 async function requireAuth(req, res, next) {
+  if (isAuthDisabled()) {
+    ensurePublicUser(req);
+    return next();
+  }
   try {
     const user = await resolveUser(req);
     if (!user) {
@@ -56,6 +76,10 @@ async function requireAuth(req, res, next) {
 }
 
 async function optionalAuth(req, res, next) {
+  if (isAuthDisabled()) {
+    ensurePublicUser(req);
+    return next();
+  }
   try {
     await resolveUser(req);
   } catch (error) {
@@ -65,6 +89,10 @@ async function optionalAuth(req, res, next) {
 }
 
 async function requireAdmin(req, res, next) {
+  if (isAuthDisabled()) {
+    ensurePublicUser(req);
+    return next();
+  }
   if (req.method === 'OPTIONS') {
     return next();
   }
@@ -108,6 +136,10 @@ async function requireAdmin(req, res, next) {
 
 function createAuthGate({ publicPaths = [] } = {}) {
   return async function authGate(req, res, next) {
+    if (isAuthDisabled()) {
+      ensurePublicUser(req);
+      return next();
+    }
     if (req.method === 'OPTIONS') {
       return next();
     }

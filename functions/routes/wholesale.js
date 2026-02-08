@@ -20,6 +20,11 @@ const DEFAULT_IMAGE_BASE = 'https://raw.githubusercontent.com/toratyosef/BuyBack
 const DEFAULT_SUCCESS_URL = 'https://secondhandcell.com/buy/order-submitted.html?order={ORDER_ID}';
 const DEFAULT_CANCEL_URL = 'https://secondhandcell.com/buy/checkout.html?offer={OFFER_ID}';
 
+function isAuthDisabled() {
+    const raw = String(process.env.DISABLE_AUTH || '').trim().toLowerCase();
+    return ['1', 'true', 'yes', 'on'].includes(raw);
+}
+
 // Initialize Stripe Library (must be done after key retrieval functions are defined)
 let stripe;
 function initializeStripe() {
@@ -143,6 +148,9 @@ async function authenticate(req) {
 }
 
 async function requireAdmin(req) {
+    if (isAuthDisabled()) {
+        return { uid: 'public', isAdmin: true };
+    }
     const bypassToken =
         readConfigValue('wholesale.admin_token') || process.env.WHOLESALE_ADMIN_TOKEN || null;
     if (bypassToken && req.headers['x-admin-token'] === bypassToken) {
