@@ -26,7 +26,21 @@ const { notFoundHandler, errorHandler } = require('./utils/errors');
 // Firebase-functions Express app (contains /verify-address, /submit-order, etc.)
 const { expressApp } = require('../functions/index.js');
 
-const app = express();
+const app = express();   // ← must exist first
+
+app.use((req, res, next) => {
+  const start = Date.now();
+
+  res.on("finish", () => {
+    console.log(
+      `${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`
+    );
+  });
+
+  next();
+});
+
+
 
 function normalizeTrustProxy(value) {
   if (typeof value === 'undefined') return undefined;
