@@ -56,7 +56,6 @@ if (typeof trustProxy !== 'undefined') {
 const defaultCorsOrigins = [
   'https://secondhandcell.com',
   'https://www.secondhandcell.com',
-  'https://api.secondhandcell.com',
 ];
 
 const corsOrigins = (process.env.CORS_ORIGIN || '')
@@ -148,7 +147,7 @@ const publicExactPaths = new Set([
   '/submit-chat-feedback',
 ]);
 const publicPrefixPaths = ['/promo-codes/', '/wholesale'];
-apiRouter.get('/health', (req, res) => res.json({ ok: true }));
+
 apiRouter.use((req, res, next) => {
   if (req.method === 'OPTIONS') {
     return next();
@@ -158,7 +157,7 @@ apiRouter.use((req, res, next) => {
     publicExactPaths.has(path) ||
     publicPrefixPaths.some((prefix) => path.startsWith(prefix));
   if (isPublic) {
-    return next();
+    return optionalAuth(req, res, next);
   }
   return requireAuth(req, res, next);
 });
@@ -197,7 +196,7 @@ apiRouter.use(manualFulfillRouter);
 apiRouter.use(adminUsersRouter);
 apiRouter.use(supportRouter);
 
-apiRouter.use('/functions', expressApp);
+apiRouter.use(expressApp);
 
 const mountPath = isServerless && apiBasePath === '/api' ? '/' : apiBasePath;
 app.use(mountPath, apiRouter);

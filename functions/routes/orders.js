@@ -46,7 +46,6 @@ function createOrdersRouter({
     'https://buyback-a0f05.web.app',
     'https://secondhandcell.com',
     'https://www.secondhandcell.com',
-    'https://api.secondhandcell.com',
   ]);
 
   const PRINT_BUNDLE_ALLOWED_METHODS = 'GET,POST,OPTIONS';
