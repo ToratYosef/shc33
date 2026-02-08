@@ -2762,7 +2762,7 @@ async function sendPushNotification(tokens, title, body, data = {}) {
 
   const msg = {
     notification: { title, body },
-    data,
+    data: stringifyData(data),
     tokens: normalizedTokens,
   };
   msg.data = toFcmData(msg.data || {});
