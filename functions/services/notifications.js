@@ -13,6 +13,17 @@ function firebaseNotificationsEnabled() {
     return !['0', 'false', 'off', 'no'].includes(raw);
 }
 
+function stringifyData(obj = {}) {
+    const out = {};
+    for (const [key, value] of Object.entries(obj)) {
+        if (value === undefined || value === null) {
+            continue;
+        }
+        out[String(key)] = typeof value === 'string' ? value : String(value);
+    }
+    return out;
+}
+
 // Set up Nodemailer transporter using the Firebase Functions config
 const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -58,7 +69,7 @@ async function sendAdminPushNotification(title, body, data = {}) {
 
         const response = await messaging.sendEachForMulticast({
             notification: { title, body },
-            data,
+            data: stringifyData(data),
             tokens: allTokens,
         });
 
