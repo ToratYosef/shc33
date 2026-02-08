@@ -2543,11 +2543,11 @@ function buildLabelReminderEmail(orderId, order = {}) {
 
 
 // NEW HELPER: Sanitizes data to ensure all values are strings for FCM payload compliance.
-function stringifyData(obj = {}) {
+function toFcmData(obj = {}) {
   const out = {};
   for (const [k, v] of Object.entries(obj)) {
     if (v === undefined || v === null) continue;
-    out[String(k)] = typeof v === 'string' ? v : String(v);
+    out[String(k)] = typeof v === 'string' ? v : JSON.stringify(v);
   }
   return out;
 }
@@ -2760,11 +2760,14 @@ async function sendPushNotification(tokens, title, body, data = {}) {
     return null;
   }
 
-  const response = await admin.messaging().sendEachForMulticast({
+  const msg = {
     notification: { title, body },
     data,
     tokens: normalizedTokens,
-  });
+  };
+  msg.data = toFcmData(msg.data || {});
+
+  const response = await admin.messaging().sendEachForMulticast(msg);
 
   if (response.failureCount > 0) {
     response.responses.forEach((resp, idx) => {
@@ -2891,7 +2894,21 @@ async function addAdminFirestoreNotification(
 
 async function createShipEngineLabel(fromAddress, toAddress, labelReference, packageData) {
   const isSandbox = false;
-  const serviceCode = packageData?.service_code || "usps_ground_advantage";
+  const ouncesRaw = packageData?.weight?.ounces;
+  const ounces = Number(ouncesRaw);
+
+  // Default service if none provided
+  let serviceCode = packageData?.service_code || "usps_ground_advantage";
+
+  // USPS First-Class max is 15.999 oz; if caller accidentally picks a first-class-ish service, force a heavier-allowed service
+  if (Number.isFinite(ounces) && ounces > 15.999) {
+    // Pick the heavier service you want to use above 1 lb:
+    // - ground_advantage is fine for >1lb (typical)
+    // - priority_mail is also fine but more expensive
+    // If you prefer Priority, change this to "usps_priority_mail"
+    serviceCode = "usps_ground_advantage";
+  }
+
   const payload = {
     shipment: {
       service_code: serviceCode,
@@ -2899,14 +2916,13 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
       ship_from: fromAddress,
       packages: [
         {
-          weight: { value: packageData.weight.ounces, unit: "ounce" },
+          weight: { value: ounces, unit: "ounce" },
           dimensions: {
             unit: "inch",
             height: packageData.dimensions.height,
             width: packageData.dimensions.width,
             length: packageData.dimensions.length,
           },
-          // USPS requires hazmat metadata for lithium batteries and related materials.
           hazmat: true,
           hazmat_type: "surface",
           label_messages: {
