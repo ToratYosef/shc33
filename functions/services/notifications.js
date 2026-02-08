@@ -13,6 +13,28 @@ function firebaseNotificationsEnabled() {
     return !['0', 'false', 'off', 'no'].includes(raw);
 }
 
+function stringifyData(obj = {}) {
+    const out = {};
+    for (const [key, value] of Object.entries(obj)) {
+        if (value === undefined || value === null) {
+            continue;
+        }
+        out[String(key)] = typeof value === 'string' ? value : String(value);
+    }
+    return out;
+}
+
+function isInvalidFcmToken(error) {
+    const code = error?.code || error?.errorInfo?.code;
+    const message = String(error?.message || '').toLowerCase();
+    return (
+        code === 'messaging/registration-token-not-registered' ||
+        code === 'messaging/invalid-registration-token' ||
+        message.includes('notregistered') ||
+        message.includes('requested entity was not found')
+    );
+}
+
 // Set up Nodemailer transporter using the Firebase Functions config
 const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -40,32 +62,39 @@ async function sendAdminPushNotification(title, body, data = {}) {
 
     try {
         const adminsSnapshot = await adminsCollection.get();
-        const allTokens = [];
+        const tokenEntries = [];
 
         for (const adminDoc of adminsSnapshot.docs) {
             const tokensSnapshot = await adminsCollection.doc(adminDoc.id).collection('fcmTokens').get();
             tokensSnapshot.forEach((doc) => {
-                if (doc.id) {
-                    allTokens.push(doc.id);
+                const data = doc.data() || {};
+                const token = data.token || doc.id;
+                if (token) {
+                    tokenEntries.push({ token, ref: doc.ref });
                 }
             });
         }
 
-        if (!allTokens.length) {
+        if (!tokenEntries.length) {
             console.log('No FCM tokens found for admins.');
             return null;
         }
 
         const response = await messaging.sendEachForMulticast({
             notification: { title, body },
-            data,
-            tokens: allTokens,
+            data: stringifyData(data),
+            tokens: tokenEntries.map((entry) => entry.token),
         });
 
         if (response.failureCount > 0) {
             response.responses.forEach((resp, idx) => {
                 if (!resp.success) {
-                    console.error(`Failed to send FCM to token ${allTokens[idx]}:`, resp.error?.message || resp.error);
+                    console.error(`Failed to send FCM to token ${tokenEntries[idx].token}:`, resp.error?.message || resp.error);
+                    if (isInvalidFcmToken(resp.error)) {
+                        tokenEntries[idx].ref.delete().catch((deleteError) => {
+                            console.error('Failed to delete invalid FCM token document:', deleteError);
+                        });
+                    }
                 }
             });
         }

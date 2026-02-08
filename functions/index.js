@@ -2745,7 +2745,18 @@ function getReturnCountdownStartMillis(order = {}) {
 }
 
 // Custom function to send FCM push notification to a specific token or list of tokens
-async function sendPushNotification(tokens, title, body, data = {}) {
+function isInvalidFcmToken(error) {
+  const code = error?.code || error?.errorInfo?.code;
+  const message = String(error?.message || '').toLowerCase();
+  return (
+    code === 'messaging/registration-token-not-registered' ||
+    code === 'messaging/invalid-registration-token' ||
+    message.includes('notregistered') ||
+    message.includes('requested entity was not found')
+  );
+}
+
+async function sendPushNotification(tokens, title, body, data = {}, options = {}) {
   if (!firebaseNotificationsEnabled()) {
     console.warn('Skipping Firebase push notification send; FIREBASE_NOTIFICATIONS_ENABLED is false.');
     return null;
@@ -2761,7 +2772,7 @@ async function sendPushNotification(tokens, title, body, data = {}) {
 
   const response = await admin.messaging().sendEachForMulticast({
     notification: { title, body },
-    data,
+    data: stringifyData(data),
     tokens: normalizedTokens,
   });
 
@@ -2769,6 +2780,13 @@ async function sendPushNotification(tokens, title, body, data = {}) {
     response.responses.forEach((resp, idx) => {
       if (!resp.success) {
         console.error(`Failed to send FCM to token ${normalizedTokens[idx]}:`, resp.error?.message || resp.error);
+        if (options.tokenRefs?.[idx] && isInvalidFcmToken(resp.error)) {
+          options.tokenRefs[idx]
+            .delete()
+            .catch((deleteError) => {
+              console.error('Failed to delete invalid FCM token document:', deleteError);
+            });
+        }
       }
     });
   }
@@ -5467,17 +5485,20 @@ exports.onNewChatOpened = functions.firestore
     if (assignedAdminUid) {
       // Chat is assigned - send to specific admin only
       const adminTokenSnapshot = await db.collection(`admins/${assignedAdminUid}/fcmTokens`).get();
-      const adminTokens = adminTokenSnapshot.docs.map(doc => {
+      const adminTokenEntries = adminTokenSnapshot.docs.map((doc) => {
         const d = doc.data() || {};
-        return d.token || doc.id;
-      }).filter(token => token && typeof token === 'string');
+        const token = d.token || doc.id;
+        return { token, ref: doc.ref };
+      }).filter((entry) => entry.token && typeof entry.token === 'string');
+      const adminTokens = adminTokenEntries.map((entry) => entry.token);
       
       if (adminTokens.length > 0) {
         await sendPushNotification(
           adminTokens,
           "💬 New Chat Message",
           `Message from ${userIdentifier}: "${truncatedMessage}"`,
-          notificationData
+          notificationData,
+          { tokenRefs: adminTokenEntries.map((entry) => entry.ref) }
         ).catch((e) => console.error("FCM Send Error (Assigned Chat):", e));
       }
       
