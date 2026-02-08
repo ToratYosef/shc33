@@ -18,7 +18,7 @@ alias gca='
 
   echo "📝 Auto-commit (if needed)...";
   git add . &&
-  git commit -m "Auto-commit on $(date +'%A, %b %d @ %H:%M')" ||
+  git commit -m "Auto-commit on $(date +'"'"'%A, %b %d @ %H:%M'"'"')" ||
   echo "No new changes after rebase";
 
   echo "🚀 Pushing...";
