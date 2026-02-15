@@ -73,6 +73,42 @@ const TRANSIT_KEYWORDS = [
     'package acceptance',
 ];
 
+const USPS_FIRST_CLASS_SERVICE_CODE = 'usps_first_class_mail';
+const USPS_PRIORITY_SERVICE_CODE = 'usps_priority_mail';
+
+function resolveUspsServiceAndWeightByDeviceCount(deviceCountInput) {
+    const normalizedDeviceCount = Math.max(1, Number(deviceCountInput) || 1);
+
+    if (normalizedDeviceCount <= 4) {
+        return {
+            deviceCount: normalizedDeviceCount,
+            chosenService: 'First Class',
+            serviceCode: USPS_FIRST_CLASS_SERVICE_CODE,
+            weightOz: 15.9,
+            blocks: null,
+            weight: {
+                unit: 'ounce',
+                value: 15.9,
+            },
+        };
+    }
+
+    const blocks = Math.ceil(normalizedDeviceCount / 4);
+    const weightOz = blocks * 16;
+
+    return {
+        deviceCount: normalizedDeviceCount,
+        chosenService: 'Priority',
+        serviceCode: USPS_PRIORITY_SERVICE_CODE,
+        weightOz,
+        blocks,
+        weight: {
+            unit: 'ounce',
+            value: weightOz,
+        },
+    };
+}
+
 function resolveInboundTransitResetStatus(order = {}) {
     const shippingPreference = String(order?.shippingPreference || '').toLowerCase();
 
@@ -535,6 +571,7 @@ function normalizeInboundTrackingStatus(statusCode, statusDescription) {
 
 module.exports = {
     DEFAULT_CARRIER_CODE,
+    resolveUspsServiceAndWeightByDeviceCount,
     extractTrackingFields,
     buildKitTrackingUpdate,
     buildTrackingUrl,

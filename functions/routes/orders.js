@@ -1,4 +1,5 @@
 const express = require('express');
+const { resolveUspsServiceAndWeightByDeviceCount } = require('../helpers/shipengine');
 // Updated: Added DELETE endpoint for shipping address
 
 function createOrdersRouter({
@@ -67,11 +68,8 @@ function createOrdersRouter({
   };
 
   const EMAIL_LABEL_PACKAGE_DATA = {
-    service_code: 'usps_first_class_mail',
     dimensions: { unit: 'inch', height: 2, width: 4, length: 6 },
-    weight: { ounces: 8, unit: 'ounce' },
   };
-  const BASE_LABEL_OUNCES = 8;
 
   function resolveOrderDeviceCount(order = {}) {
     const items = Array.isArray(order.items) ? order.items : [];
@@ -187,16 +185,35 @@ function createOrdersRouter({
     };
 
     const deviceCount = resolveOrderDeviceCount(orderData);
+    const shippingProfile = resolveUspsServiceAndWeightByDeviceCount(deviceCount);
     const packageData = {
       ...EMAIL_LABEL_PACKAGE_DATA,
-      weight: { ounces: BASE_LABEL_OUNCES * deviceCount, unit: 'ounce' },
+      service_code: shippingProfile.serviceCode,
+      weight: { value: shippingProfile.weightOz, unit: 'ounce' },
     };
     const labelReference = `${orderId}-INBOUND-DEVICE`;
+
+    console.log('[ShipEngine] label profile selected', {
+      orderId,
+      deviceCount,
+      chosenService: shippingProfile.chosenService,
+      weightOz: shippingProfile.weightOz,
+      blocks: shippingProfile.blocks,
+      labelReference,
+    });
+
     const labelData = await createShipEngineLabel(
       buyerAddress,
       SWIFT_BUYBACK_ADDRESS,
       labelReference,
-      packageData
+      packageData,
+      {
+        orderId,
+        deviceCount,
+        chosenService: shippingProfile.chosenService,
+        weightOz: shippingProfile.weightOz,
+        blocks: shippingProfile.blocks,
+      }
     );
 
     const labelDownloadLink = labelData.label_download?.pdf;
@@ -218,7 +235,7 @@ function createOrdersRouter({
         labelData.shipment?.carrier_id || labelData.carrier_code || null,
       serviceCode:
         labelData.shipment?.service_code ||
-        EMAIL_LABEL_PACKAGE_DATA.service_code ||
+        packageData.service_code ||
         null,
       generatedAt: nowTimestamp,
       createdAt: nowTimestamp,
@@ -1479,16 +1496,18 @@ function createOrdersRouter({
           ? 'needs_printing'
           : 'label_generated';
 
+      const shippingProfile = resolveUspsServiceAndWeightByDeviceCount(deviceCount);
+
       const outboundPackageData = {
-        service_code: 'usps_first_class_mail',
+        service_code: shippingProfile.serviceCode,
         dimensions: { unit: 'inch', height: 2, width: 4, length: 6 },
-        weight: { ounces: 4, unit: 'ounce' },
+        weight: { value: shippingProfile.weightOz, unit: 'ounce' },
       };
 
       const inboundPackageData = {
-        service_code: 'usps_first_class_mail',
+        service_code: shippingProfile.serviceCode,
         dimensions: { unit: 'inch', height: 2, width: 4, length: 6 },
-        weight: { ounces: BASE_LABEL_OUNCES * deviceCount, unit: 'ounce' },
+        weight: { value: shippingProfile.weightOz, unit: 'ounce' },
       };
 
       const swiftBuyBackAddress = {
@@ -1512,6 +1531,14 @@ function createOrdersRouter({
         country_code: 'US',
       };
 
+      console.log('[ShipEngine] label profile selected', {
+        orderId: orderIdForLabel,
+        deviceCount,
+        chosenService: shippingProfile.chosenService,
+        weightOz: shippingProfile.weightOz,
+        blocks: shippingProfile.blocks,
+      });
+
       let customerLabelData;
       let updateData = {
         status: generatedStatus,
@@ -1530,14 +1557,28 @@ function createOrdersRouter({
           swiftBuyBackAddress,
           buyerAddress,
           `${orderIdForLabel}-OUTBOUND-KIT`,
-          outboundPackageData
+          outboundPackageData,
+          {
+            orderId: orderIdForLabel,
+            deviceCount,
+            chosenService: shippingProfile.chosenService,
+            weightOz: shippingProfile.weightOz,
+            blocks: shippingProfile.blocks,
+          }
         );
 
         const inboundLabelData = await createShipEngineLabel(
           buyerAddress,
           swiftBuyBackAddress,
           `${orderIdForLabel}-INBOUND-DEVICE`,
-          inboundPackageData
+          inboundPackageData,
+          {
+            orderId: orderIdForLabel,
+            deviceCount,
+            chosenService: shippingProfile.chosenService,
+            weightOz: shippingProfile.weightOz,
+            blocks: shippingProfile.blocks,
+          }
         );
 
         customerLabelData = outboundLabelData;
@@ -1622,7 +1663,14 @@ function createOrdersRouter({
           buyerAddress,
           swiftBuyBackAddress,
           `${orderIdForLabel}-INBOUND-DEVICE`,
-          inboundPackageData
+          inboundPackageData,
+          {
+            orderId: orderIdForLabel,
+            deviceCount,
+            chosenService: shippingProfile.chosenService,
+            weightOz: shippingProfile.weightOz,
+            blocks: shippingProfile.blocks,
+          }
         );
 
         const labelDownloadLink = customerLabelData.label_download?.pdf;
