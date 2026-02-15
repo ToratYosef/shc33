@@ -1,12 +1,16 @@
 const { escapeHtml } = require('./stringUtils');
-const { BLACKLISTED_LEGAL_HTML } = require('./templates');
 
 const EMAIL_LOGO_URL =
-  "https://secondhandcell.com/assets/logo.webp";
+  "https://secondhandcell.com/assets/logo-white.webp";
 const COUNTDOWN_NOTICE_TEXT =
   "If we don't hear back, we may finalize your order at 75% less to keep your order moving.";
 const TRUSTPILOT_REVIEW_LINK = "https://www.trustpilot.com/evaluate/secondhandcell.com";
 const TRUSTPILOT_STARS_IMAGE_URL = "https://cdn.trustpilot.net/brand-assets/4.1.0/stars/stars-5.png";
+
+const BLACKLISTED_LEGAL_HTML = `
+  <strong>Legal Notice:</strong> Devices reported as lost, stolen, or blacklisted cannot be purchased under applicable federal and state regulations.
+  Please contact your carrier immediately to resolve this status and reply with documentation so we can continue your order review.
+`;
 
 function buildCountdownNoticeHtml() {
   return `
@@ -444,4 +448,5 @@ module.exports = {
   DOWNGRADE_EMAIL_HTML,
   getOrderCompletedEmailTemplate,
   REVIEW_REQUEST_EMAIL_HTML,
+  BLACKLISTED_LEGAL_HTML,
 };

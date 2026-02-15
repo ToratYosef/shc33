@@ -962,7 +962,7 @@ const transporter = nodemailer.createTransport({
 });
 
 const EMAIL_LOGO_URL =
-  "https://secondhandcell.com/assets/logo.webp";
+  "https://secondhandcell.com/assets/logo-white.webp";
 const COUNTDOWN_NOTICE_TEXT =
   "If we don't hear back, we may finalize your order at 75% less to keep your order moving.";
 const TRUSTPILOT_REVIEW_LINK = "https://www.trustpilot.com/evaluate/secondhandcell.com";
