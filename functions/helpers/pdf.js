@@ -152,7 +152,7 @@ async function generateCustomLabelPdf(order) {
     drawKeyValue('Phone', formatPhoneNumber(contactPhone));
 
     drawSectionTitle('Device Details');
-    drawKeyValue('Item (Make/Model)', itemLabel || '—');
+    drawKeyValue('Item (Model)', itemLabel || '—');
     drawKeyValue('Storage', order.storage || order.memory || '—');
     drawKeyValue('Carrier', prettifyCarrier(order.carrier));
     drawKeyValue('Estimated Payout', `$${formatCurrency(estimatedPayout)}`);
@@ -335,16 +335,13 @@ async function generateBagLabelPdf(order) {
 
 
 function buildDeviceLabel(order = {}) {
-    const normalizedParts = [
-        normalizeDeviceText(order.brand),
-        normalizeDeviceText(order.device),
-    ].filter(Boolean);
-
-    if (normalizedParts.length > 1 && normalizedParts[0].toLowerCase() === normalizedParts[1].toLowerCase()) {
-        return normalizedParts[0];
+    const normalizedDevice = normalizeDeviceText(order.device);
+    if (normalizedDevice) {
+        return normalizedDevice;
     }
 
-    return normalizedParts.join(' ').trim() || '—';
+    const normalizedBrand = normalizeDeviceText(order.brand);
+    return normalizedBrand || '—';
 }
 
 function normalizeDeviceText(value) {
