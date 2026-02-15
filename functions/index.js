@@ -550,6 +550,7 @@ const allowedOrigins = [
   "https://www.secondhandcell.com",
   "https://admin.secondhandcell.com",
   "http://admin.secondhandcell.com",
+  "https://cautious-pancake-69p475gq54q4f5qp4-3001.app.github.dev",
 ];
 
 const isAllowedOrigin = (origin) => {
