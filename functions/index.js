@@ -550,6 +550,7 @@ const allowedOrigins = [
   "https://www.secondhandcell.com",
   "https://admin.secondhandcell.com",
   "http://admin.secondhandcell.com",
+  "https://cautious-pancake-69p475gq54q4f5qp4-3001.app.github.dev",
 ];
 
 const isAllowedOrigin = (origin) => {
@@ -1190,9 +1191,106 @@ SecondHandCell Team`);
 }
 
 const SHIPENGINE_API_BASE_URL = "https://api.shipengine.com/v1";
-const AUTO_VOID_DELAY_MS = 25 * 24 * 60 * 60 * 1000; // 25 days
+const AUTO_VOID_DELAY_MS = 28 * 24 * 60 * 60 * 1000; // 28 days
 const AUTO_VOID_QUERY_LIMIT = 50;
 const AUTO_VOID_RETRY_DELAY_MS = 12 * 60 * 60 * 1000; // 12 hours between automatic retry attempts
+const AUTO_TRACKING_REFRESH_QUERY_LIMIT = 200;
+
+
+function formatOrderAgeInDays(order = {}) {
+  const anchorDate = toDate(order.labelGeneratedAt || order.kitLabelGeneratedAt || order.createdAt);
+  if (!anchorDate) return 'Unknown';
+  const days = (Date.now() - anchorDate.getTime()) / (24 * 60 * 60 * 1000);
+  return `${days.toFixed(1)} days`;
+}
+
+function buildVoidedLabelCustomerEmail(order, approvedResults, options = {}) {
+  const customerName = escapeHtml(order?.shippingInfo?.fullName || 'there');
+  const orderId = escapeHtml(order?.id || '');
+  const ageDescription = escapeHtml(options.ageDescription || formatOrderAgeInDays(order));
+  const labelsMarkup = approvedResults
+    .map((result) => {
+      const labelName = escapeHtml(formatLabelDisplayNameFromKey(result.key));
+      const labelId = escapeHtml(result.labelId || 'N/A');
+      return `<li><strong>${labelName}</strong><span>Label ID: ${labelId}</span></li>`;
+    })
+    .join('');
+
+  return `
+    <style>
+      .void-email-card { max-width: 640px; margin: 0 auto; padding: 28px; border-radius: 20px; background: #0f172a; color: #e2e8f0; font-family: Inter, Arial, sans-serif; }
+      .void-email-card h1 { margin: 0 0 14px; font-size: 24px; color: #f8fafc; }
+      .void-email-card p { margin: 0 0 14px; line-height: 1.6; }
+      .void-email-card .meta { margin: 18px 0; padding: 14px 16px; border-radius: 14px; background: rgba(148, 163, 184, 0.18); }
+      .void-email-card ul { margin: 12px 0 0; padding-left: 20px; }
+      .void-email-card li { margin: 8px 0; }
+      .void-email-card li span { display: block; color: #cbd5e1; font-size: 13px; }
+    </style>
+    <div class="void-email-card">
+      <h1>Order #${orderId} cancelled</h1>
+      <p>Hi ${customerName},</p>
+      <p>Your prepaid shipping label has been voided automatically because we did not receive a response and your device was not sent in within the last 28 days.</p>
+      <div class="meta">
+        <p><strong>Order status:</strong> Cancelled</p>
+        <p><strong>Order age:</strong> ${ageDescription}</p>
+      </div>
+      <p>The following label(s) were cancelled:</p>
+      <ul>${labelsMarkup}</ul>
+      <p style="margin-top:18px;">If you still want to sell your device, reply to this email and we can create a new label for you.</p>
+      <p>— SecondHandCell Team</p>
+    </div>
+  `;
+}
+
+function buildManualVoidShippingCleanupPayload() {
+  const cleanupFields = [
+    'trackingNumber',
+    'inboundTrackingNumber',
+    'outboundTrackingNumber',
+    'returnTrackingNumber',
+    'uspsLabelUrl',
+    'returnLabelUrl',
+    'inboundLabelUrl',
+    'outboundLabelUrl',
+    'labelPdfUrl',
+    'labelDownloadUrl',
+    'labelDeliveryMethod',
+    'labelTrackingStatus',
+    'labelTrackingStatusDescription',
+    'labelTrackingCarrierCode',
+    'labelTrackingCarrierStatusCode',
+    'labelTrackingCarrierStatusDescription',
+    'labelTrackingEstimatedDelivery',
+    'labelTrackingEvents',
+    'labelTrackingLastSyncedAt',
+    'outboundTrackingStatus',
+    'outboundTrackingStatusDescription',
+    'outboundTrackingCarrierCode',
+    'outboundTrackingCarrierStatusCode',
+    'outboundTrackingCarrierStatusDescription',
+    'outboundTrackingEstimatedDelivery',
+    'outboundTrackingEvents',
+    'outboundTrackingLastSyncedAt',
+    'shipEngineLabels',
+    'shipEngineLabelId',
+    'shipEngineLabelIds',
+    'shipEngineLabelsLastUpdatedAt',
+    'labelVoidStatus',
+    'labelVoidMessage',
+    'labelVoidedAt',
+    'hasShipEngineLabel',
+    'hasActiveShipEngineLabel',
+    'kitLabelGeneratedAt',
+    'emailedAt',
+  ];
+
+  const payload = {};
+  for (const key of cleanupFields) {
+    payload[key] = admin.firestore.FieldValue.delete();
+  }
+  payload.shippingLabelManuallyVoidedAt = admin.firestore.FieldValue.serverTimestamp();
+  return payload;
+}
 
 function getShipEngineApiKey() {
   try {
@@ -1336,13 +1434,7 @@ async function sendVoidNotificationEmail(order, results, options = {}) {
     return;
   }
 
-  const createdAtDate = toDate(order.createdAt);
-  let ageDescription = "Unknown";
-  if (createdAtDate) {
-    const diffMs = Date.now() - createdAtDate.getTime();
-    const days = diffMs / (24 * 60 * 60 * 1000);
-    ageDescription = `${days.toFixed(1)} days`;
-  }
+  const ageDescription = formatOrderAgeInDays(order);
 
   const reasonKey = options.reason === "automatic" ? "automatic" : "manual";
   const subject = `Shipping label voided for order ${order.id}`;
@@ -1401,12 +1493,31 @@ async function sendVoidNotificationEmail(order, results, options = {}) {
 
   // Send to customer
   if (order.shippingInfo && order.shippingInfo.email) {
+    const customerSubject = reasonKey === 'automatic'
+      ? `Order #${order.id} label voided and cancelled after 28 days`
+      : subject;
+    const customerText = reasonKey === 'automatic'
+      ? [
+          `Hi ${order.shippingInfo.fullName || 'there'},`,
+          '',
+          `Your label for order #${order.id} was voided automatically because we did not receive a response and your device was not sent in within 28 days.`,
+          'Order status: cancelled.',
+          `Order age: ${ageDescription}.`,
+          '',
+          'Voided label(s):',
+          ...lines,
+        ].join('\n')
+      : textBody;
+    const customerHtml = reasonKey === 'automatic'
+      ? buildVoidedLabelCustomerEmail(order, approvedResults, { ageDescription })
+      : htmlBody;
+
     await transporter.sendMail({
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
       to: order.shippingInfo.email,
-      subject,
-      text: textBody,
-      html: htmlBody,
+      subject: customerSubject,
+      text: customerText,
+      html: customerHtml,
     });
   }
 }
@@ -1547,6 +1658,11 @@ async function handleLabelVoid(order, selections, options = {}) {
     if (labels.primary.voidedAt) {
       updates.labelVoidedAt = labels.primary.voidedAt;
     }
+  }
+
+  const approvedCount = results.filter((result) => result && result.approved).length;
+  if (options.reason === 'manual' && approvedCount > 0) {
+    Object.assign(updates, buildManualVoidShippingCleanupPayload());
   }
 
   if (changed) {
@@ -4774,6 +4890,30 @@ async function runAutomaticLabelVoidSweep() {
         reason: "automatic",
         shipengineKey,
       });
+      const approvedResults = Array.isArray(results)
+        ? results.filter((entry) => entry && entry.approved)
+        : [];
+
+      if (approvedResults.length) {
+        await updateOrderBoth(order.id, {
+          status: 'cancelled',
+          autoCancelled: true,
+          cancelReason: 'label_voided_no_response_28_days',
+          cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+          returnAutoVoidedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {
+          logEntries: [
+            {
+              type: 'cancellation',
+              message: 'Order cancelled automatically after label remained unused for 28 days.',
+              metadata: {
+                labelsVoided: approvedResults.map((entry) => entry.labelId),
+              },
+            },
+          ],
+        });
+      }
+
       try {
         await sendVoidNotificationEmail(order, results, { reason: "automatic" });
       } catch (notificationError) {
@@ -4787,6 +4927,29 @@ async function runAutomaticLabelVoidSweep() {
         `Automatic label void failed for order ${order.id}:`,
         error
       );
+    }
+  }
+}
+
+
+
+async function runAutomaticInboundTrackingRefresh() {
+  const snapshot = await ordersCollection
+    .where('status', 'in', ['label_generated', PHONE_TRANSIT_STATUS, 'phone_on_the_way_to_us'])
+    .limit(AUTO_TRACKING_REFRESH_QUERY_LIMIT)
+    .get();
+
+  for (const doc of snapshot.docs) {
+    const order = { id: doc.id, ...doc.data() };
+
+    if (!shouldTrackInbound(order)) {
+      continue;
+    }
+
+    try {
+      await syncInboundTrackingForOrder(order);
+    } catch (error) {
+      console.error(`Automatic inbound tracking refresh failed for order ${order.id}:`, error.response?.data || error);
     }
   }
 }
@@ -4813,6 +4976,19 @@ exports.autoVoidExpiredLabels = functions.pubsub
       await runAutomaticLabelVoidSweep();
     } catch (error) {
       console.error("Automatic label void sweep failed:", error);
+    }
+    return null;
+  });
+
+
+
+exports.autoRefreshInboundTracking = functions.pubsub
+  .schedule('every 60 minutes')
+  .onRun(async () => {
+    try {
+      await runAutomaticInboundTrackingRefresh();
+    } catch (error) {
+      console.error('Automatic inbound tracking refresh sweep failed:', error);
     }
     return null;
   });
