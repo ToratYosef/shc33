@@ -142,8 +142,8 @@ async function generateCustomLabelPdf(order) {
     drawKeyValue('Cosmetic Condition', formatValue(order.condition_cosmetic));
 
     ensureSpace(4);
-    const barcodeSvg = await buildBarcode(order.id || String(order.orderId || ''));
-    const barcodeImage = await pdfDoc.embedSvg(barcodeSvg);
+    const barcodePng = await buildBarcode(order.id || String(order.orderId || ''));
+    const barcodeImage = await pdfDoc.embedPng(barcodePng);
     const maxBarcodeWidth = width - PACKING_SLIP_MARGIN * 2;
     const barcodeScale = Math.min(maxBarcodeWidth / barcodeImage.width, 1.1);
     const dims = barcodeImage.scale(barcodeScale);
@@ -281,8 +281,8 @@ async function generateBagLabelPdf(order) {
         gap: 6,
     });
 
-    const barcodeSvg = await buildBarcode(order.id);
-    const barcodeImage = await pdfDoc.embedSvg(barcodeSvg);
+    const barcodePng = await buildBarcode(order.id);
+    const barcodeImage = await pdfDoc.embedPng(barcodePng);
     const maxBarcodeWidth = width - BAG_LABEL_MARGIN_X * 2;
     const maxBarcodeHeight = 36;
     const barcodeScale = Math.min(
@@ -372,25 +372,22 @@ function formatLabel(label = '') {
 }
 
 async function buildBarcode(data) {
-    return new Promise((resolve, reject) => {
-        bwipjs.toSVG(
-            {
-                bcid: 'code128',
-                text: data,
-                scale: 2.8,
-                height: 12,
-                includetext: false,
-                textxalign: 'center',
-            },
-            (err, svg) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(svg);
-                }
-            }
-        );
-    });
+    const value = data ? String(data) : '';
+    const options = {
+        bcid: 'code128',
+        text: value,
+        scale: 2.8,
+        height: 12,
+        includetext: false,
+        textxalign: 'center',
+    };
+
+    const png = await bwipjs.toBuffer(options);
+    if (!png || !Buffer.isBuffer(png)) {
+        throw new Error('Failed to generate barcode image');
+    }
+
+    return png;
 }
 
 function wrapText(text, maxWidth, font, fontSize) {
