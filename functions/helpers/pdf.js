@@ -33,12 +33,34 @@ async function generateCustomLabelPdf(order) {
         }
     };
 
+    const drawCenteredText = (text, options = {}) => {
+        const {
+            size = 12,
+            font = regularFont,
+            color = rgb(0.12, 0.12, 0.14),
+            minX = PACKING_SLIP_MARGIN,
+            maxX = width - PACKING_SLIP_MARGIN,
+        } = options;
+        const safeText = text && String(text).trim().length ? String(text).trim() : '—';
+        const textWidth = font.widthOfTextAtSize(safeText, size);
+        const availableWidth = Math.max(maxX - minX, 0);
+        const centeredX = minX + Math.max((availableWidth - textWidth) / 2, 0);
+
+        page.drawText(safeText, {
+            x: centeredX,
+            y: cursorY,
+            size,
+            font,
+            color,
+        });
+    };
+
     const drawSectionTitle = (title) => {
         ensureSpace(2);
         page.drawText(title, {
             x: PACKING_SLIP_MARGIN,
             y: cursorY,
-            size: 13,
+            size: 11,
             font: boldFont,
             color: rgb(0.16, 0.18, 0.22),
         });
@@ -98,31 +120,31 @@ async function generateCustomLabelPdf(order) {
         shippingInfo.contactPhone ||
         '';
 
-    const deviceParts = [];
-    if (order.brand) deviceParts.push(String(order.brand));
-    if (order.device) deviceParts.push(String(order.device));
-    const itemLabel = deviceParts.join(' ').trim();
+    const itemLabel = buildDeviceLabel(order);
 
     const estimatedPayout = resolveOrderPayout(order);
 
-    page.drawText('SecondHandCell', {
-        x: PACKING_SLIP_MARGIN,
-        y: cursorY,
-        size: 16,
+    drawCenteredText('SecondHandCell', {
+        size: 18,
         font: boldFont,
         color: rgb(0.07, 0.2, 0.47),
     });
-    cursorY -= LINE_HEIGHT;
+    cursorY -= LINE_HEIGHT + 2;
 
-    page.drawText(`Order #${order.id || '—'}`, {
-        x: PACKING_SLIP_MARGIN,
-        y: cursorY,
+    drawCenteredText(`Order #${order.id || '—'}`, {
         size: 12,
         font: boldFont,
         color: rgb(0.12, 0.12, 0.14),
     });
     cursorY -= LINE_HEIGHT;
-    cursorY -= 6;
+
+    page.drawLine({
+        start: { x: PACKING_SLIP_MARGIN, y: cursorY },
+        end: { x: width - PACKING_SLIP_MARGIN, y: cursorY },
+        thickness: 1,
+        color: rgb(0.86, 0.88, 0.92),
+    });
+    cursorY -= 10;
 
     drawSectionTitle('Customer Information');
     drawKeyValue('Customer Name', shippingInfo.fullName || shippingInfo.name || '—');
@@ -132,7 +154,7 @@ async function generateCustomLabelPdf(order) {
     drawSectionTitle('Device Details');
     drawKeyValue('Item (Make/Model)', itemLabel || '—');
     drawKeyValue('Storage', order.storage || order.memory || '—');
-    drawKeyValue('Carrier', formatValue(order.carrier));
+    drawKeyValue('Carrier', prettifyCarrier(order.carrier));
     drawKeyValue('Estimated Payout', `$${formatCurrency(estimatedPayout)}`);
 
     drawSectionTitle('Conditions');
@@ -212,12 +234,9 @@ async function generateBagLabelPdf(order) {
         shippingInfo.phone_number ||
         '';
 
-    const deviceParts = [];
-    if (order.brand) deviceParts.push(String(order.brand));
-    if (order.device) deviceParts.push(String(order.device));
-    const deviceLabel = deviceParts.join(' ');
+    const deviceLabel = buildDeviceLabel(order);
     const storageLabel = order.storage || order.memory || '';
-    const lockLabel = formatValue(order.carrier);
+    const lockLabel = prettifyCarrier(order.carrier);
     const conditionSummary = order.condition || order.deviceCondition || buildConditionSummary(order);
     const qualityLabel = conditionSummary && conditionSummary !== '—'
         ? conditionSummary
@@ -312,6 +331,63 @@ async function generateBagLabelPdf(order) {
     });
 
     return pdfDoc.save();
+}
+
+
+function buildDeviceLabel(order = {}) {
+    const normalizedParts = [
+        normalizeDeviceText(order.brand),
+        normalizeDeviceText(order.device),
+    ].filter(Boolean);
+
+    if (normalizedParts.length > 1 && normalizedParts[0].toLowerCase() === normalizedParts[1].toLowerCase()) {
+        return normalizedParts[0];
+    }
+
+    return normalizedParts.join(' ').trim() || '—';
+}
+
+function normalizeDeviceText(value) {
+    if (!value) return '';
+
+    const replacements = {
+        iphone: 'iPhone',
+        ipad: 'iPad',
+        ios: 'iOS',
+        imei: 'IMEI',
+        gb: 'GB',
+        tb: 'TB',
+    };
+
+    return String(value)
+        .trim()
+        .split(/\s+/)
+        .map((segment) => {
+            const key = segment.toLowerCase();
+            if (replacements[key]) {
+                return replacements[key];
+            }
+            if (/^[0-9]+(gb|tb)$/i.test(segment)) {
+                return segment.toUpperCase();
+            }
+            if (/^[A-Z0-9-]{2,}$/.test(segment)) {
+                return segment.charAt(0) + segment.slice(1).toLowerCase();
+            }
+            return segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase();
+        })
+        .join(' ');
+}
+
+function prettifyCarrier(value) {
+    const normalized = formatValue(value);
+    const mapping = {
+        Tmobile: 'T-Mobile',
+        Att: 'AT&T',
+        Verizon: 'Verizon',
+        Unlocked: 'Unlocked',
+    };
+
+    return mapping[normalized] || normalized;
 }
 
 function resolveOrderPayout(order = {}) {
