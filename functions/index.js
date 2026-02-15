@@ -22,6 +22,7 @@ const {
   KIT_TRANSIT_STATUS,
   PHONE_TRANSIT_STATUS,
   normalizeInboundTrackingStatus,
+  resolveUspsServiceAndWeightByDeviceCount,
 } = require('./helpers/shipengine');
 const { isStatusPastReceived, isBalanceEmailStatus } = require('./helpers/order-status');
 const { getShipStationCredentials } = require('./services/shipstation');
@@ -2923,9 +2924,11 @@ async function addAdminFirestoreNotification(
   return writes.length;
 }
 
-async function createShipEngineLabel(fromAddress, toAddress, labelReference, packageData) {
+async function createShipEngineLabel(fromAddress, toAddress, labelReference, packageData, context = {}) {
   const isSandbox = false;
   const serviceCode = packageData?.service_code || "usps_ground_advantage";
+  const weightValue = packageData?.weight?.value ?? packageData?.weight?.ounces;
+  const weightUnit = packageData?.weight?.unit || "ounce";
   const payload = {
     shipment: {
       service_code: serviceCode,
@@ -2933,7 +2936,7 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
       ship_from: fromAddress,
       packages: [
         {
-          weight: { value: packageData.weight.ounces, unit: "ounce" },
+          weight: { value: weightValue, unit: weightUnit },
           dimensions: {
             unit: "inch",
             height: packageData.dimensions.height,
@@ -2970,8 +2973,19 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
   } catch (error) {
     const status = error?.response?.status;
     const detail = error?.response?.data || error?.message || error;
+    const requestId = error?.response?.data?.request_id || null;
+    const failureMetadata = {
+      orderId: context?.orderId || null,
+      deviceCount: context?.deviceCount ?? null,
+      chosenService: context?.chosenService || null,
+      weightOz: context?.weightOz ?? null,
+      blocks: context?.blocks ?? null,
+      request_id: requestId,
+    };
+
     console.error(
       "ShipEngine label generation failed",
+      JSON.stringify(failureMetadata),
       typeof detail === "string" ? detail : JSON.stringify(detail)
     );
 
@@ -2984,6 +2998,7 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
     const wrappedError = new Error(errorMessage);
     if (status) wrappedError.status = status;
     wrappedError.responseData = detail;
+    wrappedError.requestId = requestId;
     throw wrappedError;
   }
 }
@@ -4298,19 +4313,39 @@ app.post("/orders/:id/return-label", async (req, res) => {
       ? buyerAddress
       : secondHandCellAddress;
 
+    const items = Array.isArray(order?.items) ? order.items : [];
+    const itemsDeviceCount = items.reduce((sum, item) => sum + (Number(item?.qty) || 0), 0);
+    const deviceCount = Math.max(1, itemsDeviceCount || Number(order?.qty) || 1);
+    const shippingProfile = resolveUspsServiceAndWeightByDeviceCount(deviceCount);
+
     // Package data for the return label (phone inside kit)
     const returnPackageData = {
-      service_code: "usps_ground_advantage",
+      service_code: shippingProfile.serviceCode,
       dimensions: { unit: "inch", height: 2, width: 4, length: 6 },
-      weight: { ounces: 8, unit: "ounce" }, // Phone weighs 8oz
+      weight: { value: shippingProfile.weightOz, unit: "ounce" },
     };
 
+    console.log('[ShipEngine] label profile selected', {
+      orderId: orderIdForLabel,
+      deviceCount,
+      chosenService: shippingProfile.chosenService,
+      weightOz: shippingProfile.weightOz,
+      blocks: shippingProfile.blocks,
+      labelReference: `${orderIdForLabel}-RETURN`,
+    });
 
     const returnLabelData = await createShipEngineLabel(
       shipFromAddress,
       shipToAddress,
       `${orderIdForLabel}-RETURN`,
-      returnPackageData
+      returnPackageData,
+      {
+        orderId: orderIdForLabel,
+        deviceCount,
+        chosenService: shippingProfile.chosenService,
+        weightOz: shippingProfile.weightOz,
+        blocks: shippingProfile.blocks,
+      }
     );
 
     const returnTrackingNumber = returnLabelData.tracking_number;
