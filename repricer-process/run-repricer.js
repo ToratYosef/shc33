@@ -1,16 +1,10 @@
-/**
- * repricer.js
- * - Downloads SellCell feed
- * - Builds competitor max-price index
- * - Reads /shc33/feed/amz.csv
- * - Computes new_price per row
- * - Updates /shc33/feed/feed.xml template prices
- * - Prints how many rows/prices changed
- */
+#!/usr/bin/env node
+"use strict";
 
 const fs = require("fs");
 const path = require("path");
 const { DOMParser, XMLSerializer } = require("@xmldom/xmldom");
+const { execSync } = require("child_process");
 
 // ---------------- CONFIG ----------------
 const SELLCELL_URL = "http://secondhandcell.com/sellcell/feed.xml";
@@ -25,7 +19,7 @@ const getArg = (name, def = null) => {
   return v;
 };
 
-const cwd = path.resolve(getArg("dir", process.cwd()));
+const cwd = path.resolve(getArg("dir", "/shc33/feed")); // default to /shc33/feed
 const CSV_PATH = path.join(cwd, "amz.csv");
 const TEMPLATE_XML_PATH = path.join(cwd, "feed.xml");
 
@@ -36,14 +30,11 @@ const PRICE_INCREASE = Number.parseFloat(getArg("bump", "1.00")) || 1.00;
 const WRITE_OUTPUT_CSV = !!getArg("write-csv", false);
 const OUTPUT_CSV_PATH = path.join(cwd, "repricer-output.csv");
 
-// optional firestore import
-const DO_IMPORT = !!getArg("import", false);
-const FIREBASE_SERVICE_ACCOUNT = getArg("service-account", null); // path to JSON
-const FIREBASE_PROJECT_ID = getArg("project-id", null); // optional override
+// gca auto-run
+const RUN_GCA = !getArg("no-gca", false);
 
-// reporting / debug
-const SHOW_CHANGES = !!getArg("show-changes", false);
-const MAX_CHANGES = Number.parseInt(getArg("max-changes", "25"), 10) || 25;
+// optional: use explicit project id (otherwise uses service account / default creds)
+const FIREBASE_PROJECT_ID = getArg("project-id", null);
 
 // ---------------- HELPERS (ported from your HTML) ----------------
 
@@ -128,14 +119,6 @@ function parseMoney(value) {
   if (!cleaned) return null;
   const num = parseFloat(cleaned);
   return Number.isFinite(num) ? num : null;
-}
-
-function round2(n) {
-  return Math.round(n * 100) / 100;
-}
-function approxEqualMoney(a, b, eps = 0.005) {
-  if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
-  return Math.abs(a - b) <= eps;
 }
 
 // ===================== CSV PARSER =====================
@@ -378,7 +361,7 @@ function repriceRowFromFeed(row, feedIndex, priceIncrease) {
   if (profit_pct != null && profit_pct >= 0.15) new_price = original_price + priceIncrease;
   else new_price = total_walkaway / 1.15;
 
-  new_price = round2(new_price);
+  new_price = Math.round(new_price * 100) / 100;
 
   result.amazon_price = amazonPrice;
   result.after_amazon = after_amazon;
@@ -425,8 +408,8 @@ function prettyPrintXml(xml) {
   return result.join("\n");
 }
 
-// ===================== BUILD UPDATED XML FROM TEMPLATE (+ CHANGE COUNT) =====================
-function buildUpdatedXmlFromTemplate(templateXmlText, rows) {
+// ===================== BUILD UPDATED XML FROM TEMPLATE + CHANGE COUNT =====================
+function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(templateXmlText, "application/xml");
   const parseErr = doc.getElementsByTagName("parsererror")[0];
@@ -450,11 +433,11 @@ function buildUpdatedXmlFromTemplate(templateXmlText, rows) {
     if (newPrice == null || !Number.isFinite(newPrice)) return;
 
     const key = nameNorm + "|" + storage + "|" + lockCarrier + "|" + condTag;
-    priceMap.set(key, Number(newPrice));
+    priceMap.set(key, newPrice);
   });
 
-  let xmlNodesMatched = 0;
-  let xmlPricesChanged = 0;
+  let changedNodes = 0;
+  const changedModels = new Set();
 
   const models = doc.getElementsByTagName("model");
   for (let i = 0; i < models.length; i++) {
@@ -484,16 +467,13 @@ function buildUpdatedXmlFromTemplate(templateXmlText, rows) {
           const key = nameNorm + "|" + storageVal + "|" + carrierTag + "|" + condTag;
           if (!priceMap.has(key)) return;
 
-          xmlNodesMatched++;
+          const nextVal = String(priceMap.get(key));
+          const prevVal = String(condEl.textContent || "").trim();
 
-          const next = priceMap.get(key);
-          const prev = parseMoney(condEl.textContent);
-          // if prev is missing/invalid, treat as change if next exists
-          const isSame = (prev != null && approxEqualMoney(prev, next));
-
-          if (!isSame) {
-            condEl.textContent = String(next);
-            xmlPricesChanged++;
+          if (prevVal !== nextVal) {
+            condEl.textContent = nextVal;
+            changedNodes++;
+            changedModels.add(nameNorm);
           }
         });
       });
@@ -508,8 +488,9 @@ function buildUpdatedXmlFromTemplate(templateXmlText, rows) {
   }
 
   return {
-    xml: prettyPrintXml(xmlOut),
-    stats: { xmlNodesMatched, xmlPricesChanged }
+    updatedXml: prettyPrintXml(xmlOut),
+    changedNodes,
+    changedModelsCount: changedModels.size,
   };
 }
 
@@ -557,7 +538,7 @@ function buildOutputCsv(rows) {
   return lines.join("\n");
 }
 
-// ===================== OPTIONAL: PRICING PAGE “IMPORT XML” (server-side) =====================
+// ===================== FIRESTORE IMPORT (ALWAYS ON) =====================
 function normalizeSlugSegment(value) {
   return String(value || "")
     .toLowerCase()
@@ -565,7 +546,6 @@ function normalizeSlugSegment(value) {
     .replace(/^-+|-+$/g, "");
 }
 
-// Mimics parseXmlFeed() output: { models, warnings }
 function parseDevicePricesXmlForImport(content) {
   const parser = new DOMParser();
   const xmlDocument = parser.parseFromString(content, "application/xml");
@@ -636,36 +616,28 @@ function parseDevicePricesXmlForImport(content) {
       return;
     }
 
-    const modelData = {
+    models.push({
       brand,
       slug,
       name: getText("name"),
       imageUrl: getText("imageUrl"),
       deeplink: getText("deeplink"),
       prices,
-    };
-
-    models.push(modelData);
+    });
   });
 
   return { models, warnings };
 }
 
-async function importToFirestore(updatedXmlText) {
+async function importToFirestoreAlways(updatedXmlText) {
   const admin = require("firebase-admin");
 
   if (admin.apps.length === 0) {
-    if (FIREBASE_SERVICE_ACCOUNT) {
-      const serviceAccount = JSON.parse(fs.readFileSync(path.resolve(FIREBASE_SERVICE_ACCOUNT), "utf8"));
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        projectId: FIREBASE_PROJECT_ID || serviceAccount.project_id,
-      });
-    } else {
-      admin.initializeApp({
-        projectId: FIREBASE_PROJECT_ID || undefined,
-      });
-    }
+    // Prefer GOOGLE_APPLICATION_CREDENTIALS (you set it in ~/.bashrc)
+    // Allow override project id via --project-id
+    const opts = {};
+    if (FIREBASE_PROJECT_ID) opts.projectId = FIREBASE_PROJECT_ID;
+    admin.initializeApp(opts);
   }
 
   const db = admin.firestore();
@@ -675,10 +647,27 @@ async function importToFirestore(updatedXmlText) {
   let success = 0;
   let fail = 0;
 
+  // For logging diffs, fetch existing doc and count changed leaf values
+  let changedDocs = 0;
+  let changedPriceLeaves = 0;
+
   for (const model of models) {
+    const collectionPath = `devices/${model.brand}/models`;
+    const docRef = db.doc(`${collectionPath}/${model.slug}`);
+
     try {
-      const collectionPath = `devices/${model.brand}/models`;
-      const docRef = db.doc(`${collectionPath}/${model.slug}`);
+      const snap = await docRef.get();
+      const before = snap.exists ? (snap.data() || {}) : {};
+
+      // count leaf diffs in prices
+      const beforePrices = before.prices || {};
+      const afterPrices = model.prices || {};
+
+      const leafDiffCount = countPriceLeafDiffs(beforePrices, afterPrices);
+      if (leafDiffCount > 0 || !snap.exists) {
+        changedDocs++;
+        changedPriceLeaves += leafDiffCount;
+      }
 
       const payload = { brand: model.brand, slug: model.slug, prices: model.prices };
       if (model.name) payload.name = model.name;
@@ -693,15 +682,54 @@ async function importToFirestore(updatedXmlText) {
     }
   }
 
-  return { modelsCount: models.length, warnings, success, fail };
+  return {
+    modelsCount: models.length,
+    warnings,
+    success,
+    fail,
+    changedDocs,
+    changedPriceLeaves,
+  };
+}
+
+function countPriceLeafDiffs(beforePrices, afterPrices) {
+  // prices structure: { storage: { carrier: { condition: number } } }
+  let diffs = 0;
+
+  const storages = new Set([...Object.keys(beforePrices || {}), ...Object.keys(afterPrices || {})]);
+  for (const storage of storages) {
+    const bS = beforePrices?.[storage] || {};
+    const aS = afterPrices?.[storage] || {};
+    const carriers = new Set([...Object.keys(bS), ...Object.keys(aS)]);
+    for (const carrier of carriers) {
+      const bC = bS?.[carrier] || {};
+      const aC = aS?.[carrier] || {};
+      const conds = new Set([...Object.keys(bC), ...Object.keys(aC)]);
+      for (const cond of conds) {
+        const bV = bC?.[cond];
+        const aV = aC?.[cond];
+        const bNum = typeof bV === "number" ? bV : (bV != null ? Number(bV) : null);
+        const aNum = typeof aV === "number" ? aV : (aV != null ? Number(aV) : null);
+
+        const bOk = Number.isFinite(bNum);
+        const aOk = Number.isFinite(aNum);
+
+        if (!bOk && !aOk) continue;
+        if (!bOk && aOk) { diffs++; continue; }
+        if (bOk && !aOk) { diffs++; continue; }
+
+        // both valid numbers
+        if (Number(bNum).toFixed(2) !== Number(aNum).toFixed(2)) diffs++;
+      }
+    }
+  }
+  return diffs;
 }
 
 // ---------------- MAIN ----------------
 async function main() {
   console.log(`[repricer] dir=${cwd}`);
-  console.log(
-    `[repricer] bump=$${PRICE_INCREASE.toFixed(2)}  import=${DO_IMPORT ? "yes" : "no"}  write-csv=${WRITE_OUTPUT_CSV ? "yes" : "no"}`
-  );
+  console.log(`[repricer] bump=$${PRICE_INCREASE.toFixed(2)}  write-csv=${WRITE_OUTPUT_CSV ? "yes" : "no"}  firestore=YES  gca=${RUN_GCA ? "yes" : "no"}`);
 
   if (!fs.existsSync(CSV_PATH)) {
     throw new Error(`Missing ${CSV_PATH}. Put your CSV there as amz.csv`);
@@ -709,6 +737,9 @@ async function main() {
   if (!fs.existsSync(TEMPLATE_XML_PATH)) {
     throw new Error(`Missing ${TEMPLATE_XML_PATH}. Put your template device-prices XML there as feed.xml`);
   }
+
+  // 0) read "before" template to count xml changes
+  const templateXmlBefore = fs.readFileSync(TEMPLATE_XML_PATH, "utf8");
 
   // 1) download SellCell feed
   console.log(`[repricer] downloading SellCell feed: ${SELLCELL_URL}`);
@@ -740,68 +771,14 @@ async function main() {
 
   const resultRows = allRecords.map((r) => repriceRowFromFeed(r, feedIndex, PRICE_INCREASE));
 
-  // 4b) COUNT "ROW PRICE CHANGES" (CSV price -> computed new_price)
-  // Note: This counts per CSV row (and generated variants) whether the computed new_price differs from the row's current "price".
-  let rowsWithComputedPrice = 0;
-  let rowsPriceChanged = 0;
-  let rowsNoNewPrice = 0;
-  const sampleChanges = [];
-
-  for (const r of resultRows) {
-    const newP = Number.isFinite(r.new_price) ? Number(r.new_price) : null;
-    const curP = parseMoney(r.price);
-
-    if (newP == null) {
-      rowsNoNewPrice++;
-      continue;
-    }
-    rowsWithComputedPrice++;
-
-    // If current price missing/invalid, we still consider it "would change" (since we'd set something)
-    const changed = (curP == null) ? true : !approxEqualMoney(curP, newP);
-
-    if (changed) {
-      rowsPriceChanged++;
-      if (SHOW_CHANGES && sampleChanges.length < MAX_CHANGES) {
-        sampleChanges.push({
-          name: r.name,
-          storage: r.storage,
-          lock_status: r.lock_status,
-          condition: r.condition,
-          old_price: curP,
-          new_price: newP
-        });
-      }
-    }
-  }
-
-  // 5) load template XML and build updated XML (+ xml change stats)
-  const templateXmlText = fs.readFileSync(TEMPLATE_XML_PATH, "utf8");
-  const built = buildUpdatedXmlFromTemplate(templateXmlText, resultRows);
-  const updatedXml = built.xml;
-  const xmlStats = built.stats;
+  // 5) build updated XML from template + count changes
+  const { updatedXml, changedNodes, changedModelsCount } =
+    buildUpdatedXmlFromTemplateWithDiff(templateXmlBefore, resultRows);
 
   // 6) overwrite feed.xml
   fs.writeFileSync(TEMPLATE_XML_PATH, updatedXml, "utf8");
   console.log(`[repricer] updated template written -> ${TEMPLATE_XML_PATH}`);
-
-  // 6b) print change stats
-  console.log(
-    `[repricer] row price changes (CSV "price" -> computed new_price): changed=${rowsPriceChanged.toLocaleString()} / computed=${rowsWithComputedPrice.toLocaleString()} (no_new_price=${rowsNoNewPrice.toLocaleString()})`
-  );
-  console.log(
-    `[repricer] xml updates: matched_nodes=${xmlStats.xmlNodesMatched.toLocaleString()}  changed_prices=${xmlStats.xmlPricesChanged.toLocaleString()}`
-  );
-
-  if (SHOW_CHANGES && sampleChanges.length) {
-    console.log(`[repricer] sample changes (up to ${MAX_CHANGES}):`);
-    for (const c of sampleChanges) {
-      const oldStr = (c.old_price == null) ? "(blank)" : `$${c.old_price.toFixed(2)}`;
-      console.log(
-        ` - ${c.name} | ${String(c.storage || "").toUpperCase()} | ${c.lock_status} | ${c.condition} : ${oldStr} -> $${c.new_price.toFixed(2)}`
-      );
-    }
-  }
+  console.log(`[repricer] xml price nodes changed=${changedNodes.toLocaleString()}  models touched=${changedModelsCount.toLocaleString()}`);
 
   // 7) optional output csv
   if (WRITE_OUTPUT_CSV) {
@@ -810,15 +787,26 @@ async function main() {
     console.log(`[repricer] output csv written -> ${OUTPUT_CSV_PATH}`);
   }
 
-  // 8) optional firestore import
-  if (DO_IMPORT) {
-    console.log(`[import] importing updated XML into Firestore...`);
-    const r = await importToFirestore(updatedXml);
-    console.log(`[import] models=${r.modelsCount}  success=${r.success}  fail=${r.fail}  warnings=${r.warnings.length}`);
-    if (r.warnings.length) {
-      console.log("[import] warnings:");
-      r.warnings.slice(0, 50).forEach(w => console.log(" - " + w));
-      if (r.warnings.length > 50) console.log(` - ... +${r.warnings.length - 50} more`);
+  // 8) ALWAYS import to Firestore
+  console.log(`[import] importing updated XML into Firestore (always on)...`);
+  const r = await importToFirestoreAlways(updatedXml);
+  console.log(`[import] models=${r.modelsCount}  success=${r.success}  fail=${r.fail}  warnings=${r.warnings.length}`);
+  console.log(`[import] changedDocs=${r.changedDocs}  changedPriceLeaves=${r.changedPriceLeaves.toLocaleString()}`);
+
+  if (r.warnings.length) {
+    console.log("[import] warnings:");
+    r.warnings.slice(0, 30).forEach(w => console.log(" - " + w));
+    if (r.warnings.length > 30) console.log(` - ... +${r.warnings.length - 30} more`);
+  }
+
+  // 9) run gca to push to github
+  if (RUN_GCA) {
+    try {
+      console.log(`[gca] committing + pushing...`);
+      execSync(`cd /shc33 && gca`, { stdio: "inherit", shell: "/bin/bash" });
+    } catch (e) {
+      console.error(`[gca] failed (repricer still completed).`, e?.message || e);
+      process.exitCode = 2;
     }
   }
 
