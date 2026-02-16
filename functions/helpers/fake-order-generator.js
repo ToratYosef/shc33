@@ -6,13 +6,11 @@ const DEVICE_TEMPLATES = [
   { brand: 'Apple', device: 'iPhone 13 Pro', storage: '256GB', carrier: 'Unlocked', modelSlug: 'iphone-13-pro', baseQuote: 485 },
   { brand: 'Apple', device: 'iPhone 14', storage: '128GB', carrier: 'T-Mobile', modelSlug: 'iphone-14', baseQuote: 420 },
   { brand: 'Samsung', device: 'Galaxy S23 Ultra', storage: '512GB', carrier: 'Unlocked', modelSlug: 'galaxy-s23-ultra', baseQuote: 510 },
-  { brand: 'Google', device: 'Pixel 8 Pro', storage: '256GB', carrier: 'Unlocked', modelSlug: 'pixel-8-pro', baseQuote: 440 },
   { brand: 'Apple', device: 'iPhone 12 Mini', storage: '128GB', carrier: 'AT&T', modelSlug: 'iphone-12-mini', baseQuote: 320 },
   { brand: 'Samsung', device: 'Galaxy Note 20', storage: '256GB', carrier: 'Verizon', modelSlug: 'galaxy-note-20', baseQuote: 335 },
   { brand: 'Apple', device: 'iPhone 11 Pro Max', storage: '512GB', carrier: 'Unlocked', modelSlug: 'iphone-11-pro-max', baseQuote: 300 },
   { brand: 'Apple', device: 'iPhone SE (3rd Gen)', storage: '128GB', carrier: 'Unlocked', modelSlug: 'iphone-se-2022', baseQuote: 240 },
-  { brand: 'Samsung', device: 'Galaxy Z Flip 4', storage: '256GB', carrier: 'Unlocked', modelSlug: 'galaxy-z-flip-4', baseQuote: 360 },
-  { brand: 'Google', device: 'Pixel 7a', storage: '128GB', carrier: 'Unlocked', modelSlug: 'pixel-7a', baseQuote: 275 }
+  { brand: 'Samsung', device: 'Galaxy Z Flip 4', storage: '256GB', carrier: 'Unlocked', modelSlug: 'galaxy-z-flip-4', baseQuote: 360 }
 ];
 
 const PAYMENT_METHODS = [
