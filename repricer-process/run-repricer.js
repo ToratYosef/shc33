@@ -1,3 +1,13 @@
+/**
+ * repricer.js
+ * - Downloads SellCell feed
+ * - Builds competitor max-price index
+ * - Reads /shc33/feed/amz.csv
+ * - Computes new_price per row
+ * - Updates /shc33/feed/feed.xml template prices
+ * - Prints how many rows/prices changed
+ */
+
 const fs = require("fs");
 const path = require("path");
 const { DOMParser, XMLSerializer } = require("@xmldom/xmldom");
@@ -30,6 +40,10 @@ const OUTPUT_CSV_PATH = path.join(cwd, "repricer-output.csv");
 const DO_IMPORT = !!getArg("import", false);
 const FIREBASE_SERVICE_ACCOUNT = getArg("service-account", null); // path to JSON
 const FIREBASE_PROJECT_ID = getArg("project-id", null); // optional override
+
+// reporting / debug
+const SHOW_CHANGES = !!getArg("show-changes", false);
+const MAX_CHANGES = Number.parseInt(getArg("max-changes", "25"), 10) || 25;
 
 // ---------------- HELPERS (ported from your HTML) ----------------
 
@@ -114,6 +128,14 @@ function parseMoney(value) {
   if (!cleaned) return null;
   const num = parseFloat(cleaned);
   return Number.isFinite(num) ? num : null;
+}
+
+function round2(n) {
+  return Math.round(n * 100) / 100;
+}
+function approxEqualMoney(a, b, eps = 0.005) {
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+  return Math.abs(a - b) <= eps;
 }
 
 // ===================== CSV PARSER =====================
@@ -356,7 +378,7 @@ function repriceRowFromFeed(row, feedIndex, priceIncrease) {
   if (profit_pct != null && profit_pct >= 0.15) new_price = original_price + priceIncrease;
   else new_price = total_walkaway / 1.15;
 
-  new_price = Math.round(new_price * 100) / 100;
+  new_price = round2(new_price);
 
   result.amazon_price = amazonPrice;
   result.after_amazon = after_amazon;
@@ -378,7 +400,7 @@ function repriceRowFromFeed(row, feedIndex, priceIncrease) {
   return result;
 }
 
-// ===================== XML PRETTY PRINT (same idea) =====================
+// ===================== XML PRETTY PRINT =====================
 function prettyPrintXml(xml) {
   const PADDING = "  ";
   const reg = /(>)(<)(\/*)/g;
@@ -403,7 +425,7 @@ function prettyPrintXml(xml) {
   return result.join("\n");
 }
 
-// ===================== BUILD UPDATED XML FROM TEMPLATE =====================
+// ===================== BUILD UPDATED XML FROM TEMPLATE (+ CHANGE COUNT) =====================
 function buildUpdatedXmlFromTemplate(templateXmlText, rows) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(templateXmlText, "application/xml");
@@ -428,8 +450,11 @@ function buildUpdatedXmlFromTemplate(templateXmlText, rows) {
     if (newPrice == null || !Number.isFinite(newPrice)) return;
 
     const key = nameNorm + "|" + storage + "|" + lockCarrier + "|" + condTag;
-    priceMap.set(key, newPrice);
+    priceMap.set(key, Number(newPrice));
   });
+
+  let xmlNodesMatched = 0;
+  let xmlPricesChanged = 0;
 
   const models = doc.getElementsByTagName("model");
   for (let i = 0; i < models.length; i++) {
@@ -457,7 +482,19 @@ function buildUpdatedXmlFromTemplate(templateXmlText, rows) {
           if (!condEl) return;
 
           const key = nameNorm + "|" + storageVal + "|" + carrierTag + "|" + condTag;
-          if (priceMap.has(key)) condEl.textContent = String(priceMap.get(key));
+          if (!priceMap.has(key)) return;
+
+          xmlNodesMatched++;
+
+          const next = priceMap.get(key);
+          const prev = parseMoney(condEl.textContent);
+          // if prev is missing/invalid, treat as change if next exists
+          const isSame = (prev != null && approxEqualMoney(prev, next));
+
+          if (!isSame) {
+            condEl.textContent = String(next);
+            xmlPricesChanged++;
+          }
         });
       });
     }
@@ -470,7 +507,10 @@ function buildUpdatedXmlFromTemplate(templateXmlText, rows) {
     xmlOut = '<?xml version="1.0" encoding="UTF-8"?>\n' + xmlOut;
   }
 
-  return prettyPrintXml(xmlOut);
+  return {
+    xml: prettyPrintXml(xmlOut),
+    stats: { xmlNodesMatched, xmlPricesChanged }
+  };
 }
 
 // ===================== OPTIONAL: BUILD OUTPUT CSV =====================
@@ -566,7 +606,7 @@ function parseDevicePricesXmlForImport(content) {
       if (!priceValueNode) return;
 
       const connectivityMap = {};
-      const connectivityChildren = Array.from(priceValueNode.childNodes).filter(n => n.nodeType === 1); // ELEMENT_NODE
+      const connectivityChildren = Array.from(priceValueNode.childNodes).filter(n => n.nodeType === 1);
 
       connectivityChildren.forEach((connectivityNode) => {
         const connectivityKey = String(connectivityNode.tagName || "").toLowerCase();
@@ -612,7 +652,6 @@ function parseDevicePricesXmlForImport(content) {
 }
 
 async function importToFirestore(updatedXmlText) {
-  // lazy load
   const admin = require("firebase-admin");
 
   if (admin.apps.length === 0) {
@@ -623,7 +662,6 @@ async function importToFirestore(updatedXmlText) {
         projectId: FIREBASE_PROJECT_ID || serviceAccount.project_id,
       });
     } else {
-      // Uses GOOGLE_APPLICATION_CREDENTIALS or metadata service if on GCP
       admin.initializeApp({
         projectId: FIREBASE_PROJECT_ID || undefined,
       });
@@ -661,7 +699,9 @@ async function importToFirestore(updatedXmlText) {
 // ---------------- MAIN ----------------
 async function main() {
   console.log(`[repricer] dir=${cwd}`);
-  console.log(`[repricer] bump=$${PRICE_INCREASE.toFixed(2)}  import=${DO_IMPORT ? "yes" : "no"}  write-csv=${WRITE_OUTPUT_CSV ? "yes" : "no"}`);
+  console.log(
+    `[repricer] bump=$${PRICE_INCREASE.toFixed(2)}  import=${DO_IMPORT ? "yes" : "no"}  write-csv=${WRITE_OUTPUT_CSV ? "yes" : "no"}`
+  );
 
   if (!fs.existsSync(CSV_PATH)) {
     throw new Error(`Missing ${CSV_PATH}. Put your CSV there as amz.csv`);
@@ -700,13 +740,68 @@ async function main() {
 
   const resultRows = allRecords.map((r) => repriceRowFromFeed(r, feedIndex, PRICE_INCREASE));
 
-  // 5) load template XML and build updated XML
+  // 4b) COUNT "ROW PRICE CHANGES" (CSV price -> computed new_price)
+  // Note: This counts per CSV row (and generated variants) whether the computed new_price differs from the row's current "price".
+  let rowsWithComputedPrice = 0;
+  let rowsPriceChanged = 0;
+  let rowsNoNewPrice = 0;
+  const sampleChanges = [];
+
+  for (const r of resultRows) {
+    const newP = Number.isFinite(r.new_price) ? Number(r.new_price) : null;
+    const curP = parseMoney(r.price);
+
+    if (newP == null) {
+      rowsNoNewPrice++;
+      continue;
+    }
+    rowsWithComputedPrice++;
+
+    // If current price missing/invalid, we still consider it "would change" (since we'd set something)
+    const changed = (curP == null) ? true : !approxEqualMoney(curP, newP);
+
+    if (changed) {
+      rowsPriceChanged++;
+      if (SHOW_CHANGES && sampleChanges.length < MAX_CHANGES) {
+        sampleChanges.push({
+          name: r.name,
+          storage: r.storage,
+          lock_status: r.lock_status,
+          condition: r.condition,
+          old_price: curP,
+          new_price: newP
+        });
+      }
+    }
+  }
+
+  // 5) load template XML and build updated XML (+ xml change stats)
   const templateXmlText = fs.readFileSync(TEMPLATE_XML_PATH, "utf8");
-  const updatedXml = buildUpdatedXmlFromTemplate(templateXmlText, resultRows);
+  const built = buildUpdatedXmlFromTemplate(templateXmlText, resultRows);
+  const updatedXml = built.xml;
+  const xmlStats = built.stats;
 
   // 6) overwrite feed.xml
   fs.writeFileSync(TEMPLATE_XML_PATH, updatedXml, "utf8");
   console.log(`[repricer] updated template written -> ${TEMPLATE_XML_PATH}`);
+
+  // 6b) print change stats
+  console.log(
+    `[repricer] row price changes (CSV "price" -> computed new_price): changed=${rowsPriceChanged.toLocaleString()} / computed=${rowsWithComputedPrice.toLocaleString()} (no_new_price=${rowsNoNewPrice.toLocaleString()})`
+  );
+  console.log(
+    `[repricer] xml updates: matched_nodes=${xmlStats.xmlNodesMatched.toLocaleString()}  changed_prices=${xmlStats.xmlPricesChanged.toLocaleString()}`
+  );
+
+  if (SHOW_CHANGES && sampleChanges.length) {
+    console.log(`[repricer] sample changes (up to ${MAX_CHANGES}):`);
+    for (const c of sampleChanges) {
+      const oldStr = (c.old_price == null) ? "(blank)" : `$${c.old_price.toFixed(2)}`;
+      console.log(
+        ` - ${c.name} | ${String(c.storage || "").toUpperCase()} | ${c.lock_status} | ${c.condition} : ${oldStr} -> $${c.new_price.toFixed(2)}`
+      );
+    }
+  }
 
   // 7) optional output csv
   if (WRITE_OUTPUT_CSV) {
@@ -715,7 +810,7 @@ async function main() {
     console.log(`[repricer] output csv written -> ${OUTPUT_CSV_PATH}`);
   }
 
-  // 8) optional firestore import (pricing page “Import XML” equivalent)
+  // 8) optional firestore import
   if (DO_IMPORT) {
     console.log(`[import] importing updated XML into Firestore...`);
     const r = await importToFirestore(updatedXml);
