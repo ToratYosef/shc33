@@ -1,24 +1,9 @@
-#!/usr/bin/env node
-/**
- * run-repricer.js
- *
- * Inputs (in current working directory by default):
- *  - amz.csv   (CSV with header: name,storage,lock_status,condition,price,amz)
- *  - feed.xml  (TEMPLATE device-prices XML you want to update)
- *
- * Behavior:
- *  - downloads SellCell feed from https://d.sellcell.com/secondhandcell/feed.xml
- *  - reprices using your logic
- *  - overwrites feed.xml with updated device-prices XML
- *  - optionally imports updated XML into Firestore (like Pricing page Import XML)
- */
-
 const fs = require("fs");
 const path = require("path");
 const { DOMParser, XMLSerializer } = require("@xmldom/xmldom");
 
 // ---------------- CONFIG ----------------
-const SELLCELL_URL = "https://d.sellcell.com/secondhandcell/feed.xml";
+const SELLCELL_URL = "http://secondhandcell.com/sellcell/feed.xml";
 
 // CLI args
 const args = process.argv.slice(2);
