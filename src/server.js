@@ -120,6 +120,12 @@ app.get('/', (req, res) => {
 
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
+app.use('/terminal', express.static(path.join(__dirname, '..', 'public', 'terminal'), {
+  index: 'index.html',
+  fallthrough: false,
+}));
+
+
 const apiBasePath = (() => {
   const raw = typeof process.env.API_BASE_PATH === 'string'
     ? process.env.API_BASE_PATH.trim()
