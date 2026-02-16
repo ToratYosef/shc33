@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Terminal Session Proxy Required</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #0f1115;
+        color: #dbe3ee;
+      }
+      main {
+        width: min(760px, 92vw);
+        border: 1px solid #2b3342;
+        border-radius: 14px;
+        padding: 1.25rem;
+        background: #161a22;
+      }
+      code {
+        background: #0f141d;
+        padding: 0.1rem 0.35rem;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Session endpoint requires NGINX proxy</h1>
+      <p>
+        This local static fallback exists to avoid missing-file errors.
+        In production, <code>/terminal/session/</code> must be proxied to ttyd
+        (for example <code>http://127.0.0.1:7681/</code>) by NGINX.
+      </p>
+    </main>
+  </body>
+</html>

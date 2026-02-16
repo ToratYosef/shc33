@@ -3,6 +3,7 @@
 This repo now includes:
 
 - Static landing page at `/terminal` (`public/terminal/index.html`)
+- Static fallback page at `/terminal/session/` for non-proxied environments (`public/terminal/session/index.html`)
 - `ttyd` SSH launcher script (`scripts/ttyd-ssh-root.sh`)
 - Hardened systemd unit (`deploy/systemd/ttyd-root-ssh.service`)
 - NGINX server block template (`deploy/nginx/terminal.conf`)
