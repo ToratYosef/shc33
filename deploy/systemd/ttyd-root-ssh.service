@@ -15,7 +15,8 @@ ExecStart=/usr/bin/ttyd \
   --check-origin \
   --client-option cursorBlink=true \
   --client-option theme=dark \
-  --writable \
+  --base-path /terminal/session \
+  -W \
   --once \
   /workspace/shc33/scripts/ttyd-ssh-root.sh
 Restart=always

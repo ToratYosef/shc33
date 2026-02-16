@@ -5,7 +5,7 @@ This repo now includes:
 - Static landing page at `/terminal` (`public/terminal/index.html`)
 - Static fallback page at `/terminal/session/` for non-proxied environments (`public/terminal/session/index.html`)
 - `ttyd` SSH launcher script (`scripts/ttyd-ssh-root.sh`)
-- Hardened systemd unit (`deploy/systemd/ttyd-root-ssh.service`)
+- Hardened systemd unit (`deploy/systemd/ttyd-root-ssh.service`) configured with `--base-path /terminal/session` and writable terminal mode (`-W`)
 - NGINX server block template (`deploy/nginx/terminal.conf`)
 
 ## 1) Install runtime dependencies on your server
@@ -66,3 +66,18 @@ sudo systemctl reload nginx
 - Access is protected by HTTPS + HTTP Basic auth (and optional IP allowlist).
 - `--once` ensures one client per ttyd process, reducing session-sharing risk.
 - You should strongly prefer SSH keys over password auth whenever possible.
+
+
+## Troubleshooting input issues
+
+If you can see terminal output (e.g., a `login:` prompt) but cannot type, verify both:
+
+- ttyd is started with writable mode (`-W`)
+- ttyd base path matches NGINX route (`--base-path /terminal/session`)
+
+Then restart services:
+
+```bash
+sudo systemctl restart ttyd-root-ssh.service
+sudo nginx -t && sudo systemctl reload nginx
+```
