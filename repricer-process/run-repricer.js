@@ -1,6 +1,20 @@
 #!/usr/bin/env node
 "use strict";
 
+/**
+ * SecondHandCell repricer
+ * - Downloads SellCell feed XML
+ * - Indexes competitor top prices by model|storage|carrier|sellcellConditionBucket
+ * - Reprices rows from amz.csv
+ * - Writes updated device-prices template XML (feed.xml)
+ * - Imports to Firestore (devices/{brand}/models/{slug})
+ *
+ * FIXES:
+ * - Template condition tags are NOT assumed to be flawless/good/fair/broken anymore.
+ * - We dynamically detect template condition tags (e.g. noPower, crackedScreen, etc)
+ * - We map template condition tags -> SellCell condition buckets via heuristics.
+ */
+
 const fs = require("fs");
 const path = require("path");
 const { DOMParser, XMLSerializer } = require("@xmldom/xmldom");
@@ -12,7 +26,7 @@ const SELLCELL_URL = "http://secondhandcell.com/sellcell/feed.xml";
 // CLI args
 const args = process.argv.slice(2);
 const getArg = (name, def = null) => {
-  const idx = args.findIndex((a) => a === `--${name}`);
+  const idx = args.findIndex(a => a === `--${name}`);
   if (idx === -1) return def;
   const v = args[idx + 1];
   if (!v || v.startsWith("--")) return true; // flag
@@ -24,7 +38,7 @@ const CSV_PATH = path.join(cwd, "amz.csv");
 const TEMPLATE_XML_PATH = path.join(cwd, "feed.xml");
 
 // repricer tuning
-const PRICE_INCREASE = Number.parseFloat(getArg("bump", "1.00")) || 1.0;
+const PRICE_INCREASE = Number.parseFloat(getArg("bump", "1.00")) || 1.00;
 
 // optional outputs
 const WRITE_OUTPUT_CSV = !!getArg("write-csv", false);
@@ -36,29 +50,27 @@ const RUN_GCA = !getArg("no-gca", false);
 // optional: use explicit project id (otherwise uses service account / default creds)
 const FIREBASE_PROJECT_ID = getArg("project-id", null);
 
-// ---------------- HELPERS ----------------
+// optional: debug one model path like "samsung/galaxy-s21"
+const DEBUG_ONE = getArg("debug-one", null);
+
+// ---------------- HELPERS (ported + fixed) ----------------
 
 // ===================== NAME NORMALIZATION + ALIASES =====================
-// Keep this map small + explicit. Everything else should be handled by canonicalModelName().
 const MODEL_ALIASES = {
-  // iPhone SE naming variations
   "IPHONE 16 SE": "IPHONE SE 3RD GEN (2022)",
   "IPHONE 16E": "IPHONE SE 3RD GEN (2022)",
   "IPHONE SE 3": "IPHONE SE 3RD GEN (2022)",
   "IPHONE SE 2022": "IPHONE SE 3RD GEN (2022)",
   "IPHONE SE 3RD GEN": "IPHONE SE 3RD GEN (2022)",
 
-  // Samsung plus shorthand / spacing issues
   "GALAXY S21+": "GALAXY S21 PLUS",
   "GALAXY S22+": "GALAXY S22 PLUS",
   "GALAXY S23+": "GALAXY S23 PLUS",
   "GALAXY S24+": "GALAXY S24 PLUS",
   "GALAXY S25+": "GALAXY S25 PLUS",
 
-  // Samsung FE
   "GALAXY S23FE": "GALAXY S23 FE",
 
-  // Z series spacing
   "GALAXY Z FLIP 4": "GALAXY Z FLIP4",
   "GALAXY Z FLIP 5": "GALAXY Z FLIP5",
   "GALAXY Z FLIP 6": "GALAXY Z FLIP6",
@@ -68,75 +80,32 @@ const MODEL_ALIASES = {
   "GALAXY Z FOLD 6": "GALAXY Z FOLD6",
 };
 
-function canonicalModelName(raw) {
-  if (!raw) return "";
-
-  let s = String(raw).toUpperCase().trim();
-
-  // normalize weird spaces
-  s = s.replace(/[\u00A0]/g, " "); // NBSP -> space
-  s = s.replace(/\s+/g, " ").trim();
-
-  // drop leading brand tokens that appear in CSV but not in SellCell <device_name>
-  // (SellCell device_name examples: "Galaxy S21 Plus", not "Samsung Galaxy S21 Plus")
-  s = s.replace(/^(SAMSUNG|APPLE|GOOGLE)\s+/, "");
-  s = s.replace(/^(IPHONE|IPAD)\s+/g, (m) => m); // keep Apple device tokens
-  // if name is "SAMSUNG GALAXY ..." -> now "GALAXY ..."
-  s = s.replace(/\s+/g, " ").trim();
-
-  // Canonicalize "+" to "PLUS" (critical for S21+/S22+ etc)
-  s = s.replace(/\s*\+\s*/g, " PLUS ");
-  s = s.replace(/\s+/g, " ").trim();
-
-  // Canonicalize common Samsung variants
-  // "S23FE" -> "S23 FE" (if not already)
-  s = s.replace(/\bS(\d{2})FE\b/g, "S$1 FE");
-
-  // Z-series: "Z FLIP 4" -> "Z FLIP4", "Z FOLD 5" -> "Z FOLD5"
-  s = s.replace(/\bZ\s+FLIP\s+(\d)\b/g, "Z FLIP$1");
-  s = s.replace(/\bZ\s+FOLD\s+(\d)\b/g, "Z FOLD$1");
-
-  // Optional: strip "5G" token differences (CSV sometimes has it, SellCell often doesn’t)
-  s = s.replace(/\b5G\b/g, "").replace(/\s+/g, " ").trim();
-
-  // Apply explicit alias map after canonicalization
-  if (MODEL_ALIASES[s]) s = MODEL_ALIASES[s];
-
-  return s;
-}
-
 function normalizeModelNameForFeed(rawName) {
-  return canonicalModelName(rawName);
+  if (!rawName) return "";
+  let upper = rawName
+    .toString()
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .trim();
+  if (MODEL_ALIASES[upper]) return MODEL_ALIASES[upper];
+  return upper;
 }
 
 function normalizeModelNameFromCsv(rawName, storage) {
   if (!rawName) return "";
+  let upper = rawName
+    .toString()
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .trim();
 
-  let upper = String(rawName).toUpperCase().replace(/[\u00A0]/g, " ").replace(/\s+/g, " ").trim();
-
-  // Remove trailing storage if CSV stuffs it into the "name" column
-  const storageNorm = canonicalStorage(storage);
-  if (storageNorm) {
-    // handle " ... 256GB" and also " ... 256 GB"
-    const re = new RegExp(`\\s+${storageNorm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
-    upper = upper.replace(re, "").trim();
+  const storageNorm = (storage || "").toString().toUpperCase().trim();
+  if (storageNorm && upper.endsWith(" " + storageNorm)) {
+    upper = upper.slice(0, upper.length - storageNorm.length).trim();
   }
 
-  // Canonicalize the model name
-  upper = canonicalModelName(upper);
-
-  // One more pass of aliasing (in case storage stripping changed the string)
-  if (MODEL_ALIASES[upper]) upper = MODEL_ALIASES[upper];
-
+  if (MODEL_ALIASES[upper]) return MODEL_ALIASES[upper];
   return upper;
-}
-
-function canonicalStorage(raw) {
-  if (!raw) return "";
-  let s = String(raw).toUpperCase().trim();
-  // "256 GB" -> "256GB"
-  s = s.replace(/\s+/g, "");
-  return s;
 }
 
 // ===================== CARRIER NORMALIZATION =====================
@@ -158,7 +127,6 @@ function normalizeCarrierFromNetwork(networkRaw) {
   if (s === "verizon") return "verizon";
   if (s === "unlocked" || s === "sim-free" || s === "sim free") return "unlocked";
   if (s.includes("t-mobile") || s === "tmobile" || s === "t mobile") return "tmobile";
-  if (s === "other") return null; // treat as "any"
   return null;
 }
 
@@ -215,7 +183,7 @@ function parseCsv(text) {
 function csvToRecords(text) {
   const rows = parseCsv((text || "").trim());
   if (!rows.length) return [];
-  const header = rows[0].map((h) => String(h || "").trim());
+  const header = rows[0].map(h => String(h || "").trim());
   const records = [];
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
@@ -225,6 +193,90 @@ function csvToRecords(text) {
     records.push(obj);
   }
   return records;
+}
+
+// ===================== TEMPLATE CONDITION DISCOVERY =====================
+// We’ll discover what condition tags exist in your template XML under:
+// model -> prices -> priceValue -> carrierTag -> (conditionTag children)
+function discoverTemplateConditionsByCarrier(templateXmlText) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(templateXmlText, "application/xml");
+  const parseErr = doc.getElementsByTagName("parsererror")[0];
+  if (parseErr) throw new Error("Template XML parse error: " + parseErr.textContent.trim());
+
+  const carriers = ["att", "verizon", "tmobile", "unlocked"];
+  const found = { att: new Set(), verizon: new Set(), tmobile: new Set(), unlocked: new Set() };
+
+  const models = Array.from(doc.getElementsByTagName("model"));
+  for (const model of models) {
+    const pricesBlocks = Array.from(model.getElementsByTagName("prices"));
+    for (const pricesBlock of pricesBlocks) {
+      const priceValueEl = pricesBlock.getElementsByTagName("priceValue")[0];
+      if (!priceValueEl) continue;
+
+      for (const carrierTag of carriers) {
+        const carrierEl = priceValueEl.getElementsByTagName(carrierTag)[0];
+        if (!carrierEl) continue;
+
+        // child elements only
+        const children = Array.from(carrierEl.childNodes).filter(n => n.nodeType === 1);
+        for (const c of children) {
+          const tag = String(c.tagName || "").trim();
+          if (tag) found[carrierTag].add(tag);
+        }
+      }
+    }
+  }
+
+  // Convert sets to arrays
+  const out = {};
+  for (const c of carriers) out[c] = Array.from(found[c]).sort();
+  return out;
+}
+
+// ===================== SELL-CELL CONDITION BUCKET MAPPING =====================
+// SellCell sections (what we can index):
+// flawless -> prices_likenew
+// good     -> prices_good
+// fair     -> prices_poor
+// damaged  -> prices_faulty
+//
+// Your template/CSV condition keys might be: noPower, broken, crackedScreen, likeNew, etc.
+// We map arbitrary conditionTag -> one of: flawless, good, fair, damaged (SellCell bucket)
+function mapInternalConditionToSellCellBucket(conditionTagRaw) {
+  const s = String(conditionTagRaw || "").trim().toLowerCase();
+  if (!s) return "damaged";
+
+  // very good / like new
+  if (
+    s.includes("flaw") ||
+    s.includes("like") ||
+    s.includes("mint") ||
+    s.includes("excellent") ||
+    s.includes("a1") ||
+    s.includes("pristine")
+  ) return "flawless";
+
+  // good / normal wear
+  if (
+    s === "good" ||
+    s.includes("good") ||
+    s.includes("b") ||
+    s.includes("normal") ||
+    s.includes("wear")
+  ) return "good";
+
+  // fair / poor cosmetics
+  if (
+    s === "fair" ||
+    s.includes("fair") ||
+    s.includes("poor") ||
+    s.includes("c") ||
+    s.includes("heavy")
+  ) return "fair";
+
+  // broken/faulty/no power/etc
+  return "damaged";
 }
 
 // ===================== FEED INDEX FROM SELLCELL XML =====================
@@ -243,7 +295,6 @@ function buildFeedIndexFromXml(xmlText) {
 
   const devices = xmlDoc.getElementsByTagName("device");
   const index = {};
-
   for (let i = 0; i < devices.length; i++) {
     const d = devices[i];
     const nameEl = d.getElementsByTagName("device_name")[0];
@@ -251,7 +302,7 @@ function buildFeedIndexFromXml(xmlText) {
     const netEl = d.getElementsByTagName("network")[0];
 
     const deviceName = normalizeModelNameForFeed(nameEl ? nameEl.textContent : "");
-    const capacity = canonicalStorage(capEl ? capEl.textContent : "");
+    const capacity = String(capEl ? capEl.textContent : "").trim().toUpperCase();
     const networkRaw = netEl ? netEl.textContent : "";
     const carrierBucket = normalizeCarrierFromNetwork(networkRaw);
 
@@ -279,7 +330,7 @@ function buildFeedIndexFromXml(xmlText) {
       if (!prices.length) continue;
 
       const competitorPrices = prices
-        .map((p) => {
+        .map(p => {
           const mEl = p.getElementsByTagName("merchant_name")[0];
           const priceEl = p.getElementsByTagName("merchant_price")[0];
           const merchant = String(mEl ? mEl.textContent : "").trim().toLowerCase();
@@ -287,17 +338,15 @@ function buildFeedIndexFromXml(xmlText) {
           const v = parseMoney(priceEl ? priceEl.textContent : "");
           return Number.isFinite(v) ? v : null;
         })
-        .filter((v) => v != null);
+        .filter(v => v != null);
 
       if (!competitorPrices.length) continue;
       const top = Math.max(...competitorPrices);
 
-      // If carrierBucket is null/other -> treat as "any"
       if (carrierBucket && index[keyBase][carrierBucket]) {
         const bucket = index[keyBase][carrierBucket];
         if (!bucket[condKey] || top > bucket[condKey]) bucket[condKey] = top;
       }
-
       const anyBucket = index[keyBase].any;
       if (!anyBucket[condKey] || top > anyBucket[condKey]) anyBucket[condKey] = top;
     }
@@ -309,15 +358,15 @@ function buildFeedIndexFromXml(xmlText) {
 // Detect missing storage variants vs the feed and create placeholder rows
 function detectAndAddMissingVariants(csvRecords, feedIndex) {
   const modelStoragesInCsv = {};
-  csvRecords.forEach((r) => {
+  csvRecords.forEach(r => {
     const modelName = normalizeModelNameFromCsv(r.name, r.storage);
-    const storage = canonicalStorage(r.storage || "");
+    const storage = String(r.storage || "").trim().toUpperCase();
     if (!modelStoragesInCsv[modelName]) modelStoragesInCsv[modelName] = new Set();
     modelStoragesInCsv[modelName].add(storage);
   });
 
   const feedModelStorages = {};
-  Object.keys(feedIndex).forEach((key) => {
+  Object.keys(feedIndex).forEach(key => {
     const entry = feedIndex[key];
     const modelName = entry._modelName;
     const storage = entry._storage;
@@ -327,31 +376,28 @@ function detectAndAddMissingVariants(csvRecords, feedIndex) {
 
   const newVariants = [];
   const carriers = ["att", "verizon", "tmobile", "unlocked"];
-  const conditions = ["flawless", "good", "fair", "damaged"];
 
-  Object.keys(modelStoragesInCsv).forEach((modelName) => {
+  // NOTE: for new variants, we don’t know your internal condition tags.
+  // We’ll leave condition empty so you can fill later OR it just won’t price.
+  Object.keys(modelStoragesInCsv).forEach(modelName => {
     const csvStorages = modelStoragesInCsv[modelName];
     const feedStorages = feedModelStorages[modelName];
     if (!feedStorages) return;
 
-    feedStorages.forEach((feedStorage) => {
+    feedStorages.forEach(feedStorage => {
       if (csvStorages.has(feedStorage)) return;
 
-      carriers.forEach((carrier) => {
-        conditions.forEach((condition) => {
-          const sampleRow = csvRecords.find(
-            (r) => normalizeModelNameFromCsv(r.name, r.storage) === modelName
-          );
-          if (!sampleRow) return;
-          newVariants.push({
-            name: sampleRow.name,
-            storage: feedStorage,
-            lock_status: carrier,
-            condition,
-            price: "",
-            amz: "",
-            _isNewVariant: true,
-          });
+      carriers.forEach(carrier => {
+        const sampleRow = csvRecords.find(r => normalizeModelNameFromCsv(r.name, r.storage) === modelName);
+        if (!sampleRow) return;
+        newVariants.push({
+          name: sampleRow.name,
+          storage: feedStorage,
+          lock_status: carrier,
+          condition: sampleRow.condition || "", // inherit some condition key from your CSV to be safe
+          price: "",
+          amz: "",
+          _isNewVariant: true,
         });
       });
     });
@@ -361,29 +407,40 @@ function detectAndAddMissingVariants(csvRecords, feedIndex) {
 }
 
 // ===================== REPRICER LOGIC =====================
+function computeConditionFeeFromSellcellBucket(sellcellBucket) {
+  // keep your old fee logic but driven by bucket
+  if (sellcellBucket === "flawless" || sellcellBucket === "good") return 10;
+  if (sellcellBucket === "fair") return 30;
+  return 50; // damaged
+}
+
 function repriceRowFromFeed(row, feedIndex, priceIncrease) {
   const result = { ...row };
 
-  const storage = canonicalStorage(row.storage || "");
-  const condition = String(row.condition || "").toLowerCase();
+  const name = row.name;
+  const storage = String(row.storage || "").trim().toUpperCase();
   const carrierLock = normalizeCarrierLock(row.lock_status);
 
-  const key = normalizeModelNameFromCsv(row.name, storage) + "|" + storage;
+  const internalCondition = String(row.condition || "").trim(); // could be noPower, broken, etc
+  const sellcellBucket = mapInternalConditionToSellCellBucket(internalCondition);
+
+  const key = normalizeModelNameFromCsv(name, storage) + "|" + storage;
   const feedEntry = feedIndex[key];
 
   let feedPrice = null;
 
   if (feedEntry) {
     let bucket = null;
-    if (carrierLock && feedEntry[carrierLock] && feedEntry[carrierLock][condition] != null) {
+    if (carrierLock && feedEntry[carrierLock] && feedEntry[carrierLock][sellcellBucket] != null) {
       bucket = feedEntry[carrierLock];
-    } else if (feedEntry.any && feedEntry.any[condition] != null) {
+    } else if (feedEntry.any && feedEntry.any[sellcellBucket] != null) {
       bucket = feedEntry.any;
     }
-    if (bucket && bucket[condition] != null) feedPrice = bucket[condition];
+    if (bucket && bucket[sellcellBucket] != null) feedPrice = bucket[sellcellBucket];
   }
 
   result.original_feed_price = feedPrice != null ? feedPrice : null;
+  result._sellcell_bucket = sellcellBucket;
 
   const amazonPrice = parseMoney(row.amz);
   if (!amazonPrice || !feedPrice) {
@@ -391,7 +448,7 @@ function repriceRowFromFeed(row, feedIndex, priceIncrease) {
     result.new_price = null;
     result._status = !amazonPrice
       ? "No valid Amazon price"
-      : "No competitor feed price found for this carrier";
+      : `No competitor feed price found (${sellcellBucket})`;
     result._statusClass = "status-warn";
     return result;
   }
@@ -401,10 +458,7 @@ function repriceRowFromFeed(row, feedIndex, priceIncrease) {
   const after_sellcell = after_amazon - sellcell_fee;
   const shipping_fee = 15;
 
-  let condition_fee = 0;
-  if (condition === "flawless" || condition === "good") condition_fee = 10;
-  else if (condition === "fair") condition_fee = 30;
-  else if (condition === "damaged") condition_fee = 50;
+  const condition_fee = computeConditionFeeFromSellcellBucket(sellcellBucket);
 
   const total_walkaway = after_sellcell - shipping_fee - condition_fee;
 
@@ -428,12 +482,11 @@ function repriceRowFromFeed(row, feedIndex, priceIncrease) {
   result.profit_pct = profit_pct;
   result.new_price = new_price;
   result.new_profit = total_walkaway - new_price;
-  result.new_profit_pct = new_price ? result.new_profit / new_price : null;
+  result.new_profit_pct = new_price ? (result.new_profit / new_price) : null;
 
-  result._status =
-    profit_pct != null && profit_pct >= 0.15
-      ? `Already ≥ 15% profit – bumped $${priceIncrease.toFixed(2)}`
-      : "Repriced to hit 15% profit";
+  result._status = (profit_pct != null && profit_pct >= 0.15)
+    ? `Already ≥ 15% profit – bumped $${priceIncrease.toFixed(2)}`
+    : "Repriced to hit 15% profit";
   result._statusClass = "status-ok";
 
   return result;
@@ -456,31 +509,34 @@ function prettyPrintXml(xml) {
 
     result.push(PADDING.repeat(pad) + line);
 
-    if (/^<[^!?][^>]*[^/]>$/.test(line) && !/<\/.+>$/.test(line)) pad++;
+    if (
+      /^<[^!?][^>]*[^/]>$/.test(line) &&
+      !/<\/.+>$/.test(line)
+    ) pad++;
   }
   return result.join("\n");
 }
 
-// ===================== BUILD UPDATED XML FROM TEMPLATE + CHANGE COUNT =====================
+// ===================== BUILD UPDATED XML FROM TEMPLATE (DYNAMIC CONDITIONS) =====================
 function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(templateXmlText, "application/xml");
   const parseErr = doc.getElementsByTagName("parsererror")[0];
   if (parseErr) throw new Error("Template XML parse error: " + parseErr.textContent.trim());
 
+  const carriers = ["att", "verizon", "tmobile", "unlocked"];
+
+  // priceMap key: nameNorm|storage|carrier|conditionTag (conditionTag is EXACT template tag)
   const priceMap = new Map();
 
-  rows.forEach((r) => {
+  rows.forEach(r => {
     const nameNorm = normalizeModelNameFromCsv(r.name, r.storage);
-    const storage = canonicalStorage(r.storage || "");
+    const storage = String(r.storage || "").trim().toUpperCase();
     const lockCarrier = normalizeCarrierLock(r.lock_status);
     if (!lockCarrier) return;
 
-    const condRaw = String(r.condition || "").toLowerCase();
-    let condTag;
-    if (condRaw === "damaged") condTag = "broken";
-    else if (condRaw === "flawless" || condRaw === "good" || condRaw === "fair") condTag = condRaw;
-    else return;
+    const condTag = String(r.condition || "").trim(); // keep EXACT condition key from CSV
+    if (!condTag) return;
 
     const newPrice = r.new_price;
     if (newPrice == null || !Number.isFinite(newPrice)) return;
@@ -504,21 +560,23 @@ function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
       const pricesBlock = pricesBlocks[j];
       const storageEl = pricesBlock.getElementsByTagName("storageSize")[0];
       if (!storageEl) continue;
-      const storageVal = canonicalStorage(storageEl.textContent || "");
+      const storageVal = String(storageEl.textContent || "").trim().toUpperCase();
 
       const priceValueEl = pricesBlock.getElementsByTagName("priceValue")[0];
       if (!priceValueEl) continue;
 
-      ["att", "verizon", "tmobile", "unlocked"].forEach((carrierTag) => {
+      for (const carrierTag of carriers) {
         const carrierEl = priceValueEl.getElementsByTagName(carrierTag)[0];
-        if (!carrierEl) return;
+        if (!carrierEl) continue;
 
-        ["flawless", "good", "fair", "broken"].forEach((condTag) => {
-          const condEl = carrierEl.getElementsByTagName(condTag)[0];
-          if (!condEl) return;
+        // iterate ALL condition children dynamically
+        const condChildren = Array.from(carrierEl.childNodes).filter(n => n.nodeType === 1);
+        for (const condEl of condChildren) {
+          const condTag = String(condEl.tagName || "").trim();
+          if (!condTag) continue;
 
           const key = nameNorm + "|" + storageVal + "|" + carrierTag + "|" + condTag;
-          if (!priceMap.has(key)) return;
+          if (!priceMap.has(key)) continue;
 
           const nextVal = String(priceMap.get(key));
           const prevVal = String(condEl.textContent || "").trim();
@@ -528,14 +586,13 @@ function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
             changedNodes++;
             changedModels.add(nameNorm);
           }
-        });
-      });
+        }
+      }
     }
   }
 
   const serializer = new XMLSerializer();
   let xmlOut = serializer.serializeToString(doc);
-
   if (!/^<\?xml/i.test(xmlOut.trim())) {
     xmlOut = '<?xml version="1.0" encoding="UTF-8"?>\n' + xmlOut;
   }
@@ -550,25 +607,10 @@ function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
 // ===================== OPTIONAL: BUILD OUTPUT CSV =====================
 function buildOutputCsv(rows) {
   const header = [
-    "name",
-    "storage",
-    "lock_status",
-    "condition",
-    "price",
-    "amz",
-    "original_feed_price",
-    "amazon_price",
-    "after_amazon",
-    "sellcell_fee",
-    "shipping_fee",
-    "condition_fee",
-    "total_walkaway",
-    "profit",
-    "profit_pct",
-    "new_price",
-    "new_profit",
-    "new_profit_pct",
-    "status",
+    "name","storage","lock_status","condition","price","amz",
+    "sellcell_bucket","original_feed_price","amazon_price","after_amazon","sellcell_fee",
+    "shipping_fee","condition_fee","total_walkaway","profit","profit_pct",
+    "new_price","new_profit","new_profit_pct","status",
   ];
 
   const escapeCsv = (value) => {
@@ -587,6 +629,7 @@ function buildOutputCsv(rows) {
       r.condition,
       r.price,
       r.amz,
+      r._sellcell_bucket || "",
       r.original_feed_price != null ? Number(r.original_feed_price).toFixed(2) : "",
       r.amazon_price != null ? Number(r.amazon_price).toFixed(2) : "",
       r.after_amazon != null ? Number(r.after_amazon).toFixed(2) : "",
@@ -654,22 +697,21 @@ function parseDevicePricesXmlForImport(content) {
       if (!priceValueNode) return;
 
       const connectivityMap = {};
-      const connectivityChildren = Array.from(priceValueNode.childNodes).filter((n) => n.nodeType === 1);
+      const connectivityChildren = Array.from(priceValueNode.childNodes).filter(n => n.nodeType === 1);
 
       connectivityChildren.forEach((connectivityNode) => {
         const connectivityKey = String(connectivityNode.tagName || "").toLowerCase();
         const conditionEntries = {};
-        const conditionChildren = Array.from(connectivityNode.childNodes).filter((n) => n.nodeType === 1);
+        const conditionChildren = Array.from(connectivityNode.childNodes).filter(n => n.nodeType === 1);
 
         conditionChildren.forEach((conditionNode) => {
-          const conditionKey = String(conditionNode.tagName || "").toLowerCase();
+          const conditionKey = String(conditionNode.tagName || "");
           const numericValue = parseFloat(conditionNode.textContent);
           if (!Number.isNaN(numericValue)) conditionEntries[conditionKey] = numericValue;
         });
 
         if (Object.keys(conditionEntries).length > 0) {
-          if (!connectivityMap[connectivityKey]) connectivityMap[connectivityKey] = {};
-          connectivityMap[connectivityKey] = { ...connectivityMap[connectivityKey], ...conditionEntries };
+          connectivityMap[connectivityKey] = { ...(connectivityMap[connectivityKey] || {}), ...conditionEntries };
         }
       });
 
@@ -722,7 +764,7 @@ async function importToFirestoreAlways(updatedXmlText) {
 
     try {
       const snap = await docRef.get();
-      const before = snap.exists ? snap.data() || {} : {};
+      const before = snap.exists ? (snap.data() || {}) : {};
 
       const beforePrices = before.prices || {};
       const afterPrices = model.prices || {};
@@ -771,21 +813,15 @@ function countPriceLeafDiffs(beforePrices, afterPrices) {
       for (const cond of conds) {
         const bV = bC?.[cond];
         const aV = aC?.[cond];
-        const bNum = typeof bV === "number" ? bV : bV != null ? Number(bV) : null;
-        const aNum = typeof aV === "number" ? aV : aV != null ? Number(aV) : null;
+        const bNum = typeof bV === "number" ? bV : (bV != null ? Number(bV) : null);
+        const aNum = typeof aV === "number" ? aV : (aV != null ? Number(aV) : null);
 
         const bOk = Number.isFinite(bNum);
         const aOk = Number.isFinite(aNum);
 
         if (!bOk && !aOk) continue;
-        if (!bOk && aOk) {
-          diffs++;
-          continue;
-        }
-        if (bOk && !aOk) {
-          diffs++;
-          continue;
-        }
+        if (!bOk && aOk) { diffs++; continue; }
+        if (bOk && !aOk) { diffs++; continue; }
 
         if (Number(bNum).toFixed(2) !== Number(aNum).toFixed(2)) diffs++;
       }
@@ -797,11 +833,7 @@ function countPriceLeafDiffs(beforePrices, afterPrices) {
 // ---------------- MAIN ----------------
 async function main() {
   console.log(`[repricer] dir=${cwd}`);
-  console.log(
-    `[repricer] bump=$${PRICE_INCREASE.toFixed(2)}  write-csv=${
-      WRITE_OUTPUT_CSV ? "yes" : "no"
-    }  firestore=YES  gca=${RUN_GCA ? "yes" : "no"}`
-  );
+  console.log(`[repricer] bump=$${PRICE_INCREASE.toFixed(2)}  write-csv=${WRITE_OUTPUT_CSV ? "yes" : "no"}  firestore=YES  gca=${RUN_GCA ? "yes" : "no"}`);
 
   if (!fs.existsSync(CSV_PATH)) {
     throw new Error(`Missing ${CSV_PATH}. Put your CSV there as amz.csv`);
@@ -810,8 +842,15 @@ async function main() {
     throw new Error(`Missing ${TEMPLATE_XML_PATH}. Put your template device-prices XML there as feed.xml`);
   }
 
-  // 0) read "before" template to count xml changes
   const templateXmlBefore = fs.readFileSync(TEMPLATE_XML_PATH, "utf8");
+
+  // show template condition tags (this is the smoking gun)
+  const conds = discoverTemplateConditionsByCarrier(templateXmlBefore);
+  console.log("[repricer] template condition tags by carrier:");
+  console.log("  att     =", conds.att.join(", ") || "(none)");
+  console.log("  verizon =", conds.verizon.join(", ") || "(none)");
+  console.log("  tmobile =", conds.tmobile.join(", ") || "(none)");
+  console.log("  unlocked=", conds.unlocked.join(", ") || "(none)");
 
   // 1) download SellCell feed
   console.log(`[repricer] downloading SellCell feed: ${SELLCELL_URL}`);
@@ -839,24 +878,25 @@ async function main() {
   const newVariants = detectAndAddMissingVariants(rawRecords, feedIndex);
   const allRecords = [...rawRecords, ...newVariants];
 
-  console.log(
-    `[repricer] csvRows=${rawRecords.length}  newVariants=${newVariants.length}  total=${allRecords.length}`
-  );
+  console.log(`[repricer] csvRows=${rawRecords.length}  newVariants=${newVariants.length}  total=${allRecords.length}`);
 
   const resultRows = allRecords.map((r) => repriceRowFromFeed(r, feedIndex, PRICE_INCREASE));
 
-  // 5) build updated XML from template + count changes
-  const { updatedXml, changedNodes, changedModelsCount } = buildUpdatedXmlFromTemplateWithDiff(
-    templateXmlBefore,
-    resultRows
-  );
+  // debug a specific model if requested (brand/slug)
+  if (DEBUG_ONE) {
+    console.log(`[debug-one] requested: ${DEBUG_ONE}`);
+    // we can’t map slug->name here without parsing template; the import stage below will show it.
+    console.log(`[debug-one] Tip: after run, use the Firestore probe command I gave you to inspect that doc.`);
+  }
+
+  // 5) build updated XML from template + count changes (DYNAMIC condition tags)
+  const { updatedXml, changedNodes, changedModelsCount } =
+    buildUpdatedXmlFromTemplateWithDiff(templateXmlBefore, resultRows);
 
   // 6) overwrite feed.xml
   fs.writeFileSync(TEMPLATE_XML_PATH, updatedXml, "utf8");
   console.log(`[repricer] updated template written -> ${TEMPLATE_XML_PATH}`);
-  console.log(
-    `[repricer] xml price nodes changed=${changedNodes.toLocaleString()}  models touched=${changedModelsCount.toLocaleString()}`
-  );
+  console.log(`[repricer] xml price nodes changed=${changedNodes.toLocaleString()}  models touched=${changedModelsCount.toLocaleString()}`);
 
   // 7) optional output csv
   if (WRITE_OUTPUT_CSV) {
@@ -873,7 +913,7 @@ async function main() {
 
   if (r.warnings.length) {
     console.log("[import] warnings:");
-    r.warnings.slice(0, 30).forEach((w) => console.log(" - " + w));
+    r.warnings.slice(0, 30).forEach(w => console.log(" - " + w));
     if (r.warnings.length > 30) console.log(` - ... +${r.warnings.length - 30} more`);
   }
 
