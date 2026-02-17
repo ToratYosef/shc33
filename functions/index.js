@@ -1630,63 +1630,110 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       })();
     </script>
 
-    <!-- Login Modal -->
-    <div id="loginModal" class="shc-auth-modal" style="display:none">
-      <div class="shc-auth-card" role="dialog" aria-modal="true" aria-labelledby="shc-auth-title">
-        <button class="shc-auth-close" type="button" aria-label="Close authentication modal">&times;</button>
-
-        <div class="shc-auth-header">
-          <p class="shc-auth-title" id="shc-auth-title">Your SecondHandCell Account</p>
-          <p class="shc-auth-subtitle">Sign in or create an account to keep your quote in sync.</p>
-        </div>
-
-        <div class="shc-auth-tabs" role="tablist">
-          <button class="shc-auth-tab is-active" id="loginTabBtn" type="button" data-tab="login">Login</button>
-          <button class="shc-auth-tab" id="signupTabBtn" type="button" data-tab="signup">Sign Up</button>
-        </div>
-
-        <div id="authMessage" class="shc-auth-message" role="alert"></div>
-
-        <form id="loginForm" class="shc-auth-form is-visible" novalidate>
-          <button type="button" id="googleLoginBtn" class="shc-auth-google">
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google icon" />
-            Login with Google
-          </button>
-
-          <div class="shc-auth-or"><span>or</span></div>
-
-          <input type="email" id="loginEmail" class="shc-auth-field" placeholder="Email address" autocomplete="email" required />
-          <input type="password" id="loginPassword" class="shc-auth-field" placeholder="Password" autocomplete="current-password" required />
-
-          <button type="submit" class="shc-auth-primary">Login</button>
-
-          <p class="shc-auth-meta">
-            Forgot your password? <a href="#" id="forgotPasswordLink" class="shc-auth-link">Reset it</a>
-          </p>
-        </form>
-
-        <form id="signupForm" class="shc-auth-form" novalidate>
-          <button type="button" id="googleSignupBtn" class="shc-auth-google">
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google icon" />
-            Sign up with Google
-          </button>
-
-          <div class="shc-auth-or"><span>or</span></div>
-
-          <input type="text" id="signupName" class="shc-auth-field" placeholder="Full name" autocomplete="name" required />
-          <input type="email" id="signupEmail" class="shc-auth-field" placeholder="Email address" autocomplete="email" required />
-          <input type="password" id="signupPassword" class="shc-auth-field" placeholder="Password (min 6 characters)" autocomplete="new-password" required />
-
-          <button type="submit" class="shc-auth-primary">Create Account</button>
-
-          <p class="shc-auth-meta">
-            Already have an account? <a href="#" id="switchToLogin" class="shc-auth-link">Login</a>
-          </p>
-        </form>
-      </div>
-    </div>
-
     <script type="module" src="https://secondhandcell.com/assets/js/global-auth.js" defer></script>
+
+    <script>
+      const createModal = () => {
+        if (document.getElementById("loginModal")) return document.getElementById("loginModal");
+
+        const overlay = document.createElement("div");
+        overlay.id = "loginModal";
+        overlay.className = "shc-auth-modal";
+        overlay.style.display = "none";
+
+        overlay.innerHTML = \`
+          <div class="shc-auth-card" role="dialog" aria-modal="true" aria-labelledby="shc-auth-title">
+            <button class="shc-auth-close" type="button" aria-label="Close authentication modal">&times;</button>
+            <div class="shc-auth-header">
+              <p class="shc-auth-title" id="shc-auth-title">Your SecondHandCell Account</p>
+              <p class="shc-auth-subtitle">Sign in or create an account to keep your quote in sync.</p>
+            </div>
+            <div class="shc-auth-tabs" role="tablist">
+              <button class="shc-auth-tab is-active" id="loginTabBtn" type="button" data-tab="login">Login</button>
+              <button class="shc-auth-tab" id="signupTabBtn" type="button" data-tab="signup">Sign Up</button>
+            </div>
+            <div id="authMessage" class="shc-auth-message" role="alert"></div>
+
+            <form id="loginForm" class="shc-auth-form is-visible" novalidate>
+              <button type="button" id="googleLoginBtn" class="shc-auth-google">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google icon"/>
+                Login with Google
+              </button>
+              <div class="shc-auth-or"><span>or</span></div>
+              <input type="email" id="loginEmail" class="shc-auth-field" placeholder="Email address" autocomplete="email" required />
+              <input type="password" id="loginPassword" class="shc-auth-field" placeholder="Password" autocomplete="current-password" required />
+              <button type="submit" class="shc-auth-primary">Login</button>
+              <p class="shc-auth-meta">Forgot your password? <a href="#" id="forgotPasswordLink" class="shc-auth-link" onclick="event.preventDefault()">Reset it</a></p>
+            </form>
+
+            <form id="signupForm" class="shc-auth-form" novalidate>
+              <button type="button" id="googleSignupBtn" class="shc-auth-google">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google icon"/>
+                Sign up with Google
+              </button>
+              <div class="shc-auth-or"><span>or</span></div>
+              <input type="text" id="signupName" class="shc-auth-field" placeholder="Full name" autocomplete="name" required />
+              <input type="email" id="signupEmail" class="shc-auth-field" placeholder="Email address" autocomplete="email" required />
+              <input type="password" id="signupPassword" class="shc-auth-field" placeholder="Password (min 6 characters)" autocomplete="new-password" required />
+              <button type="submit" class="shc-auth-primary">Create Account</button>
+              <p class="shc-auth-meta">Already have an account? <a href="#" id="switchToLogin" class="shc-auth-link" onclick="event.preventDefault()">Login</a></p>
+            </form>
+          </div>
+        \`;
+
+        document.body.appendChild(overlay);
+        
+        // Setup event listeners
+        const closeBtn = overlay.querySelector('.shc-auth-close');
+        const loginTabBtn = overlay.querySelector('#loginTabBtn');
+        const signupTabBtn = overlay.querySelector('#signupTabBtn');
+        const switchToLoginLink = overlay.querySelector('#switchToLogin');
+        
+        const closeModal = () => {
+          overlay.style.display = 'none';
+        };
+        
+        const showTab = (tabName) => {
+          const forms = overlay.querySelectorAll('.shc-auth-form');
+          const tabs = overlay.querySelectorAll('.shc-auth-tab');
+          forms.forEach(f => f.classList.remove('is-visible'));
+          tabs.forEach(t => t.classList.remove('is-active'));
+          
+          overlay.querySelector('#' + (tabName === 'login' ? 'loginForm' : 'signupForm')).classList.add('is-visible');
+          overlay.querySelector('#' + (tabName === 'login' ? 'loginTabBtn' : 'signupTabBtn')).classList.add('is-active');
+        };
+        
+        closeBtn.addEventListener('click', closeModal);
+        overlay.addEventListener('click', (e) => {
+          if (e.target === overlay) closeModal();
+        });
+        
+        loginTabBtn.addEventListener('click', () => showTab('login'));
+        signupTabBtn.addEventListener('click', () => showTab('signup'));
+        switchToLoginLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          showTab('login');
+        });
+        
+        return overlay;
+      };
+
+      // Initialize modal on page load
+      document.addEventListener('DOMContentLoaded', () => {
+        createModal();
+        
+        // Look for any elements that should trigger the modal
+        document.addEventListener('click', (e) => {
+          if (e.target.matches('[data-login-modal]') || e.target.closest('[data-login-modal]')) {
+            e.preventDefault();
+            const modal = document.getElementById('loginModal');
+            if (modal) {
+              modal.style.display = 'flex';
+            }
+          }
+        });
+      });
+    </script>
   </body>
 </html>`);
   } catch (error) {
