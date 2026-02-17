@@ -75,6 +75,189 @@ const TRANSIT_KEYWORDS = [
 
 const USPS_FIRST_CLASS_SERVICE_CODE = 'usps_first_class_mail';
 const USPS_PRIORITY_SERVICE_CODE = 'usps_priority_mail';
+const SHIPENGINE_TRACKING_CACHE_TTL_MS = Math.max(
+    0,
+    Number(process.env.SHIPENGINE_TRACKING_CACHE_TTL_MS || 2 * 60 * 1000)
+);
+const SHIPENGINE_MIN_REQUEST_GAP_MS = Math.max(
+    0,
+    Number(process.env.SHIPENGINE_MIN_REQUEST_GAP_MS || 350)
+);
+const SHIPENGINE_MAX_CONCURRENT_TRACKING_REQUESTS = Math.max(
+    1,
+    Number(process.env.SHIPENGINE_MAX_CONCURRENT_TRACKING_REQUESTS || 1)
+);
+const SHIPENGINE_TRACKING_MAX_RETRIES = Math.max(
+    0,
+    Number(process.env.SHIPENGINE_TRACKING_MAX_RETRIES || 3)
+);
+const SHIPENGINE_TRACKING_RETRY_BASE_MS = Math.max(
+    100,
+    Number(process.env.SHIPENGINE_TRACKING_RETRY_BASE_MS || 600)
+);
+const SHIPENGINE_TRACKING_RETRY_MAX_MS = Math.max(
+    SHIPENGINE_TRACKING_RETRY_BASE_MS,
+    Number(process.env.SHIPENGINE_TRACKING_RETRY_MAX_MS || 10000)
+);
+
+const shipEngineTrackingCache = new Map();
+const shipEngineTrackingInFlight = new Map();
+const shipEngineRequestWaiters = [];
+let shipEngineActiveRequests = 0;
+let shipEngineLastRequestStartedAt = 0;
+
+function sleepMs(ms) {
+    return new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms) || 0)));
+}
+
+async function acquireShipEngineRequestSlot() {
+    if (shipEngineActiveRequests < SHIPENGINE_MAX_CONCURRENT_TRACKING_REQUESTS) {
+        shipEngineActiveRequests += 1;
+        return;
+    }
+
+    await new Promise((resolve) => {
+        shipEngineRequestWaiters.push(resolve);
+    });
+
+    shipEngineActiveRequests += 1;
+}
+
+function releaseShipEngineRequestSlot() {
+    shipEngineActiveRequests = Math.max(0, shipEngineActiveRequests - 1);
+    const waiter = shipEngineRequestWaiters.shift();
+    if (typeof waiter === 'function') {
+        waiter();
+    }
+}
+
+async function waitForShipEngineRequestGap() {
+    if (!SHIPENGINE_MIN_REQUEST_GAP_MS) {
+        shipEngineLastRequestStartedAt = Date.now();
+        return;
+    }
+
+    const elapsed = Date.now() - shipEngineLastRequestStartedAt;
+    const waitMs = SHIPENGINE_MIN_REQUEST_GAP_MS - elapsed;
+    if (waitMs > 0) {
+        await sleepMs(waitMs);
+    }
+
+    shipEngineLastRequestStartedAt = Date.now();
+}
+
+function parseRetryAfterMs(rawHeaderValue) {
+    if (rawHeaderValue === undefined || rawHeaderValue === null) {
+        return null;
+    }
+
+    const asString = String(rawHeaderValue).trim();
+    if (!asString) {
+        return null;
+    }
+
+    const seconds = Number(asString);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+        return seconds * 1000;
+    }
+
+    const dateMs = Date.parse(asString);
+    if (Number.isNaN(dateMs)) {
+        return null;
+    }
+
+    return Math.max(0, dateMs - Date.now());
+}
+
+function isShipEngineRateLimitError(error) {
+    const status = Number(error?.response?.status || 0);
+    return status === 429;
+}
+
+function computeShipEngineRetryDelayMs(error, attemptIndex) {
+    const retryAfterHeader =
+        error?.response?.headers?.['retry-after'] ||
+        error?.response?.headers?.['Retry-After'] ||
+        null;
+    const retryAfterMs = parseRetryAfterMs(retryAfterHeader);
+    if (Number.isFinite(retryAfterMs) && retryAfterMs >= 0) {
+        return Math.min(SHIPENGINE_TRACKING_RETRY_MAX_MS, Math.max(SHIPENGINE_TRACKING_RETRY_BASE_MS, retryAfterMs));
+    }
+
+    const expDelay = SHIPENGINE_TRACKING_RETRY_BASE_MS * Math.pow(2, Math.max(0, attemptIndex));
+    const jitter = Math.floor(Math.random() * 250);
+    return Math.min(SHIPENGINE_TRACKING_RETRY_MAX_MS, expDelay + jitter);
+}
+
+function getCachedShipEngineTracking(cacheKey) {
+    if (!cacheKey) {
+        return null;
+    }
+
+    const cachedEntry = shipEngineTrackingCache.get(cacheKey);
+    if (!cachedEntry) {
+        return null;
+    }
+
+    if (cachedEntry.expiresAt <= Date.now()) {
+        shipEngineTrackingCache.delete(cacheKey);
+        return null;
+    }
+
+    return cachedEntry.data;
+}
+
+function setCachedShipEngineTracking(cacheKey, data) {
+    if (!cacheKey || !SHIPENGINE_TRACKING_CACHE_TTL_MS) {
+        return;
+    }
+
+    shipEngineTrackingCache.set(cacheKey, {
+        data,
+        expiresAt: Date.now() + SHIPENGINE_TRACKING_CACHE_TTL_MS,
+    });
+
+    if (shipEngineTrackingCache.size > 1000) {
+        for (const [key, entry] of shipEngineTrackingCache.entries()) {
+            if (!entry || entry.expiresAt <= Date.now()) {
+                shipEngineTrackingCache.delete(key);
+            }
+        }
+    }
+}
+
+function buildShipEngineTrackingCacheKey({ trackingNumber, carrierCode, defaultCarrierCode = DEFAULT_CARRIER_CODE }) {
+    const normalizedCarrier = normalizeCarrierCode(carrierCode) || normalizeCarrierCode(defaultCarrierCode) || DEFAULT_CARRIER_CODE;
+    return `${normalizedCarrier}:${String(trackingNumber || '').trim()}`;
+}
+
+async function requestShipEngineTrackingData({ axiosClient, trackingUrl, shipengineKey }) {
+    let attempt = 0;
+    while (true) {
+        await acquireShipEngineRequestSlot();
+        try {
+            await waitForShipEngineRequestGap();
+            const response = await axiosClient.get(trackingUrl, {
+                headers: {
+                    'API-Key': shipengineKey,
+                },
+                timeout: 20000,
+            });
+
+            return response?.data || {};
+        } catch (error) {
+            if (!isShipEngineRateLimitError(error) || attempt >= SHIPENGINE_TRACKING_MAX_RETRIES) {
+                throw error;
+            }
+
+            const retryDelayMs = computeShipEngineRetryDelayMs(error, attempt);
+            attempt += 1;
+            await sleepMs(retryDelayMs);
+        } finally {
+            releaseShipEngineRequestSlot();
+        }
+    }
+}
 
 function resolveUspsServiceAndWeightByDeviceCount(deviceCountInput) {
     const normalizedDeviceCount = Math.max(1, Number(deviceCountInput) || 1);
@@ -333,20 +516,42 @@ async function fetchTrackingData({
     }
 
     if (shipengineKey) {
+        const cacheKey = buildShipEngineTrackingCacheKey({
+            trackingNumber,
+            carrierCode,
+            defaultCarrierCode,
+        });
+        const cachedData = getCachedShipEngineTracking(cacheKey);
+        if (cachedData) {
+            return cachedData;
+        }
+
+        const existingRequest = shipEngineTrackingInFlight.get(cacheKey);
+        if (existingRequest) {
+            return existingRequest;
+        }
+
         const trackingUrl = buildTrackingUrl({
             trackingNumber,
             carrierCode,
             defaultCarrierCode,
         });
 
-        const response = await axiosClient.get(trackingUrl, {
-            headers: {
-                'API-Key': shipengineKey,
-            },
-            timeout: 20000,
+        const trackingRequest = requestShipEngineTrackingData({
+            axiosClient,
+            trackingUrl,
+            shipengineKey,
+        }).then((data) => {
+            setCachedShipEngineTracking(cacheKey, data);
+            return data;
         });
 
-        return response?.data || {};
+        shipEngineTrackingInFlight.set(cacheKey, trackingRequest);
+        try {
+            return await trackingRequest;
+        } finally {
+            shipEngineTrackingInFlight.delete(cacheKey);
+        }
     }
 
     if (errors.length) {

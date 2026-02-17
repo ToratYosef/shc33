@@ -2728,8 +2728,13 @@ const AUTO_VOID_DELAY_MS = 28 * 24 * 60 * 60 * 1000; // 28 days
 const AUTO_VOID_QUERY_LIMIT = 50;
 const AUTO_VOID_RETRY_DELAY_MS = 12 * 60 * 60 * 1000; // 12 hours between automatic retry attempts
 const AUTO_TRACKING_REFRESH_QUERY_LIMIT = 200;
+const TRACKING_REFRESH_MIN_INTERVAL_MS = Math.max(
+  0,
+  Number(process.env.TRACKING_REFRESH_MIN_INTERVAL_MS || 10 * 60 * 1000)
+);
 const AUTO_REDUCED_PAYOUT_DELAY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const AUTO_REDUCED_PAYOUT_QUERY_LIMIT = 300;
+let automaticInboundTrackingRefreshInProgress = false;
 
 
 function formatOrderAgeInDays(order = {}) {
@@ -2880,6 +2885,45 @@ function toDate(value) {
     }
   }
   return null;
+}
+
+function getMostRecentTrackingRefreshAt(order = {}, mode = 'inbound') {
+  if (mode === 'kit') {
+    return (
+      toDate(order.kitTrackingLastRefreshedAt) ||
+      toDate(order.outboundTrackingLastSyncedAt) ||
+      toDate(order.lastTrackingRefreshAt) ||
+      null
+    );
+  }
+
+  return (
+    toDate(order.labelTrackingLastSyncedAt) ||
+    toDate(order.inboundTrackingLastRefreshedAt) ||
+    toDate(order.lastTrackingRefreshAt) ||
+    null
+  );
+}
+
+function describeTrackingRefreshCooldown(order = {}, mode = 'inbound') {
+  if (!TRACKING_REFRESH_MIN_INTERVAL_MS) {
+    return null;
+  }
+
+  const latestRefresh = getMostRecentTrackingRefreshAt(order, mode);
+  if (!latestRefresh) {
+    return null;
+  }
+
+  const elapsedMs = Date.now() - latestRefresh.getTime();
+  if (!Number.isFinite(elapsedMs) || elapsedMs >= TRACKING_REFRESH_MIN_INTERVAL_MS) {
+    return null;
+  }
+
+  const remainingMs = TRACKING_REFRESH_MIN_INTERVAL_MS - elapsedMs;
+  const remainingMinutes = Math.max(1, Math.ceil(remainingMs / 60000));
+  const scopeLabel = mode === 'kit' ? 'Kit tracking' : 'Inbound tracking';
+  return `${scopeLabel} was refreshed recently. Try again in about ${remainingMinutes} minute${remainingMinutes === 1 ? '' : 's'}.`;
 }
 
 function cloneShipEngineLabelMap(labels) {
@@ -5263,6 +5307,13 @@ async function refreshKitTrackingById(orderId, options = {}) {
     return { skipped: true, reason: 'No tracking numbers available for this order.' };
   }
 
+  if (!options.force) {
+    const cooldownMessage = describeTrackingRefreshCooldown(order, 'kit');
+    if (cooldownMessage) {
+      return { skipped: true, reason: cooldownMessage };
+    }
+  }
+
   const shipengineKey = options.shipengineKey || process.env.SHIPENGINE_KEY || null;
   const shipstationCredentials = options.shipstationCredentials || getShipStationCredentials();
   if (!shipengineKey && !shipstationCredentials) {
@@ -5351,7 +5402,10 @@ async function refreshKitTrackingById(orderId, options = {}) {
 
 app.post('/orders/:id/refresh-kit-tracking', async (req, res) => {
   try {
-    const payload = await refreshKitTrackingById(req.params.id, { source: 'admin_manual' });
+    const payload = await refreshKitTrackingById(req.params.id, {
+      source: 'admin_manual',
+      force: Boolean(req.body?.force),
+    });
     res.json(payload);
   } catch (error) {
     if (error?.statusCode) {
@@ -5475,6 +5529,18 @@ async function syncInboundTrackingForOrder(order, options = {}) {
       tracking: null,
       skipped: 'no_tracking',
     };
+  }
+
+  if (!options.force) {
+    const cooldownMessage = describeTrackingRefreshCooldown(order, 'inbound');
+    if (cooldownMessage) {
+      return {
+        order,
+        tracking: null,
+        skipped: 'recently_refreshed',
+        reason: cooldownMessage,
+      };
+    }
   }
 
   const shipEngineKey = options.shipengineKey || process.env.SHIPENGINE_KEY || null;
@@ -5871,6 +5937,10 @@ async function refreshEmailLabelTrackingById(orderId, options = {}) {
     return { skipped: true, reason: 'Tracking API returned no inbound data for this order.' };
   }
 
+  if (result.skipped === 'recently_refreshed') {
+    return { skipped: true, reason: result.reason || 'Inbound tracking was refreshed recently.' };
+  }
+
   return {
     message: 'Label tracking synchronized.',
     order: { id: result.order.id, status: result.order.status },
@@ -5881,7 +5951,10 @@ async function refreshEmailLabelTrackingById(orderId, options = {}) {
 
 app.post('/orders/:id/sync-label-tracking', async (req, res) => {
   try {
-    const payload = await refreshEmailLabelTrackingById(req.params.id, { source: 'admin_manual' });
+    const payload = await refreshEmailLabelTrackingById(req.params.id, {
+      source: 'admin_manual',
+      force: Boolean(req.body?.force),
+    });
     res.json(payload);
   } catch (error) {
     const message = error?.message || 'Failed to sync label tracking';
@@ -6628,6 +6701,14 @@ async function runAutomaticReducedPayoutSweep() {
 
 
 async function runAutomaticInboundTrackingRefresh() {
+  if (automaticInboundTrackingRefreshInProgress) {
+    console.log('Automatic inbound tracking refresh is already running; skipping overlap run.');
+    return;
+  }
+
+  automaticInboundTrackingRefreshInProgress = true;
+
+  try {
   const snapshot = await ordersCollection
     .where('status', 'in', ['label_generated', PHONE_TRANSIT_STATUS, 'phone_on_the_way_to_us'])
     .limit(AUTO_TRACKING_REFRESH_QUERY_LIMIT)
@@ -6645,6 +6726,9 @@ async function runAutomaticInboundTrackingRefresh() {
     } catch (error) {
       console.error(`Automatic inbound tracking refresh failed for order ${order.id}:`, error.response?.data || error);
     }
+  }
+  } finally {
+    automaticInboundTrackingRefreshInProgress = false;
   }
 }
 
@@ -8209,7 +8293,7 @@ exports.refreshTracking = functions.runWith({ timeoutSeconds: 540, memory: '1GB'
       return res.status(405).json({ error: 'Method not allowed. Use POST.' });
     }
 
-    const { orderId, type } = req.body || {};
+    const { orderId, type, force } = req.body || {};
     if (!orderId || !type) {
       return res.status(400).json({ error: 'orderId and type are required.' });
     }
@@ -8226,7 +8310,10 @@ exports.refreshTracking = functions.runWith({ timeoutSeconds: 540, memory: '1GB'
     }
 
     try {
-      const payload = await handler(orderId, { source: 'admin_manual' });
+      const payload = await handler(orderId, {
+        source: 'admin_manual',
+        force: Boolean(force),
+      });
       res.json({ type: normalizedType, ...payload });
     } catch (error) {
       const statusCode = error?.statusCode || 500;
