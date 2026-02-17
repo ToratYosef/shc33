@@ -832,6 +832,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Issue Resolution - SecondHandCell</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
       :root {
         color-scheme: light;
@@ -1006,34 +1007,6 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         font-size: 14px;
         font-weight: 500;
       }
-      .footer {
-        background: #1e293b;
-        color: #cbd5e1;
-        padding: 30px 24px;
-        text-align: center;
-      }
-      .footer-content {
-        max-width: 1200px;
-        margin: 0 auto;
-      }
-      .footer-links {
-        margin-bottom: 16px;
-      }
-      .footer-link {
-        color: #cbd5e1;
-        text-decoration: none;
-        margin: 0 12px;
-        font-size: 14px;
-        transition: color 0.2s;
-      }
-      .footer-link:hover {
-        color: #ffffff;
-      }
-      .footer-text {
-        font-size: 13px;
-        color: #94a3b8;
-        margin: 8px 0 0;
-      }
     </style>
   </head>
   <body>
@@ -1055,14 +1028,80 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       </div>
     </main>
     
-    <footer class="footer">
-      <div class="footer-content">
-        <div class="footer-links">
-          <a href="https://secondhandcell.com" class="footer-link">Home</a>
-          <a href="https://secondhandcell.com/track-order.html" class="footer-link">Track Order</a>
-          <a href="https://secondhandcell.com/contact.html" class="footer-link">Contact Us</a>
+    <footer class="bg-slate-800 text-white">
+      <div class="container mx-auto px-4 py-12">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-8">
+            <div>
+              <h3 class="text-xl font-bold mb-4">SecondHandCell</h3>
+              <p class="text-slate-400">Your trusted partner for selling used tech. Quick quotes, fair prices, and hassle-free service.</p>
+            </div>
+
+            <div>
+              <h3 class="text-xl font-bold mb-4">Quick Links</h3>
+              <ul class="space-y-2">
+                <li><a href="https://secondhandcell.com/index.html" class="text-slate-400 hover:text-white transition duration-300">Home</a></li>
+                <li><a href="https://secondhandcell.com/about.html" class="text-slate-400 hover:text-white transition duration-300">About Us</a></li>
+                <li><a href="https://secondhandcell.com/privacy.html" class="text-slate-400 hover:text-white transition duration-300">Privacy Policy</a></li>
+                <li><a href="https://secondhandcell.com/terms.html" class="text-slate-400 hover:text-white transition duration-300">Terms &amp; Conditions</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 class="text-xl font-bold mb-4">Contact Us</h3>
+              <p class="text-slate-400">Email: support@secondhandcell.com</p>
+            </div>
+          </div>
+
+          <div class="bg-slate-700 p-6 rounded-lg">
+            <h3 class="text-xl font-bold mb-2 text-white">Stay Updated</h3>
+            <p class="text-slate-300 mb-4">Sign up for updates, price increases, and more!</p>
+            <form id="footerEmailSignupForm" class="flex flex-col sm:flex-row gap-2">
+              <input
+                type="email"
+                id="footerEmail"
+                placeholder="Enter your email"
+                class="w-full flex-grow border border-slate-400 bg-slate-800 text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+              <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700">Sign Up</button>
+            </form>
+            <div id="footerSignupMessage" class="mt-3 text-sm text-center"></div>
+          </div>
         </div>
-        <p class="footer-text">&copy; 2026 SecondHandCell. All rights reserved.</p>
+
+        <div class="bg-slate-800 text-white p-6 rounded-xl shadow-lg mt-8 text-center border-2 border-red-600">
+          <p class="text-lg font-bold">IMPORTANT NOTICE</p>
+          <p class="mt-2 text-sm md:text-base">We do not purchase blacklisted or lost/stolen devices. All devices are verified through a legal compliance check.</p>
+        </div>
+
+        <div class="mt-8">
+          <div class="flex flex-wrap items-center justify-center gap-6 sm:flex-row sm:justify-center sm:gap-8 lg:justify-start">
+            <a href="https://www.sellcell.com/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center">
+              <img
+                src="https://secondhandcell.com/assets/sellcell.webp"
+                width="150"
+                height="107"
+                alt="SellCell Accredited Buyer"
+                loading="lazy"
+                class="h-20 w-auto object-contain"
+              >
+            </a>
+
+            <a href="https://www.trustpilot.com/evaluate/secondhandcell.com" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center">
+              <img
+                src="https://secondhandcell.com/assets/stars-4.svg"
+                alt="Trustpilot 5 star rating"
+                loading="lazy"
+                class="h-12 w-auto object-contain"
+              >
+            </a>
+          </div>
+        </div>
+
+        <div class="border-t border-slate-700 mt-8 pt-6 text-center text-slate-400 text-sm">
+          <p>&copy; 2026 SecondHandCell. All rights reserved.</p>
+        </div>
       </div>
     </footer>
     <script>
