@@ -690,22 +690,149 @@ function toTitleCase(value) {
 }
 
 const ISSUE_COPY = {
-  outstanding_balance: {
-    title: 'Outstanding Balance',
-    detail: 'Please pay off any carrier balance tied to the device.',
-  },
-  password_locked: {
-    title: 'Password Locked',
-    detail: 'Remove the passcode and sign out of all accounts on the phone.',
-  },
-  stolen: {
-    title: 'Reported Lost or Stolen',
-    detail: 'Carrier systems show this device as lost or stolen.',
-  },
   fmi_active: {
-    title: 'FMI/FRP Enabled',
-    detail: 'Disable Find My iPhone/FRP and remove all accounts.',
+    title: 'iPhone 14 Pro – iCloud / FMI ON',
+    problem: 'Find My iPhone (FMI) is still enabled. The device is locked to your Apple ID.',
+    why: 'We cannot use or resell the device while it is linked to your Apple ID.',
+    fixOptions: [
+      {
+        title: 'Option 1 – Remove Using iCloud (Most Common)',
+        prerequisite: 'If You Still Have Access to Apple ID',
+        steps: [
+          'Go to: https://www.icloud.com',
+          'Sign in with your Apple ID.',
+          'Click "Find iPhone"',
+          'Click "All Devices"',
+          'Select the affected device.',
+          'Click "Remove from Account"',
+          'Confirm removal.',
+          'Important: If it says "Erase iPhone" first, click that, wait for it to complete, THEN click Remove from Account.'
+        ]
+      },
+      {
+        title: 'Option 2 – From Another Apple Device',
+        steps: [
+          'Open Settings',
+          'Tap your name (Apple ID at top)',
+          'Scroll down to the device list',
+          'Tap the device',
+          'Tap "Remove from Account"'
+        ]
+      },
+      {
+        title: 'If You Don\'t Have Access to the Account',
+        note: 'You must either recover your Apple ID at https://iforgot.apple.com OR provide the original purchase receipt so Apple can unlock it'
+      }
+    ],
+    afterComplete: 'Reply to this email saying: "I removed the device from my Apple ID". We will verify and mark as Status: ✅ Received & Cleared'
   },
+
+  password_locked: {
+    title: 'Screen Lock / Passcode Lock',
+    problem: 'The device is locked with a passcode.',
+    why: 'We need access to the device to verify its condition and complete processing.',
+    fixOptions: [
+      {
+        title: 'If You Remember the PIN',
+        steps: [
+          'Option A: Reply securely with the device passcode so we can complete processing.',
+          'Option B: Remove the passcode via iCloud (follow the FMI removal steps above)'
+        ]
+      },
+      {
+        title: 'If You Don\'t Have the Device',
+        steps: [
+          'Remove it from your account using iCloud (Apple) or Google Device Activity (Android)',
+          'Note: If we cannot access the device, the offer may need to be adjusted.'
+        ]
+      }
+    ],
+    afterComplete: 'Reply with confirmation. Status: ✅ Received & Accessible'
+  },
+
+  stolen: {
+    title: 'Blacklisted / Carrier Blocked',
+    problem: 'The device is reported lost, stolen, or has an unpaid balance.',
+    why: 'Blacklisted devices cannot be used or resold on carrier networks.',
+    commonReasons: [
+      'Insurance claim filed',
+      'Phone reported lost',
+      'Unpaid carrier bill',
+      'Device still under financing'
+    ],
+    fixOptions: [
+      {
+        title: 'If Reported Lost/Stolen',
+        steps: [
+          'Call your carrier and request: "Please remove the blacklist from this IMEI"',
+          'Carriers:',
+          '  • Verizon: 800-922-0204',
+          '  • AT&T: 800-331-0500',
+          '  • T-Mobile: 877-746-0909'
+        ]
+      },
+      {
+        title: 'If Balance Due (BAL DUE)',
+        steps: [
+          'Pay off remaining device balance',
+          'Request carrier to unlock and clear IMEI',
+          'Ask them to confirm: "IMEI is clean and fully paid"'
+        ]
+      }
+    ],
+    afterComplete: 'Reply with confirmation from carrier. Status: ✅ Received & Clean'
+  },
+
+  outstanding_balance: {
+    title: 'Blacklisted / Carrier Blocked - Outstanding Balance',
+    problem: 'The device has an unpaid balance with the carrier.',
+    why: 'Unpaid balances prevent the device from being used on any carrier network.',
+    fixOptions: [
+      {
+        title: 'How To Clear',
+        steps: [
+          'Contact your carrier directly',
+          'Check the remaining device balance',
+          'Pay off any outstanding payments or device financing',
+          'Request confirmation once paid in full and IMEI is cleared',
+          'Ask them to confirm: "IMEI is clean and fully paid"'
+        ]
+      }
+    ],
+    afterComplete: 'Reply with carrier confirmation. Status: ✅ Received & Paid'
+  },
+
+  google_frp_active: {
+    title: 'Samsung Galaxy S22 – Google Lock (FRP ON)',
+    problem: 'Google account is still signed in. Factory Reset Protection (FRP) is active.',
+    why: 'We cannot use or resell the device while FRP is active and linked to your Google account.',
+    fixOptions: [
+      {
+        title: 'Option 1 – Remove Device From Google Account',
+        prerequisite: 'If You Have Access to Your Google Account',
+        steps: [
+          'Go to: https://myaccount.google.com/device-activity',
+          'Sign into your Google account.',
+          'Find the affected device.',
+          'Click "Sign Out"',
+          'Confirm removal.'
+        ]
+      },
+      {
+        title: 'Option 2 – Direct Device Removal',
+        prerequisite: 'If You Still Have the Device',
+        steps: [
+          'Go to: Settings → Accounts → Remove Google Account',
+          'Follow device prompts to complete removal'
+        ]
+      },
+      {
+        title: 'If You Forgot the Google Account',
+        note: 'Recover it here: https://accounts.google.com/signin/recovery'
+      }
+    ],
+    afterComplete: 'Reply saying: "I removed the Google account from the device". We will verify and update: Status: ✅ Received & Cleared'
+  }
 };
 
 function buildIssueList(order) {
@@ -804,8 +931,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
           const issuesHtml = deviceIssues.map((issue, index) => {
             const copy = ISSUE_COPY[issue.reason] || {
               title: toTitleCase(issue.reason),
-              detail: 'Please resolve this issue so we can continue processing.',
-              fix: ['Contact support for assistance with this issue']
+              problem: 'Please resolve this issue so we can continue processing.'
             };
             const safeDeviceKey = escapeHtml(issue.deviceKey);
             const safeReason = escapeHtml(issue.reason);
@@ -813,14 +939,86 @@ app.get('/fix-issue/:orderId', async (req, res) => {
             const statusBadge = issue.resolved ? 'resolved' : 'pending';
             const statusLabel = issue.resolved ? 'Resolved' : 'Needs Action';
             
-            const fixInstructions = copy.fix ? `
-              <div class="fix-instructions">
-                <div class="fix-instructions-title">🔧 How to Fix:</div>
-                <ol class="fix-instructions-list">
-                  ${copy.fix.map(step => `<li>${escapeHtml(step)}</li>`).join('')}
-                </ol>
-              </div>
-            ` : '';
+            // Build fix instructions HTML from new comprehensive format
+            let fixInstructionsHtml = '';
+            if (copy.problem || copy.why || copy.fixOptions) {
+              fixInstructionsHtml = '<div class="fix-instructions">';
+              
+              // Problem section
+              if (copy.problem) {
+                fixInstructionsHtml += `
+                  <div class="fix-section">
+                    <div class="fix-section-title">📋 Problem:</div>
+                    <p class="fix-section-content">${escapeHtml(copy.problem)}</p>
+                  </div>
+                `;
+              }
+              
+              // Why it matters section
+              if (copy.why) {
+                fixInstructionsHtml += `
+                  <div class="fix-section">
+                    <div class="fix-section-title">❓ Why This Matters:</div>
+                    <p class="fix-section-content">${escapeHtml(copy.why)}</p>
+                  </div>
+                `;
+              }
+              
+              // Common reasons (for stolen/blacklist)
+              if (copy.commonReasons && Array.isArray(copy.commonReasons)) {
+                fixInstructionsHtml += `
+                  <div class="fix-section">
+                    <div class="fix-section-title">⚠️ Common Reasons:</div>
+                    <ul class="fix-reasons-list">
+                      ${copy.commonReasons.map(reason => `<li>${escapeHtml(reason)}</li>`).join('')}
+                    </ul>
+                  </div>
+                `;
+              }
+              
+              // Fix options
+              if (copy.fixOptions && Array.isArray(copy.fixOptions)) {
+                fixInstructionsHtml += '<div class="fix-options-container">';
+                copy.fixOptions.forEach((option, optIdx) => {
+                  fixInstructionsHtml += '<div class="fix-option">';
+                  
+                  if (option.title) {
+                    fixInstructionsHtml += `<div class="fix-option-title">✅ ${escapeHtml(option.title)}</div>`;
+                  }
+                  
+                  if (option.prerequisite) {
+                    fixInstructionsHtml += `<div class="fix-prerequisite">${escapeHtml(option.prerequisite)}</div>`;
+                  }
+                  
+                  if (option.steps && Array.isArray(option.steps)) {
+                    fixInstructionsHtml += '<ol class="fix-steps">';
+                    option.steps.forEach(step => {
+                      fixInstructionsHtml += `<li>${escapeHtml(step)}</li>`;
+                    });
+                    fixInstructionsHtml += '</ol>';
+                  }
+                  
+                  if (option.note) {
+                    fixInstructionsHtml += `<div class="fix-note">📌 ${escapeHtml(option.note)}</div>`;
+                  }
+                  
+                  fixInstructionsHtml += '</div>';
+                });
+                fixInstructionsHtml += '</div>';
+              }
+              
+              // After complete section
+              if (copy.afterComplete) {
+                fixInstructionsHtml += `
+                  <div class="fix-section after-complete">
+                    <div class="fix-section-title">📍 After You Complete This:</div>
+                    <p class="fix-section-content">${escapeHtml(copy.afterComplete)}</p>
+                  </div>
+                `;
+              }
+              
+              fixInstructionsHtml += '</div>';
+            }
 
             const buttonsHtml = issue.resolved
               ? '<div class="issue-actions"><button class="issue-button primary" disabled>✓ Resolved</button></div>'
@@ -841,9 +1039,8 @@ app.get('/fix-issue/:orderId', async (req, res) => {
                   <span>${escapeHtml(copy.title)}</span>
                   <span class="issue-badge ${statusBadge}">${statusLabel}</span>
                 </div>
-                <div class="issue-detail">${escapeHtml(copy.detail)}</div>
                 ${safeNotes}
-                ${fixInstructions}
+                ${fixInstructionsHtml}
                 ${buttonsHtml}
                 <div class="issue-feedback" aria-live="polite"></div>
               </div>
@@ -1222,6 +1419,99 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         margin-top: 12px;
         font-size: 14px;
         font-weight: 500;
+      }
+      .fix-instructions {
+        background: #eff6ff;
+        border-left: 3px solid #3b82f6;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin: 12px 0;
+      }
+      .fix-section {
+        margin-bottom: 16px;
+      }
+      .fix-section-title {
+        font-weight: 700;
+        font-size: 14px;
+        color: #1e40af;
+        margin: 0 0 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .fix-section-content {
+        font-size: 13px;
+        color: #334155;
+        margin: 0;
+        line-height: 1.5;
+      }
+      .fix-reasons-list {
+        margin: 0;
+        padding-left: 20px;
+        font-size: 13px;
+        color: #334155;
+      }
+      .fix-reasons-list li {
+        margin-bottom: 6px;
+      }
+      .fix-options-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .fix-option {
+        background: #f0f9ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 6px;
+        padding: 12px;
+      }
+      .fix-option-title {
+        font-weight: 700;
+        font-size: 13px;
+        color: #0369a1;
+        margin-bottom: 8px;
+      }
+      .fix-prerequisite {
+        font-size: 12px;
+        color: #0c4a6e;
+        font-style: italic;
+        margin-bottom: 8px;
+        padding: 6px 8px;
+        background: #e0f2fe;
+        border-radius: 4px;
+      }
+      .fix-steps {
+        margin: 8px 0;
+        padding-left: 20px;
+        font-size: 13px;
+        color: #334155;
+      }
+      .fix-steps li {
+        margin-bottom: 6px;
+        line-height: 1.4;
+      }
+      .fix-note {
+        font-size: 12px;
+        color: #7c3aed;
+        margin-top: 8px;
+        padding: 6px 8px;
+        background: #f5f3ff;
+        border-radius: 4px;
+        border-left: 2px solid #7c3aed;
+      }
+      .after-complete {
+        background: #f0fdd4;
+        border-left: 3px solid #16a34a;
+        margin-top: 16px;
+        padding: 12px;
+        border-radius: 6px;
+      }
+      .after-complete .fix-section-title {
+        color: #166534;
+      }
+      .after-complete .fix-section-content {
+        color: #166534;
       }
 
       /* ================================

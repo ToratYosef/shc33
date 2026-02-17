@@ -405,8 +405,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
           const issuesHtml = deviceIssues.map((issue, index) => {
             const copy = ISSUE_COPY[issue.reason] || {
               title: toTitleCase(issue.reason),
-              detail: 'Please resolve this issue so we can continue processing.',
-              fix: ['Contact support for assistance with this issue']
+              problem: 'Please resolve this issue so we can continue processing.'
             };
             const safeDeviceKey = escapeHtml(issue.deviceKey);
             const safeReason = escapeHtml(issue.reason);
@@ -414,14 +413,86 @@ app.get('/fix-issue/:orderId', async (req, res) => {
             const statusBadge = issue.resolved ? 'resolved' : 'pending';
             const statusLabel = issue.resolved ? 'Resolved' : 'Needs Action';
             
-            const fixInstructions = copy.fix ? `
-              <div class="fix-instructions">
-                <div class="fix-instructions-title">🔧 How to Fix:</div>
-                <ol class="fix-instructions-list">
-                  ${copy.fix.map(step => `<li>${escapeHtml(step)}</li>`).join('')}
-                </ol>
-              </div>
-            ` : '';
+            // Build fix instructions HTML from new comprehensive format
+            let fixInstructionsHtml = '';
+            if (copy.problem || copy.why || copy.fixOptions) {
+              fixInstructionsHtml = '<div class="fix-instructions">';
+              
+              // Problem section
+              if (copy.problem) {
+                fixInstructionsHtml += `
+                  <div class="fix-section">
+                    <div class="fix-section-title">📋 Problem:</div>
+                    <p class="fix-section-content">${escapeHtml(copy.problem)}</p>
+                  </div>
+                `;
+              }
+              
+              // Why it matters section
+              if (copy.why) {
+                fixInstructionsHtml += `
+                  <div class="fix-section">
+                    <div class="fix-section-title">❓ Why This Matters:</div>
+                    <p class="fix-section-content">${escapeHtml(copy.why)}</p>
+                  </div>
+                `;
+              }
+              
+              // Common reasons (for stolen/blacklist)
+              if (copy.commonReasons && Array.isArray(copy.commonReasons)) {
+                fixInstructionsHtml += `
+                  <div class="fix-section">
+                    <div class="fix-section-title">⚠️ Common Reasons:</div>
+                    <ul class="fix-reasons-list">
+                      ${copy.commonReasons.map(reason => `<li>${escapeHtml(reason)}</li>`).join('')}
+                    </ul>
+                  </div>
+                `;
+              }
+              
+              // Fix options
+              if (copy.fixOptions && Array.isArray(copy.fixOptions)) {
+                fixInstructionsHtml += '<div class="fix-options-container">';
+                copy.fixOptions.forEach((option, optIdx) => {
+                  fixInstructionsHtml += '<div class="fix-option">';
+                  
+                  if (option.title) {
+                    fixInstructionsHtml += `<div class="fix-option-title">✅ ${escapeHtml(option.title)}</div>`;
+                  }
+                  
+                  if (option.prerequisite) {
+                    fixInstructionsHtml += `<div class="fix-prerequisite">${escapeHtml(option.prerequisite)}</div>`;
+                  }
+                  
+                  if (option.steps && Array.isArray(option.steps)) {
+                    fixInstructionsHtml += '<ol class="fix-steps">';
+                    option.steps.forEach(step => {
+                      fixInstructionsHtml += `<li>${escapeHtml(step)}</li>`;
+                    });
+                    fixInstructionsHtml += '</ol>';
+                  }
+                  
+                  if (option.note) {
+                    fixInstructionsHtml += `<div class="fix-note">📌 ${escapeHtml(option.note)}</div>`;
+                  }
+                  
+                  fixInstructionsHtml += '</div>';
+                });
+                fixInstructionsHtml += '</div>';
+              }
+              
+              // After complete section
+              if (copy.afterComplete) {
+                fixInstructionsHtml += `
+                  <div class="fix-section after-complete">
+                    <div class="fix-section-title">📍 After You Complete This:</div>
+                    <p class="fix-section-content">${escapeHtml(copy.afterComplete)}</p>
+                  </div>
+                `;
+              }
+              
+              fixInstructionsHtml += '</div>';
+            }
 
             const buttonsHtml = issue.resolved
               ? '<div class="issue-actions"><button class="issue-button primary" disabled>✓ Resolved</button></div>'
@@ -442,9 +513,8 @@ app.get('/fix-issue/:orderId', async (req, res) => {
                   <span>${escapeHtml(copy.title)}</span>
                   <span class="issue-badge ${statusBadge}">${statusLabel}</span>
                 </div>
-                <div class="issue-detail">${escapeHtml(copy.detail)}</div>
                 ${safeNotes}
-                ${fixInstructions}
+                ${fixInstructionsHtml}
                 ${buttonsHtml}
                 <div class="issue-feedback" aria-live="polite"></div>
               </div>
@@ -872,6 +942,92 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       }
       .fix-instructions-list li {
         margin-bottom: 4px;
+      }
+      .fix-section {
+        margin-bottom: 16px;
+      }
+      .fix-section-title {
+        font-weight: 700;
+        font-size: 14px;
+        color: #1e40af;
+        margin: 0 0 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .fix-section-content {
+        font-size: 13px;
+        color: #334155;
+        margin: 0;
+        line-height: 1.5;
+      }
+      .fix-reasons-list {
+        margin: 0;
+        padding-left: 20px;
+        font-size: 13px;
+        color: #334155;
+      }
+      .fix-reasons-list li {
+        margin-bottom: 6px;
+      }
+      .fix-options-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .fix-option {
+        background: #f0f9ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 6px;
+        padding: 12px;
+      }
+      .fix-option-title {
+        font-weight: 700;
+        font-size: 13px;
+        color: #0369a1;
+        margin-bottom: 8px;
+      }
+      .fix-prerequisite {
+        font-size: 12px;
+        color: #0c4a6e;
+        font-style: italic;
+        margin-bottom: 8px;
+        padding: 6px 8px;
+        background: #e0f2fe;
+        border-radius: 4px;
+      }
+      .fix-steps {
+        margin: 8px 0;
+        padding-left: 20px;
+        font-size: 13px;
+        color: #334155;
+      }
+      .fix-steps li {
+        margin-bottom: 6px;
+        line-height: 1.4;
+      }
+      .fix-note {
+        font-size: 12px;
+        color: #7c3aed;
+        margin-top: 8px;
+        padding: 6px 8px;
+        background: #f5f3ff;
+        border-radius: 4px;
+        border-left: 2px solid #7c3aed;
+      }
+      .after-complete {
+        background: #f0fdd4;
+        border-left: 3px solid #16a34a;
+        margin-top: 16px;
+        padding: 12px;
+        border-radius: 6px;
+      }
+      .after-complete .fix-section-title {
+        color: #166534;
+      }
+      .after-complete .fix-section-content {
+        color: #166534;
       }
       .issue-meta {
         margin-top: 12px;
