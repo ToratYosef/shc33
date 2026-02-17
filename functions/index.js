@@ -416,6 +416,88 @@ function normalizeStatusValue(value) {
   return trimmed.toLowerCase().replace(/[\s-]+/g, '_');
 }
 
+function buildOrderDeviceKey(orderId, deviceIndex = 0) {
+  const baseOrderId = sanitizeDocumentId(orderId) || String(orderId || '').trim();
+  const parsedIndex = Number.parseInt(deviceIndex, 10);
+  const safeIndex = Number.isInteger(parsedIndex) && parsedIndex >= 0 ? parsedIndex : 0;
+  return `${baseOrderId}::${safeIndex}`;
+}
+
+function collectOrderDeviceKeys(order = {}) {
+  const orderId = sanitizeDocumentId(order.id || order.orderId || order.orderID);
+  const keySet = new Set();
+
+  if (Array.isArray(order.items) && order.items.length > 0) {
+    for (let index = 0; index < order.items.length; index += 1) {
+      keySet.add(buildOrderDeviceKey(orderId, index));
+    }
+  } else {
+    keySet.add(buildOrderDeviceKey(orderId, 0));
+  }
+
+  const mapCandidates = [
+    order.deviceStatusByKey,
+    order.reOfferByDevice,
+    order.reofferByDevice,
+  ];
+
+  for (const candidate of mapCandidates) {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+      continue;
+    }
+    for (const key of Object.keys(candidate)) {
+      if (typeof key === 'string' && key.trim()) {
+        keySet.add(key.trim());
+      }
+    }
+  }
+
+  return Array.from(keySet);
+}
+
+function deriveOrderStatusFromDevices(order = {}, nextDeviceStatusByKey = null) {
+  const deviceStatusByKey = nextDeviceStatusByKey && typeof nextDeviceStatusByKey === 'object'
+    ? nextDeviceStatusByKey
+    : (order.deviceStatusByKey || {});
+  const deviceKeys = collectOrderDeviceKeys({ ...order, deviceStatusByKey });
+
+  const terminalStatuses = new Set([
+    'completed',
+    're_offered_accepted',
+    're_offered_auto_accepted',
+    're_offered_declined',
+    'return_label_generated',
+    'returned',
+    'paid',
+  ]);
+
+  const normalizedStatuses = deviceKeys
+    .map((key) => normalizeStatusValue(deviceStatusByKey[key] || order.status))
+    .filter(Boolean);
+
+  if (!normalizedStatuses.length || normalizedStatuses.length !== deviceKeys.length) {
+    return null;
+  }
+
+  if (!normalizedStatuses.every((status) => terminalStatuses.has(status))) {
+    return null;
+  }
+
+  if (normalizedStatuses.some((status) => status.includes('declined') || status.includes('return'))) {
+    return 're-offered-declined';
+  }
+
+  if (normalizedStatuses.some((status) => status.includes('accepted'))) {
+    return 're-offered-accepted';
+  }
+
+  if (normalizedStatuses.every((status) => status === 'completed' || status === 'paid')) {
+    return 'completed';
+  }
+
+  return null;
+}
+
 function isStatusEligibleForImeiCheck(status) {
   if (!status) {
     return true;
@@ -2043,6 +2125,34 @@ function normalizeLogEntries(entries = []) {
     });
 }
 
+function expandDottedFieldPaths(data = {}) {
+  const expanded = {};
+
+  for (const [key, value] of Object.entries(data)) {
+    if (!key.includes('.')) {
+      expanded[key] = value;
+      continue;
+    }
+
+    const segments = key.split('.').filter(Boolean);
+    if (!segments.length) {
+      continue;
+    }
+
+    let cursor = expanded;
+    for (let index = 0; index < segments.length - 1; index += 1) {
+      const segment = segments[index];
+      if (!cursor[segment] || typeof cursor[segment] !== 'object' || Array.isArray(cursor[segment])) {
+        cursor[segment] = {};
+      }
+      cursor = cursor[segment];
+    }
+    cursor[segments[segments.length - 1]] = value;
+  }
+
+  return expanded;
+}
+
 async function writeOrderBoth(orderId, data) {
   const timestamp = admin.firestore.FieldValue.serverTimestamp();
   const dataToWrite = { ...data, updatedAt: timestamp };
@@ -2069,7 +2179,7 @@ async function updateOrderBoth(orderId, partialData = {}, options = {}) {
   const userId = existing.userId;
 
   const timestamp = admin.firestore.FieldValue.serverTimestamp();
-  const dataToMerge = { ...partialData, updatedAt: timestamp };
+  const dataToMerge = expandDottedFieldPaths({ ...partialData, updatedAt: timestamp });
 
   const statusProvided = Object.prototype.hasOwnProperty.call(
     partialData,
@@ -2108,7 +2218,7 @@ async function updateOrderBoth(orderId, partialData = {}, options = {}) {
   await orderRef.set(dataToMerge, { merge: true });
 
   if (userId) {
-    const userUpdate = { ...dataToMerge };
+    const userUpdate = expandDottedFieldPaths({ ...dataToMerge });
     if (normalizedLogs.length) {
       userUpdate.activityLog = admin.firestore.FieldValue.arrayUnion(
         ...normalizedLogs
@@ -4308,7 +4418,7 @@ app.post('/orders/:id/sync-label-tracking', async (req, res) => {
 
 app.post("/orders/:id/re-offer", async (req, res) => {
   try {
-    const { newPrice, reasons, comments } = req.body;
+    const { newPrice, reasons, comments, deviceKey } = req.body;
     const orderId = req.params.id;
 
     if (!newPrice || !reasons || !Array.isArray(reasons) || reasons.length === 0) {
@@ -4322,16 +4432,23 @@ app.post("/orders/:id/re-offer", async (req, res) => {
     }
 
     const order = { id: orderDoc.id, ...orderDoc.data() };
+    const resolvedDeviceKey = typeof deviceKey === 'string' && deviceKey.trim()
+      ? deviceKey.trim()
+      : buildOrderDeviceKey(orderId, 0);
+
+    const nextOffer = {
+      newPrice,
+      reasons,
+      comments,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      autoAcceptDate: admin.firestore.Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    };
 
     await updateOrderBoth(orderId, {
-      reOffer: {
-        newPrice,
-        reasons,
-        comments,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        autoAcceptDate: admin.firestore.Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
+      reOffer: nextOffer,
       status: "re-offered-pending",
+      [`deviceStatusByKey.${resolvedDeviceKey}`]: "re-offered-pending",
+      [`reOfferByDevice.${resolvedDeviceKey}`]: nextOffer,
     });
 
     let reasonString = reasons.join(", ");
@@ -4341,8 +4458,9 @@ app.post("/orders/:id/re-offer", async (req, res) => {
     const originalQuoteValue = Number(order.estimatedQuote || order.originalQuote || 0).toFixed(2);
     const newOfferValue = Number(newPrice).toFixed(2);
     const customerName = order.shippingInfo.fullName || "there";
-    const acceptUrl = `${process.env.APP_FRONTEND_URL}/reoffer-action.html?orderId=${orderId}&action=accept`;
-    const returnUrl = `${process.env.APP_FRONTEND_URL}/reoffer-action.html?orderId=${orderId}&action=return`;
+    const encodedDeviceKey = encodeURIComponent(resolvedDeviceKey);
+    const acceptUrl = `${process.env.APP_FRONTEND_URL}/reoffer-action.html?orderId=${orderId}&deviceKey=${encodedDeviceKey}&action=accept`;
+    const returnUrl = `${process.env.APP_FRONTEND_URL}/reoffer-action.html?orderId=${orderId}&deviceKey=${encodedDeviceKey}&action=return`;
 
     const customerEmailHtml = buildEmailLayout({
       title: "Updated offer available",
@@ -4381,10 +4499,11 @@ app.post("/orders/:id/re-offer", async (req, res) => {
       {
         newPrice: Number(newPrice).toFixed(2),
         originalQuote: Number(order.estimatedQuote || order.originalQuote || 0).toFixed(2),
+        deviceKey: resolvedDeviceKey,
       }
     );
 
-    res.json({ message: "Re-offer submitted successfully", newPrice, orderId: order.id });
+    res.json({ message: "Re-offer submitted successfully", newPrice, orderId: order.id, deviceKey: resolvedDeviceKey });
   } catch (err) {
     console.error("Error submitting re-offer:", err);
     res.status(500).json({ error: "Failed to submit re-offer" });
@@ -4691,7 +4810,7 @@ app.post("/orders/:id/cancel", async (req, res) => {
 
 app.post("/accept-offer-action", async (req, res) => {
   try {
-    const { orderId } = req.body;
+    const { orderId, deviceKey } = req.body;
     if (!orderId) {
       return res.status(400).json({ error: "Order ID is required" });
     }
@@ -4702,16 +4821,33 @@ app.post("/accept-offer-action", async (req, res) => {
     }
 
     const orderData = { id: doc.id, ...doc.data() };
-    if (orderData.status !== "re-offered-pending") {
+    const resolvedDeviceKey = typeof deviceKey === 'string' && deviceKey.trim()
+      ? deviceKey.trim()
+      : buildOrderDeviceKey(orderId, 0);
+    const currentStatus = normalizeStatusValue(
+      orderData.deviceStatusByKey?.[resolvedDeviceKey] || orderData.status
+    );
+
+    if (currentStatus !== 're_offered_pending') {
       return res
         .status(409)
         .json({ error: "This offer has already been accepted or declined." });
     }
 
-    await updateOrderBoth(orderId, {
-      status: "re-offered-accepted",
+    const nextDeviceStatusByKey = {
+      ...(orderData.deviceStatusByKey || {}),
+      [resolvedDeviceKey]: 're-offered-accepted',
+    };
+    const derivedStatus = deriveOrderStatusFromDevices(orderData, nextDeviceStatusByKey);
+    const updatePayload = {
+      [`deviceStatusByKey.${resolvedDeviceKey}`]: "re-offered-accepted",
       acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    };
+    if (derivedStatus) {
+      updatePayload.status = derivedStatus;
+    }
+
+    await updateOrderBoth(orderId, updatePayload);
 
     const customerHtmlBody = `
       <p>Thank you for accepting the revised offer for Order <strong>#${orderData.id}</strong>.</p>
@@ -4728,10 +4864,10 @@ app.post("/accept-offer-action", async (req, res) => {
     await recordCustomerEmail(
       orderId,
       'Re-offer acceptance confirmation email sent to customer.',
-      { status: 're-offered-accepted' }
+      { status: derivedStatus || req.body?.status || orderData.status, deviceKey: resolvedDeviceKey }
     );
 
-    res.json({ message: "Offer accepted successfully.", orderId: orderData.id });
+    res.json({ message: "Offer accepted successfully.", orderId: orderData.id, deviceKey: resolvedDeviceKey });
   } catch (err) {
     console.error("Error accepting offer:", err);
     res.status(500).json({ error: "Failed to accept offer" });
@@ -4740,7 +4876,7 @@ app.post("/accept-offer-action", async (req, res) => {
 
 app.post("/return-phone-action", async (req, res) => {
   try {
-    const { orderId } = req.body;
+    const { orderId, deviceKey } = req.body;
     if (!orderId) {
       return res.status(400).json({ error: "Order ID is required" });
     }
@@ -4751,16 +4887,33 @@ app.post("/return-phone-action", async (req, res) => {
     }
 
     const orderData = { id: doc.id, ...doc.data() };
-    if (orderData.status !== "re-offered-pending") {
+    const resolvedDeviceKey = typeof deviceKey === 'string' && deviceKey.trim()
+      ? deviceKey.trim()
+      : buildOrderDeviceKey(orderId, 0);
+    const currentStatus = normalizeStatusValue(
+      orderData.deviceStatusByKey?.[resolvedDeviceKey] || orderData.status
+    );
+
+    if (currentStatus !== 're_offered_pending') {
       return res
         .status(409)
         .json({ error: "This offer has already been accepted or declined." });
     }
 
-    await updateOrderBoth(orderId, {
-      status: "re-offered-declined",
+    const nextDeviceStatusByKey = {
+      ...(orderData.deviceStatusByKey || {}),
+      [resolvedDeviceKey]: 're-offered-declined',
+    };
+    const derivedStatus = deriveOrderStatusFromDevices(orderData, nextDeviceStatusByKey);
+    const updatePayload = {
+      [`deviceStatusByKey.${resolvedDeviceKey}`]: "re-offered-declined",
       declinedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    };
+    if (derivedStatus) {
+      updatePayload.status = derivedStatus;
+    }
+
+    await updateOrderBoth(orderId, updatePayload);
 
     const customerHtmlBody = `
       <p>We have received your request to decline the revised offer and have your device returned. We are now processing your request and will send a return shipping label to your email shortly.</p>
@@ -4776,10 +4929,10 @@ app.post("/return-phone-action", async (req, res) => {
     await recordCustomerEmail(
       orderId,
       'Return request confirmation email sent to customer.',
-      { status: 're-offered-declined' }
+      { status: derivedStatus || req.body?.status || orderData.status, deviceKey: resolvedDeviceKey }
     );
 
-    res.json({ message: "Return requested successfully.", orderId: orderData.id });
+    res.json({ message: "Return requested successfully.", orderId: orderData.id, deviceKey: resolvedDeviceKey });
   } catch (err) {
     console.error("Error requesting return:", err);
     res.status(500).json({ error: "Failed to request return" });
@@ -4997,20 +5150,69 @@ exports.autoAcceptOffers = functions.pubsub
   .schedule("every 24 hours")
   .onRun(async (context) => {
     const now = admin.firestore.Timestamp.now();
-    const expiredOffers = await ordersCollection
+    const pendingOrders = await ordersCollection
       .where("status", "==", "re-offered-pending")
-      .where("reOffer.autoAcceptDate", "<=", now)
       .get();
 
-    const updates = expiredOffers.docs.map(async (doc) => {
+    const updates = pendingOrders.docs.map(async (doc) => {
       const orderData = { id: doc.id, ...doc.data() };
+      const byDeviceOffers = orderData.reOfferByDevice || {};
+      const nextDeviceStatusByKey = { ...(orderData.deviceStatusByKey || {}) };
+      const expiredDeviceKeys = [];
+
+      for (const [deviceKey, offer] of Object.entries(byDeviceOffers)) {
+        const deadline = offer?.autoAcceptDate;
+        const isPending = normalizeStatusValue(nextDeviceStatusByKey[deviceKey] || orderData.status) === 're_offered_pending';
+        const deadlineMillis = deadline && typeof deadline.toMillis === 'function' ? deadline.toMillis() : null;
+
+        if (isPending && Number.isFinite(deadlineMillis) && deadlineMillis <= now.toMillis()) {
+          expiredDeviceKeys.push(deviceKey);
+        }
+      }
+
+      if (!expiredDeviceKeys.length) {
+        const fallbackDeadline = orderData.reOffer?.autoAcceptDate;
+        const fallbackMillis = fallbackDeadline && typeof fallbackDeadline.toMillis === 'function'
+          ? fallbackDeadline.toMillis()
+          : null;
+        const fallbackKey = buildOrderDeviceKey(orderData.id, 0);
+        const fallbackPending = normalizeStatusValue(nextDeviceStatusByKey[fallbackKey] || orderData.status) === 're_offered_pending';
+
+        if (fallbackPending && Number.isFinite(fallbackMillis) && fallbackMillis <= now.toMillis()) {
+          expiredDeviceKeys.push(fallbackKey);
+        }
+      }
+
+      if (!expiredDeviceKeys.length) {
+        return;
+      }
+
+      for (const key of expiredDeviceKeys) {
+        nextDeviceStatusByKey[key] = 're-offered-auto-accepted';
+      }
+
+      const derivedStatus = deriveOrderStatusFromDevices(orderData, nextDeviceStatusByKey);
+      const updatePayload = {
+        acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+        deviceStatusByKey: nextDeviceStatusByKey,
+      };
+      if (derivedStatus) {
+        updatePayload.status = derivedStatus;
+      }
+
+      const acceptedPrices = expiredDeviceKeys
+        .map((key) => byDeviceOffers?.[key]?.newPrice)
+        .filter((value) => Number.isFinite(Number(value)))
+        .map((value) => Number(value).toFixed(2));
+      const fallbackPrice = Number(orderData?.reOffer?.newPrice);
+      const priceText = acceptedPrices.length
+        ? acceptedPrices.map((price) => `$${price}`).join(', ')
+        : (Number.isFinite(fallbackPrice) ? `$${fallbackPrice.toFixed(2)}` : 'the revised amount');
 
       const customerHtmlBody = `
         <p>Hello ${orderData.shippingInfo.fullName},</p>
         <p>As we have not heard back from you regarding your revised offer, it has been automatically accepted as per our terms and conditions.</p>
-        <p>Payment processing for the revised amount of <strong>$${orderData.reOffer.newPrice.toFixed(
-          2
-        )}</strong> will now begin.</p>
+        <p>Payment processing for ${expiredDeviceKeys.length > 1 ? 'the revised amounts' : 'the revised amount'} of <strong>${priceText}</strong> will now begin.</p>
         <p>Thank you,</p>
         <p>The SecondHandCell Team</p>
       `;
@@ -5022,20 +5224,23 @@ exports.autoAcceptOffers = functions.pubsub
         html: customerHtmlBody,
       });
 
-      await updateOrderBoth(doc.id, {
-        status: "re-offered-auto-accepted",
-        acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      await updateOrderBoth(doc.id, updatePayload);
 
       await recordCustomerEmail(
         doc.id,
         'Re-offer auto-accept email sent to customer.',
-        { status: 're-offered-auto-accepted', auto: true }
+        {
+          status: derivedStatus || orderData.status,
+          auto: true,
+          deviceCount: expiredDeviceKeys.length,
+          deviceKeys: expiredDeviceKeys.join(', '),
+          prices: priceText,
+        }
       );
     });
 
     await Promise.all(updates);
-    console.log(`Auto-accepted ${updates.length} expired offers.`);
+    console.log(`Auto-accepted device offers on ${updates.length} pending orders.`);
     return null;
   });
 
@@ -6434,6 +6639,9 @@ exports.notifyWholesaleOfferUpdated = functions.firestore
 exports.api = functions.https.onRequest(app);
 exports.expressApp = app;
 exports.updateOrderBoth = updateOrderBoth;
+exports.buildOrderDeviceKey = buildOrderDeviceKey;
+exports.collectOrderDeviceKeys = collectOrderDeviceKeys;
+exports.deriveOrderStatusFromDevices = deriveOrderStatusFromDevices;
 
 exports.refreshTracking = functions.runWith({ timeoutSeconds: 540, memory: '1GB' }).https.onRequest(
   async (req, res) => {
