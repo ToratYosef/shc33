@@ -85,6 +85,11 @@ module.exports = function createEmailsRouter({
           .json({ error: 'The order does not have a customer email address.' });
       }
 
+      // Handle per-device status updates
+      const resolvedDeviceKey = (typeof deviceKey === 'string' && deviceKey.trim())
+        ? deviceKey.trim()
+        : buildOrderDeviceKey(req.params.id, 0);
+
       const { subject, html, text } = buildConditionEmail(reason, order, notes, resolvedDeviceKey);
       const mailOptions = {
         from: CONDITION_EMAIL_FROM_ADDRESS,
@@ -107,11 +112,6 @@ module.exports = function createEmailsRouter({
         lastConditionEmailReason: reason,
         ...(trimmedNotes ? { lastConditionEmailNotes: trimmedNotes } : {}),
       };
-
-      // Handle per-device status updates
-      const resolvedDeviceKey = (typeof deviceKey === 'string' && deviceKey.trim())
-        ? deviceKey.trim()
-        : buildOrderDeviceKey(req.params.id, 0);
 
       // For all QC-related condition emails, set device status to 'emailed' if deviceKey provided
       const qcEmailReasons = ['outstanding_balance', 'password_locked', 'stolen', 'fmi_active'];
