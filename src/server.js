@@ -325,30 +325,161 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       }
       .header {
         background: #ffffff;
-        padding: 20px 24px;
+        padding: 0;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
       }
-      .header-content {
+      .site-header__inner {
         max-width: 1200px;
         margin: 0 auto;
         display: flex;
         align-items: center;
-        gap: 12px;
+        justify-content: space-between;
+        padding: 12px 24px;
+        gap: 20px;
       }
-      .logo {
-        font-size: 24px;
+      .logo-container-left {
+        flex-shrink: 0;
+      }
+      .logo-link {
+        display: block;
+        line-height: 0;
+      }
+      .logo-image {
+        width: 60px;
+        height: 60px;
+        object-fit: contain;
+      }
+      .logo-text-container-center {
+        flex: 1;
+        text-align: center;
+      }
+      .logo-wordmark {
+        font-size: 28px;
         font-weight: 700;
+        line-height: 1.2;
+        margin-bottom: 4px;
+      }
+      .logo-wordmark__primary {
+        color: #1e293b;
+      }
+      .logo-wordmark__accent {
         color: #2563eb;
+      }
+      .logo-tagline {
+        margin: 0;
+        font-size: 13px;
+        color: #64748b;
+        font-weight: 500;
+      }
+      .logo-tagline span {
+        color: #2563eb;
+        font-weight: 600;
+      }
+      .header-auth-nav {
+        flex-shrink: 0;
+      }
+      .site-header__auth-wrapper {
+        position: relative;
+      }
+      .site-header__login {
+        display: inline-block;
+        background: #2563eb;
+        color: #ffffff;
+        padding: 10px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 14px;
+        transition: background 0.2s;
+      }
+      .site-header__login:hover {
+        background: #1d4ed8;
+      }
+      .user-monogram {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #2563eb;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .auth-dropdown {
+        position: absolute;
+        right: 0;
+        top: 100%;
+        margin-top: 8px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        min-width: 180px;
+        z-index: 50;
+      }
+      .auth-dropdown a {
+        display: block;
+        padding: 8px 16px;
+        font-size: 14px;
+        color: #334155;
+        text-decoration: none;
+        transition: background 0.2s;
+      }
+      .auth-dropdown a:hover {
+        background: #f1f5f9;
+      }
+      .btn-red-logout {
+        width: 100%;
+        text-align: left;
+        padding: 8px 16px;
+        background: #dc2626;
+        color: white;
+        border: none;
+        font-size: 14px;
+        cursor: pointer;
+        border-radius: 0 0 8px 8px;
+      }
+      .btn-red-logout:hover {
+        background: #b91c1c;
+      }
+      .hidden {
+        display: none;
+      }
+      .relative {
+        position: relative;
+      }
+      .inline-flex {
+        display: inline-flex;
+      }
+      .flex-col {
+        flex-direction: column;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .no-underline {
         text-decoration: none;
       }
-      .logo-icon {
-        display: inline-block;
-        width: 32px;
-        height: 32px;
-        background: linear-gradient(135deg, #2563eb, #7c3aed);
-        border-radius: 8px;
-        margin-right: 8px;
-        vertical-align: middle;
+      @media (max-width: 768px) {
+        .site-header__inner {
+          flex-wrap: wrap;
+          justify-content: center;
+        }
+        .logo-container-left {
+          order: 1;
+        }
+        .header-auth-nav {
+          order: 2;
+        }
+        .logo-text-container-center {
+          order: 3;
+          width: 100%;
+          margin-top: 8px;
+        }
+        .logo-wordmark {
+          font-size: 24px;
+        }
       }
       .main-content {
         flex: 1;
@@ -484,11 +615,41 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     </style>
   </head>
   <body>
-    <header class="header">
-      <div class="header-content">
-        <a href="https://secondhandcell.com" class="logo">
-          <span class="logo-icon"></span>SecondHandCell
-        </a>
+    <header class="site-header site-header--mobile-compact relative" data-site-header>
+      <div class="site-header__inner site-header__inner--centered">
+        <div class="logo-container-left">
+          <a href="https://secondhandcell.com" class="logo-link" aria-label="SecondHandCell home">
+            <img
+              src="https://secondhandcell.com/assets/logo.webp"
+              alt="SecondHandCell Logo"
+              class="logo-image"
+              width="320"
+              height="320"
+              onerror="this.onerror=null;this.src='https://placehold.co/200x64/ffffff/1e293b?text=SecondHandCell';"
+            >
+          </a>
+        </div>
+
+        <div class="logo-text-container-center">
+          <a href="https://secondhandcell.com" aria-label="Go to homepage" class="inline-flex flex-col items-center no-underline">
+            <div class="logo-wordmark">
+              <span class="logo-wordmark__primary">Second</span><span class="logo-wordmark__accent">HandCell</span>
+            </div>
+            <p class="logo-tagline">Turn Your Old <span>Phone Into Cash!</span></p>
+          </a>
+        </div>
+
+        <nav class="header-auth-nav" aria-label="Account navigation">
+          <div id="authStatusContainer" class="site-header__auth-wrapper">
+            <a href="https://secondhandcell.com/login.html" id="loginNavBtn" class="site-header__login">Login/Sign Up</a>
+            <div id="userMonogram" class="user-monogram hidden"></div>
+            <div id="authDropdown" class="auth-dropdown hidden">
+              <a href="https://secondhandcell.com/my-account.html" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">My Account</a>
+              <a href="https://secondhandcell.com/track-order.html" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Track an Order</a>
+              <button id="logoutBtn" class="btn-red-logout">Sign Out</button>
+            </div>
+          </div>
+        </nav>
       </div>
     </header>
     
