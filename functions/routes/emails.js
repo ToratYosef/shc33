@@ -85,7 +85,7 @@ module.exports = function createEmailsRouter({
           .json({ error: 'The order does not have a customer email address.' });
       }
 
-      const { subject, html, text } = buildConditionEmail(reason, order, notes);
+      const { subject, html, text } = buildConditionEmail(reason, order, notes, resolvedDeviceKey);
       const mailOptions = {
         from: CONDITION_EMAIL_FROM_ADDRESS,
         to: customerEmail,

@@ -17,6 +17,7 @@ function createOrdersRouter({
   shipEngine,
   createShipEngineLabel,
   transporter,
+  deviceHelpers,
 }) {
   const router = express.Router();
 
@@ -35,6 +36,7 @@ function createOrdersRouter({
     handleLabelVoid,
     sendVoidNotificationEmail,
   } = shipEngine;
+  const { buildOrderDeviceKey, collectOrderDeviceKeys, deriveOrderStatusFromDevices } = deviceHelpers;
 
   const PRINT_QUEUE_STATUSES = [
     'shipping_kit_requested',
@@ -2166,13 +2168,83 @@ function createOrdersRouter({
     }
   });
 
-  // Issue Resolved endpoint - redirect legacy links to the new fix-issue page.
-  router.get('/orders/:id/issue-resolved', (req, res) => {
-    const orderId = String(req.params.id || '').trim();
-    if (!orderId) {
-      return res.status(400).send('Order ID is required.');
+  // Issue Resolved endpoint - customer confirms issue fixed
+  router.get('/orders/:id/issue-resolved', async (req, res) => {
+    try {
+      const orderId = String(req.params.id || '').trim();
+      if (!orderId) {
+        return res.status(400).send('Order ID is required.');
+      }
+
+      const deviceKey = req.query.deviceKey ? String(req.query.deviceKey).trim() : null;
+
+      const orderRef = ordersCollection.doc(orderId);
+      const orderSnap = await orderRef.get();
+      if (!orderSnap.exists) {
+        return res.status(404).send('Order not found.');
+      }
+
+      const order = { id: orderSnap.id, ...orderSnap.data() };
+      
+      // Determine which device was resolved
+      const resolvedDeviceKey = deviceKey || buildOrderDeviceKey(orderId, 0);
+
+      const serverTimestamp = admin.firestore.FieldValue.serverTimestamp();
+      const deleteField = admin.firestore.FieldValue.delete();
+
+      // Build update payload
+      const updatePayload = {
+        [`deviceStatusByKey.${resolvedDeviceKey}`]: 'issue_resolved',
+        [`qcDataByDevice.${resolvedDeviceKey}`]: deleteField,
+        [`qcIssuesByDevice.${resolvedDeviceKey}`]: deleteField,
+        lastUpdatedAt: serverTimestamp,
+      };
+
+      // Derive order status from all devices
+      const nextDeviceStatusByKey = {
+        ...(order.deviceStatusByKey || {}),
+        [resolvedDeviceKey]: 'issue_resolved',
+      };
+      const derivedStatus = deriveOrderStatusFromDevices(order, nextDeviceStatusByKey);
+      if (derivedStatus) {
+        updatePayload.status = derivedStatus;
+      } else {
+        // If not all devices are in terminal states, check if single device order
+        const deviceKeys = collectOrderDeviceKeys(order);
+        if (deviceKeys.length === 1) {
+          updatePayload.status = 'issue_resolved';
+        }
+      }
+
+      // Update order
+      await updateOrderBoth(orderRef, updatePayload, {
+        context: 'Issue resolved by customer via email link',
+        autoLogStatus: false,
+      });
+
+      // Send admin notification
+      try {
+        const deviceIndex = resolvedDeviceKey.split('::')[1] || '0';
+        const notificationMessage = `Customer confirmed issue resolved for order #${orderId} (Device ${Number(deviceIndex) + 1})`;
+        await addAdminFirestoreNotification({
+          title: 'Issue Resolved',
+          message: notificationMessage,
+          orderId,
+          deviceKey: resolvedDeviceKey,
+          type: 'issue_resolved',
+          createdAt: serverTimestamp,
+        });
+        await sendAdminPushNotification('Issue Resolved', notificationMessage);
+      } catch (notifError) {
+        console.error('Failed to send admin notification:', notifError);
+      }
+
+      // Redirect to confirmation page
+      return res.redirect('/issue-resolved-confirmation.html');
+    } catch (error) {
+      console.error('Error processing issue resolution:', error);
+      return res.status(500).send('Failed to process issue resolution.');
     }
-    return res.redirect(`https://api.secondhandcell.com/fix-issue/${encodeURIComponent(orderId)}`);
   });
 
   return router;
