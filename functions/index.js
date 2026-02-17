@@ -922,146 +922,142 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       issuesByDevice[issue.deviceKey].push(issue);
     });
 
-    const deviceCardsHtml = Object.keys(issuesByDevice).length > 0
-      ? Object.keys(issuesByDevice).map(deviceKey => {
-          const deviceInfo = getDeviceInfo(deviceKey);
-          const deviceIssues = issuesByDevice[deviceKey];
-          const hasUnresolvedIssues = deviceIssues.some(issue => !issue.resolved);
+    const allIssueCards = [];
+    
+    Object.keys(issuesByDevice).forEach(deviceKey => {
+      const deviceInfo = getDeviceInfo(deviceKey);
+      const deviceIssues = issuesByDevice[deviceKey];
+      
+      deviceIssues.forEach((issue, index) => {
+        const copy = ISSUE_COPY[issue.reason] || {
+          title: toTitleCase(issue.reason),
+          problem: 'Please resolve this issue so we can continue processing.'
+        };
+        const safeDeviceKey = escapeHtml(issue.deviceKey);
+        const safeReason = escapeHtml(issue.reason);
+        const safeNotes = issue.notes ? `<div class="issue-notes">📌 Note: ${escapeHtml(issue.notes)}</div>` : '';
+        const statusBadge = issue.resolved ? 'resolved' : 'pending';
+        const statusLabel = issue.resolved ? 'Resolved' : 'Needs Action';
+        
+        // Build fix instructions HTML from new comprehensive format
+        let fixInstructionsHtml = '';
+        if (copy.problem || copy.why || copy.fixOptions) {
+          fixInstructionsHtml = '<div class="fix-instructions">';
           
-          const issuesHtml = deviceIssues.map((issue, index) => {
-            const copy = ISSUE_COPY[issue.reason] || {
-              title: toTitleCase(issue.reason),
-              problem: 'Please resolve this issue so we can continue processing.'
-            };
-            const safeDeviceKey = escapeHtml(issue.deviceKey);
-            const safeReason = escapeHtml(issue.reason);
-            const safeNotes = issue.notes ? `<div class="issue-notes">📌 Note: ${escapeHtml(issue.notes)}</div>` : '';
-            const statusBadge = issue.resolved ? 'resolved' : 'pending';
-            const statusLabel = issue.resolved ? 'Resolved' : 'Needs Action';
-            
-            // Build fix instructions HTML from new comprehensive format
-            let fixInstructionsHtml = '';
-            if (copy.problem || copy.why || copy.fixOptions) {
-              fixInstructionsHtml = '<div class="fix-instructions">';
+          // Problem section
+          if (copy.problem) {
+            fixInstructionsHtml += `
+              <div class="fix-section">
+                <div class="fix-section-title">📋 Problem:</div>
+                <p class="fix-section-content">${escapeHtml(copy.problem)}</p>
+              </div>
+            `;
+          }
+          
+          // Why it matters section
+          if (copy.why) {
+            fixInstructionsHtml += `
+              <div class="fix-section">
+                <div class="fix-section-title">❓ Why This Matters:</div>
+                <p class="fix-section-content">${escapeHtml(copy.why)}</p>
+              </div>
+            `;
+          }
+          
+          // Common reasons (for stolen/blacklist)
+          if (copy.commonReasons && Array.isArray(copy.commonReasons)) {
+            fixInstructionsHtml += `
+              <div class="fix-section">
+                <div class="fix-section-title">⚠️ Common Reasons:</div>
+                <ul class="fix-reasons-list">
+                  ${copy.commonReasons.map(reason => `<li>${escapeHtml(reason)}</li>`).join('')}
+                </ul>
+              </div>
+            `;
+          }
+          
+          // Fix options
+          if (copy.fixOptions && Array.isArray(copy.fixOptions)) {
+            fixInstructionsHtml += '<div class="fix-options-container">';
+            copy.fixOptions.forEach((option, optIdx) => {
+              fixInstructionsHtml += '<div class="fix-option">';
               
-              // Problem section
-              if (copy.problem) {
-                fixInstructionsHtml += `
-                  <div class="fix-section">
-                    <div class="fix-section-title">📋 Problem:</div>
-                    <p class="fix-section-content">${escapeHtml(copy.problem)}</p>
-                  </div>
-                `;
+              if (option.title) {
+                fixInstructionsHtml += `<div class="fix-option-title">✅ ${escapeHtml(option.title)}</div>`;
               }
               
-              // Why it matters section
-              if (copy.why) {
-                fixInstructionsHtml += `
-                  <div class="fix-section">
-                    <div class="fix-section-title">❓ Why This Matters:</div>
-                    <p class="fix-section-content">${escapeHtml(copy.why)}</p>
-                  </div>
-                `;
+              if (option.prerequisite) {
+                fixInstructionsHtml += `<div class="fix-prerequisite">${escapeHtml(option.prerequisite)}</div>`;
               }
               
-              // Common reasons (for stolen/blacklist)
-              if (copy.commonReasons && Array.isArray(copy.commonReasons)) {
-                fixInstructionsHtml += `
-                  <div class="fix-section">
-                    <div class="fix-section-title">⚠️ Common Reasons:</div>
-                    <ul class="fix-reasons-list">
-                      ${copy.commonReasons.map(reason => `<li>${escapeHtml(reason)}</li>`).join('')}
-                    </ul>
-                  </div>
-                `;
-              }
-              
-              // Fix options
-              if (copy.fixOptions && Array.isArray(copy.fixOptions)) {
-                fixInstructionsHtml += '<div class="fix-options-container">';
-                copy.fixOptions.forEach((option, optIdx) => {
-                  fixInstructionsHtml += '<div class="fix-option">';
-                  
-                  if (option.title) {
-                    fixInstructionsHtml += `<div class="fix-option-title">✅ ${escapeHtml(option.title)}</div>`;
-                  }
-                  
-                  if (option.prerequisite) {
-                    fixInstructionsHtml += `<div class="fix-prerequisite">${escapeHtml(option.prerequisite)}</div>`;
-                  }
-                  
-                  if (option.steps && Array.isArray(option.steps)) {
-                    fixInstructionsHtml += '<ol class="fix-steps">';
-                    option.steps.forEach(step => {
-                      fixInstructionsHtml += `<li>${escapeHtml(step)}</li>`;
-                    });
-                    fixInstructionsHtml += '</ol>';
-                  }
-                  
-                  if (option.note) {
-                    fixInstructionsHtml += `<div class="fix-note">📌 ${escapeHtml(option.note)}</div>`;
-                  }
-                  
-                  fixInstructionsHtml += '</div>';
+              if (option.steps && Array.isArray(option.steps)) {
+                fixInstructionsHtml += '<ol class="fix-steps">';
+                option.steps.forEach(step => {
+                  fixInstructionsHtml += `<li>${escapeHtml(step)}</li>`;
                 });
-                fixInstructionsHtml += '</div>';
+                fixInstructionsHtml += '</ol>';
               }
               
-              // After complete section
-              if (copy.afterComplete) {
-                fixInstructionsHtml += `
-                  <div class="fix-section after-complete">
-                    <div class="fix-section-title">📍 After You Complete This:</div>
-                    <p class="fix-section-content">${escapeHtml(copy.afterComplete)}</p>
-                  </div>
-                `;
+              if (option.note) {
+                fixInstructionsHtml += `<div class="fix-note">📌 ${escapeHtml(option.note)}</div>`;
               }
               
               fixInstructionsHtml += '</div>';
-            }
-
-            const buttonsHtml = issue.resolved
-              ? '<div class="issue-actions"><button class="issue-button primary" disabled>✓ Resolved</button></div>'
-              : `
-                <div class="issue-actions">
-                  <button class="issue-button primary" data-device-key="${safeDeviceKey}" data-reason="${safeReason}" data-action="resolve">
-                    ✓ Mark as Resolved
-                  </button>
-                  <button class="issue-button secondary" data-device-key="${safeDeviceKey}" data-reason="${safeReason}" data-action="received">
-                    📦 Mark as Received
-                  </button>
-                </div>
-              `;
-
-            return `
-              <div class="issue-card ${issue.resolved ? 'resolved' : ''}" data-issue-index="${index}">
-                <div class="issue-title">
-                  <span>${escapeHtml(copy.title)}</span>
-                  <span class="issue-badge ${statusBadge}">${statusLabel}</span>
-                </div>
-                ${safeNotes}
-                ${fixInstructionsHtml}
-                ${buttonsHtml}
-                <div class="issue-feedback" aria-live="polite"></div>
+            });
+            fixInstructionsHtml += '</div>';
+          }
+          
+          // After complete section
+          if (copy.afterComplete) {
+            fixInstructionsHtml += `
+              <div class="fix-section after-complete">
+                <div class="fix-section-title">📍 After You Complete This:</div>
+                <p class="fix-section-content">${escapeHtml(copy.afterComplete)}</p>
               </div>
             `;
-          }).join('');
+          }
+          
+          fixInstructionsHtml += '</div>';
+        }
 
-          return `
-            <div class="device-card">
-              <div class="device-header">
-                <div class="device-icon">📱</div>
-                <div class="device-info">
-                  <h3 class="device-name">${escapeHtml(deviceInfo.model)}</h3>
-                  <p class="device-storage">${deviceInfo.storage ? escapeHtml(deviceInfo.storage) + ' • ' : ''}Device #${deviceInfo.number}</p>
-                </div>
-              </div>
-              <div class="issues-section">
-                ${issuesHtml}
-              </div>
+        const buttonsHtml = issue.resolved
+          ? '<div class="issue-actions"><button class="issue-button primary" disabled>✓ Resolved</button></div>'
+          : `
+            <div class="issue-actions">
+              <button class="issue-button primary" data-device-key="${safeDeviceKey}" data-reason="${safeReason}" data-action="resolve">
+                ✓ Mark as Resolved
+              </button>
+              <button class="issue-button secondary" data-device-key="${safeDeviceKey}" data-reason="${safeReason}" data-action="received">
+                📦 Mark as Received
+              </button>
             </div>
           `;
-        }).join('')
+
+        allIssueCards.push(`
+          <div class="issue-column ${issue.resolved ? 'resolved' : ''}" data-issue-index="${index}">
+            <div class="issue-column-header">
+              <div class="device-badge">
+                <span class="device-icon-small">📱</span>
+                <span class="device-label">${escapeHtml(deviceInfo.model)}</span>
+              </div>
+              <span class="issue-badge ${statusBadge}">${statusLabel}</span>
+            </div>
+            <div class="issue-column-content">
+              <div class="issue-title">
+                <span>${escapeHtml(copy.title)}</span>
+              </div>
+              ${safeNotes}
+              ${fixInstructionsHtml}
+              ${buttonsHtml}
+              <div class="issue-feedback" aria-live="polite"></div>
+            </div>
+          </div>
+        `);
+      });
+    });
+    
+    const deviceCardsHtml = allIssueCards.length > 0
+      ? `<div class="issues-grid">${allIssueCards.join('')}</div>`
       : '<div class="empty-state"><div class="empty-state-icon">✓</div><h3>All Clear!</h3><p>No outstanding issues were found for this order.</p></div>';
 
     const hasIssues = visibleIssues.length > 0;
