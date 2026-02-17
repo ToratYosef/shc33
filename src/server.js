@@ -291,7 +291,6 @@ app.get('/fix-issue/:orderId', async (req, res) => {
                   <span class="issue-status ${issue.resolved ? 'resolved' : 'pending'}">${statusLabel}</span>
                 </div>
                 <div class="issue-meta">Device: ${safeDeviceLabel}</div>
-                <div class="issue-meta" style="margin-top:4px;">Device Key: ${safeDeviceKey}</div>
                 ${safeNotes}
                 ${buttonHtml}
                 <div class="issue-feedback" aria-live="polite"></div>
@@ -306,55 +305,103 @@ app.get('/fix-issue/:orderId', async (req, res) => {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Issue Resolved</title>
+    <title>Issue Resolution - SecondHandCell</title>
     <style>
       :root {
         color-scheme: light;
       }
+      * {
+        box-sizing: border-box;
+      }
       body {
         margin: 0;
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background: #f8fafc;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: #0f172a;
-        display: flex;
         min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .header {
+        background: #ffffff;
+        padding: 20px 24px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .header-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .logo {
+        font-size: 24px;
+        font-weight: 700;
+        color: #2563eb;
+        text-decoration: none;
+      }
+      .logo-icon {
+        display: inline-block;
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        border-radius: 8px;
+        margin-right: 8px;
+        vertical-align: middle;
+      }
+      .main-content {
+        flex: 1;
+        display: flex;
         align-items: center;
         justify-content: center;
-        padding: 24px;
+        padding: 40px 24px;
       }
       .card {
-        max-width: 520px;
+        max-width: 600px;
         width: 100%;
         background: #ffffff;
-        border-radius: 18px;
-        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
-        padding: 32px;
+        border-radius: 20px;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.2);
+        padding: 40px;
         text-align: center;
       }
       h1 {
-        margin: 0 0 10px;
-        font-size: 24px;
+        margin: 0 0 12px;
+        font-size: 28px;
+        color: #1e293b;
+        font-weight: 700;
       }
-      p {
-        margin: 8px 0 0;
-        color: #475569;
+      .subtitle {
+        margin: 0 0 24px;
+        color: #64748b;
+        font-size: 16px;
         line-height: 1.6;
       }
       .order {
-        margin: 18px 0 0;
+        margin: 20px 0;
         font-weight: 600;
+        font-size: 18px;
         color: #0f172a;
+        padding: 12px 20px;
+        background: #f1f5f9;
+        border-radius: 10px;
+        display: inline-block;
       }
       .issues {
-        margin-top: 20px;
+        margin-top: 30px;
         display: grid;
-        gap: 16px;
+        gap: 18px;
       }
       .issue-card {
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        padding: 18px;
-        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 20px;
+        background: linear-gradient(to bottom, #ffffff, #f8fafc);
+        transition: all 0.3s ease;
+      }
+      .issue-card:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       }
       .issue-header {
         display: flex;
@@ -364,19 +411,24 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       }
       .issue-title {
         font-weight: 700;
-        font-size: 16px;
+        font-size: 17px;
+        color: #1e293b;
+        text-align: left;
       }
       .issue-detail {
         font-size: 14px;
         color: #64748b;
-        margin-top: 4px;
+        margin-top: 6px;
+        text-align: left;
       }
       .issue-status {
-        font-size: 12px;
-        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 6px 12px;
         border-radius: 9999px;
         text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.05em;
+        white-space: nowrap;
       }
       .issue-status.pending {
         background: #fef3c7;
@@ -387,49 +439,106 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         color: #166534;
       }
       .issue-meta {
-        margin-top: 10px;
+        margin-top: 12px;
         font-size: 13px;
-        color: #475569;
+        color: #64748b;
+        text-align: left;
       }
       .issue-notes {
-        margin: 10px 0 0;
-        font-size: 13px;
+        margin: 12px 0 0;
+        font-size: 14px;
         color: #334155;
         background: #ffffff;
         border-radius: 10px;
-        padding: 10px 12px;
+        padding: 12px 14px;
         border: 1px solid #e2e8f0;
+        text-align: left;
       }
       .issue-button {
-        margin-top: 14px;
-        background: #10b981;
+        margin-top: 16px;
+        background: linear-gradient(135deg, #10b981, #059669);
         color: #ffffff;
         border: none;
         border-radius: 9999px;
-        padding: 14px 32px;
+        padding: 14px 36px;
         font-size: 16px;
         font-weight: 600;
         cursor: pointer;
-        box-shadow: 0 10px 20px rgba(16, 185, 129, 0.25);
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+        transition: all 0.2s ease;
+      }
+      .issue-button:hover:not([disabled]) {
+        transform: translateY(-2px);
+        box-shadow: 0 14px 30px rgba(16, 185, 129, 0.4);
       }
       .issue-button[disabled] {
         opacity: 0.6;
-        cursor: default;
+        cursor: not-allowed;
       }
       .issue-feedback {
-        margin-top: 10px;
+        margin-top: 12px;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .footer {
+        background: #1e293b;
+        color: #cbd5e1;
+        padding: 30px 24px;
+        text-align: center;
+      }
+      .footer-content {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .footer-links {
+        margin-bottom: 16px;
+      }
+      .footer-link {
+        color: #cbd5e1;
+        text-decoration: none;
+        margin: 0 12px;
+        font-size: 14px;
+        transition: color 0.2s;
+      }
+      .footer-link:hover {
+        color: #ffffff;
+      }
+      .footer-text {
         font-size: 13px;
+        color: #94a3b8;
+        margin: 8px 0 0;
       }
     </style>
   </head>
   <body>
-    <div class="card">
-      <h1>Issue Resolved</h1>
-      <p>Resolve each issue below. We will continue once everything is cleared.</p>
-      <div class="order">Order #${safeOrderId}</div>
-      ${safeFocusedDeviceLabel ? `<div class="order" style="margin-top:8px;">Focused Device: ${safeFocusedDeviceLabel}</div><div class="issue-meta" style="text-align:center; margin-top:6px;">Device Key: ${safeFocusedDeviceKey}</div>` : ''}
-      <div class="issues">${issuesHtml}</div>
-    </div>
+    <header class="header">
+      <div class="header-content">
+        <a href="https://secondhandcell.com" class="logo">
+          <span class="logo-icon"></span>SecondHandCell
+        </a>
+      </div>
+    </header>
+    
+    <main class="main-content">
+      <div class="card">
+        <h1>Issue Resolution</h1>
+        <p class="subtitle">Please resolve each issue below. We'll continue processing your order once everything is cleared.</p>
+        <div class="order">Order #${safeOrderId}</div>
+        ${safeFocusedDeviceLabel ? `<div class="order" style="margin-top:12px; font-size:16px; background:#e0f2fe; color:#0369a1;">Device: ${safeFocusedDeviceLabel}</div>` : ''}
+        <div class="issues">${issuesHtml}</div>
+      </div>
+    </main>
+    
+    <footer class="footer">
+      <div class="footer-content">
+        <div class="footer-links">
+          <a href="https://secondhandcell.com" class="footer-link">Home</a>
+          <a href="https://secondhandcell.com/track-order.html" class="footer-link">Track Order</a>
+          <a href="https://secondhandcell.com/contact.html" class="footer-link">Contact Us</a>
+        </div>
+        <p class="footer-text">&copy; 2026 SecondHandCell. All rights reserved.</p>
+      </div>
+    </footer>
     <script>
       (function () {
         var buttons = document.querySelectorAll('.issue-button');
