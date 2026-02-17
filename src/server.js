@@ -894,7 +894,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
 
         <nav class="header-auth-nav" aria-label="Account navigation">
           <div id="authStatusContainer" class="site-header__auth-wrapper">
-            <a href="https://secondhandcell.com/login.html" id="loginNavBtn" class="site-header__login">Login/Sign Up</a>
+            <a href="#" id="loginNavBtn" class="site-header__login">Login/Sign Up</a>
             <div id="userMonogram" class="user-monogram hidden"></div>
             <div id="authDropdown" class="auth-dropdown hidden">
               <a href="https://secondhandcell.com/my-account.html" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">My Account</a>
