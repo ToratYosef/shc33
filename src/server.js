@@ -396,13 +396,13 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       issuesByDevice[issue.deviceKey].push(issue);
     });
 
-    const deviceCardsHtml = Object.keys(issuesByDevice).length > 0
-      ? Object.keys(issuesByDevice).map(deviceKey => {
-          const deviceInfo = getDeviceInfo(deviceKey);
-          const deviceIssues = issuesByDevice[deviceKey];
-          const hasUnresolvedIssues = deviceIssues.some(issue => !issue.resolved);
-          
-          const issuesHtml = deviceIssues.map((issue, index) => {
+    const allIssueCards = [];
+    
+    Object.keys(issuesByDevice).forEach(deviceKey => {
+      const deviceInfo = getDeviceInfo(deviceKey);
+      const deviceIssues = issuesByDevice[deviceKey];
+      
+      deviceIssues.forEach((issue, index) => {
             const copy = ISSUE_COPY[issue.reason] || {
               title: toTitleCase(issue.reason),
               problem: 'Please resolve this issue so we can continue processing.'
@@ -507,35 +507,31 @@ app.get('/fix-issue/:orderId', async (req, res) => {
                 </div>
               `;
 
-            return `
-              <div class="issue-card ${issue.resolved ? 'resolved' : ''}" data-issue-index="${index}">
-                <div class="issue-title">
-                  <span>${escapeHtml(copy.title)}</span>
-                  <span class="issue-badge ${statusBadge}">${statusLabel}</span>
-                </div>
-                ${safeNotes}
-                ${fixInstructionsHtml}
-                ${buttonsHtml}
-                <div class="issue-feedback" aria-live="polite"></div>
+        allIssueCards.push(`
+          <div class="issue-column ${issue.resolved ? 'resolved' : ''}" data-issue-index="${index}">
+            <div class="issue-column-header">
+              <div class="device-badge">
+                <span class="device-icon-small">📱</span>
+                <span class="device-label">${escapeHtml(deviceInfo.model)}</span>
               </div>
-            `;
-          }).join('');
-
-          return `
-            <div class="device-card">
-              <div class="device-header">
-                <div class="device-icon">📱</div>
-                <div class="device-info">
-                  <h3 class="device-name">${escapeHtml(deviceInfo.model)}</h3>
-                  <p class="device-storage">${deviceInfo.storage ? escapeHtml(deviceInfo.storage) + ' • ' : ''}Device #${deviceInfo.number}</p>
-                </div>
-              </div>
-              <div class="issues-section">
-                ${issuesHtml}
-              </div>
+              <span class="issue-badge ${statusBadge}">${statusLabel}</span>
             </div>
-          `;
-        }).join('')
+            <div class="issue-column-content">
+              <div class="issue-title">
+                <span>${escapeHtml(copy.title)}</span>
+              </div>
+              ${safeNotes}
+              ${fixInstructionsHtml}
+              ${buttonsHtml}
+              <div class="issue-feedback" aria-live="polite"></div>
+            </div>
+          </div>
+        `);
+      });
+    });
+    
+    const deviceCardsHtml = allIssueCards.length > 0
+      ? `<div class="issues-grid">${allIssueCards.join('')}</div>`
       : '<div class="empty-state"><div class="empty-state-icon">✓</div><h3>All Clear!</h3><p>No outstanding issues were found for this order.</p></div>';
 
     const hasIssues = visibleIssues.length > 0;
@@ -822,28 +818,65 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         background: #dcfce7;
         color: #166534;
       }
-      .device-grid {
+      .issues-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
         gap: 20px;
         margin-top: 20px;
       }
-      .device-card {
-        background: linear-gradient(to bottom right, #f8fafc, #f1f5f9);
+      .issue-column {
+        background: white;
         border-radius: 12px;
-        padding: 20px;
-        border: 2px solid #cbd5e1;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         transition: all 0.3s ease;
-      }
-      .device-card:hover {
-        border-color: #94a3b8;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-      }
-      .device-header {
         display: flex;
-        align-items: flex-start;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .issue-column:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+      }
+      .issue-column.resolved {
+        opacity: 0.75;
+        background: #f0fdf4;
+      }
+      .issue-column-header {
+        background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+        border-bottom: 2px solid #e2e8f0;
+        padding: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         gap: 12px;
-        margin-bottom: 16px;
+      }
+      .device-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        background: #eff6ff;
+        border-radius: 6px;
+        border: 1px solid #bfdbfe;
+      }
+      .device-icon-small {
+        font-size: 16px;
+      }
+      .device-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #0369a1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .issue-column-content {
+        padding: 16px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
       }
       .device-icon {
         width: 48px;
@@ -894,6 +927,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        word-break: break-word;
       }
       .issue-badge {
         font-size: 10px;
@@ -1114,7 +1148,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         opacity: 0.3;
       }
       @media (max-width: 768px) {
-        .device-grid {
+        .issues-grid {
           grid-template-columns: 1fr;
         }
         .order-header {
