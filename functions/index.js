@@ -832,7 +832,6 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Issue Resolution - SecondHandCell</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
       :root {
         --site-indigo: #4f46e5;
@@ -1620,7 +1619,6 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       </div>
     </div>
 
-    <script type="module" src="https://secondhandcell.com/assets/js/global-auth.js" defer></script>
   </body>
 </html>`);
   } catch (error) {
