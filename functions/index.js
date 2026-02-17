@@ -774,57 +774,102 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     const safeOrderId = escapeHtml(orderId);
     const confirmUrl = `/fix-issue/${encodeURIComponent(orderId)}/confirm`;
 
-    const getDeviceLabel = (deviceKey) => {
-      if (!deviceKey) return 'Device';
+    const getDeviceInfo = (deviceKey) => {
+      if (!deviceKey) return { number: 1, model: 'Device', storage: '' };
       const parts = String(deviceKey).split('::');
       const idx = Number(parts[1]);
       const deviceNumber = Number.isFinite(idx) ? idx + 1 : 1;
       const items = Array.isArray(order.items) ? order.items : [];
       const item = Number.isFinite(idx) ? items[idx] : null;
-      const model = item?.deviceName || item?.model || order?.device || order?.deviceName || '';
+      const model = item?.deviceName || item?.model || order?.device || order?.deviceName || 'Device';
       const storage = item?.storage || item?.capacity || order?.storage || '';
-      const modelLabel = [model, storage].filter(Boolean).join(' ').trim();
-      return modelLabel ? `Device ${deviceNumber}: ${modelLabel}` : `Device ${deviceNumber}`;
+      return { number: deviceNumber, model, storage };
     };
 
-    const focusedDeviceLabel = requestedDeviceKey ? getDeviceLabel(requestedDeviceKey) : '';
-    const safeFocusedDeviceLabel = focusedDeviceLabel ? escapeHtml(focusedDeviceLabel) : '';
-    const safeFocusedDeviceKey = requestedDeviceKey ? escapeHtml(requestedDeviceKey) : '';
+    // Group issues by device
+    const issuesByDevice = {};
+    visibleIssues.forEach(issue => {
+      if (!issuesByDevice[issue.deviceKey]) {
+        issuesByDevice[issue.deviceKey] = [];
+      }
+      issuesByDevice[issue.deviceKey].push(issue);
+    });
 
-    const issuesHtml = visibleIssues.length
-      ? visibleIssues
-          .map((issue, index) => {
+    const deviceCardsHtml = Object.keys(issuesByDevice).length > 0
+      ? Object.keys(issuesByDevice).map(deviceKey => {
+          const deviceInfo = getDeviceInfo(deviceKey);
+          const deviceIssues = issuesByDevice[deviceKey];
+          const hasUnresolvedIssues = deviceIssues.some(issue => !issue.resolved);
+          
+          const issuesHtml = deviceIssues.map((issue, index) => {
             const copy = ISSUE_COPY[issue.reason] || {
               title: toTitleCase(issue.reason),
               detail: 'Please resolve this issue so we can continue processing.',
+              fix: ['Contact support for assistance with this issue']
             };
             const safeDeviceKey = escapeHtml(issue.deviceKey);
-            const safeDeviceLabel = escapeHtml(getDeviceLabel(issue.deviceKey));
             const safeReason = escapeHtml(issue.reason);
-            const safeNotes = issue.notes ? `<p class="issue-notes">${escapeHtml(issue.notes)}</p>` : '';
-            const statusLabel = issue.resolved ? 'Resolved' : 'Needs action';
-            const buttonHtml = issue.resolved
-              ? ''
-              : `<button class="issue-button" data-device-key="${safeDeviceKey}" data-reason="${safeReason}">Confirm resolved</button>`;
+            const safeNotes = issue.notes ? `<div class="issue-notes">📌 Note: ${escapeHtml(issue.notes)}</div>` : '';
+            const statusBadge = issue.resolved ? 'resolved' : 'pending';
+            const statusLabel = issue.resolved ? 'Resolved' : 'Needs Action';
+            
+            const fixInstructions = copy.fix ? `
+              <div class="fix-instructions">
+                <div class="fix-instructions-title">🔧 How to Fix:</div>
+                <ol class="fix-instructions-list">
+                  ${copy.fix.map(step => `<li>${escapeHtml(step)}</li>`).join('')}
+                </ol>
+              </div>
+            ` : '';
+
+            const buttonsHtml = issue.resolved
+              ? '<div class="issue-actions"><button class="issue-button primary" disabled>✓ Resolved</button></div>'
+              : `
+                <div class="issue-actions">
+                  <button class="issue-button primary" data-device-key="${safeDeviceKey}" data-reason="${safeReason}" data-action="resolve">
+                    ✓ Mark as Resolved
+                  </button>
+                  <button class="issue-button secondary" data-device-key="${safeDeviceKey}" data-reason="${safeReason}" data-action="received">
+                    📦 Mark as Received
+                  </button>
+                </div>
+              `;
 
             return `
-              <div class="issue-card" data-issue-index="${index}">
-                <div class="issue-header">
-                  <div>
-                    <div class="issue-title">${escapeHtml(copy.title)}</div>
-                    <div class="issue-detail">${escapeHtml(copy.detail)}</div>
-                  </div>
-                  <span class="issue-status ${issue.resolved ? 'resolved' : 'pending'}">${statusLabel}</span>
+              <div class="issue-card ${issue.resolved ? 'resolved' : ''}" data-issue-index="${index}">
+                <div class="issue-title">
+                  <span>${escapeHtml(copy.title)}</span>
+                  <span class="issue-badge ${statusBadge}">${statusLabel}</span>
                 </div>
-                <div class="issue-meta">Device: ${safeDeviceLabel}</div>
+                <div class="issue-detail">${escapeHtml(copy.detail)}</div>
                 ${safeNotes}
-                ${buttonHtml}
+                ${fixInstructions}
+                ${buttonsHtml}
                 <div class="issue-feedback" aria-live="polite"></div>
               </div>
             `;
-          })
-          .join('')
-      : '<p>No outstanding issues were found for this device/order.</p>';
+          }).join('');
+
+          return `
+            <div class="device-card">
+              <div class="device-header">
+                <div class="device-icon">📱</div>
+                <div class="device-info">
+                  <h3 class="device-name">${escapeHtml(deviceInfo.model)}</h3>
+                  <p class="device-storage">${deviceInfo.storage ? escapeHtml(deviceInfo.storage) + ' • ' : ''}Device #${deviceInfo.number}</p>
+                </div>
+              </div>
+              <div class="issues-section">
+                ${issuesHtml}
+              </div>
+            </div>
+          `;
+        }).join('')
+      : '<div class="empty-state"><div class="empty-state-icon">✓</div><h3>All Clear!</h3><p>No outstanding issues were found for this order.</p></div>';
+
+    const hasIssues = visibleIssues.length > 0;
+    const orderStatusClass = hasIssues ? '' : 'completed';
+    const orderStatusLabel = hasIssues ? 'Needs Attention' : 'All Clear';
 
     res.status(200).send(`<!doctype html>
 <html lang="en">
@@ -1433,12 +1478,28 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     </header>
     
     <main class="main-content">
-      <div class="card">
-        <h1>Issue Resolution</h1>
-        <p class="subtitle">Please resolve each issue below. We'll continue processing your order once everything is cleared.</p>
-        <div class="order">Order #${safeOrderId}</div>
-        ${safeFocusedDeviceLabel ? `<div class="order" style="margin-top:12px; font-size:16px; background:#e0f2fe; color:#0369a1;">Device: ${safeFocusedDeviceLabel}</div>` : ''}
-        <div class="issues">${issuesHtml}</div>
+      <div class="page-header">
+        <h1 class="page-title">Issue Resolution</h1>
+        <p class="page-subtitle">Resolve any issues with your order below. We'll continue processing once everything is cleared.</p>
+      </div>
+      
+      <div class="order-card">
+        <div class="order-header">
+          <span class="order-id">Order #${safeOrderId}</span>
+          <span class="order-status ${orderStatusClass}">${orderStatusLabel}</span>
+        </div>
+        
+        ${hasIssues ? `
+          <div class="device-grid">
+            ${deviceCardsHtml}
+          </div>
+        ` : `
+          <div class="empty-state">
+            <div class="empty-state-icon">✓</div>
+            <div class="empty-state-title">All Clear!</div>
+            <div class="empty-state-message">No issues found with this order. Great work!</div>
+          </div>
+        `}
       </div>
     </main>
     
@@ -1531,15 +1592,20 @@ app.get('/fix-issue/:orderId', async (req, res) => {
             if (button.disabled) return;
             var deviceKey = button.getAttribute('data-device-key');
             var reason = button.getAttribute('data-reason');
+            var action = button.getAttribute('data-action') || 'resolve';
             var card = button.closest('.issue-card');
             var feedback = card ? card.querySelector('.issue-feedback') : null;
             var statusLabel = card ? card.querySelector('.issue-status') : null;
             button.disabled = true;
-            setFeedback(feedback, 'Sending confirmation...', '#64748b');
+            
+            var actionMessage = action === 'received' ? 'Marking as received...' : 'Sending confirmation...';
+            var successMessage = action === 'received' ? 'Marked as received!' : 'Confirmed. Thank you!';
+            
+            setFeedback(feedback, actionMessage, '#64748b');
             fetch('${confirmUrl}', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ deviceKey: deviceKey, reason: reason }),
+              body: JSON.stringify({ deviceKey: deviceKey, reason: reason, action: action }),
             })
               .then(function (response) {
                 if (!response.ok) {
@@ -1548,16 +1614,16 @@ app.get('/fix-issue/:orderId', async (req, res) => {
                 return response.json();
               })
               .then(function () {
-                setFeedback(feedback, 'Confirmed. Thank you!', '#16a34a');
+                setFeedback(feedback, successMessage, '#16a34a');
                 if (statusLabel) {
-                  statusLabel.textContent = 'Resolved';
+                  statusLabel.textContent = action === 'received' ? 'Received' : 'Resolved';
                   statusLabel.classList.remove('pending');
                   statusLabel.classList.add('resolved');
                 }
               })
               .catch(function (error) {
                 button.disabled = false;
-                setFeedback(feedback, error.message || 'Unable to confirm. Please try again.', '#dc2626');
+                setFeedback(feedback, error.message || 'Unable to process. Please try again.', '#dc2626');
               });
           });
         });
