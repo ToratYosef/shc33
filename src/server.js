@@ -58,18 +58,42 @@ const ISSUE_COPY = {
   outstanding_balance: {
     title: 'Outstanding Balance',
     detail: 'Please pay off any carrier balance tied to the device.',
+    fix: [
+      'Contact your carrier to check the remaining balance',
+      'Pay off any outstanding payments or device financing',
+      'Request confirmation once paid in full',
+      'Mark as resolved once confirmed'
+    ]
   },
   password_locked: {
     title: 'Password Locked',
     detail: 'Remove the passcode and sign out of all accounts on the phone.',
+    fix: [
+      'Go to Settings on your device',
+      'Sign out of iCloud/Google account',
+      'Disable screen lock/passcode',
+      'Perform a factory reset if necessary'
+    ]
   },
   stolen: {
     title: 'Reported Lost or Stolen',
     detail: 'Carrier systems show this device as lost or stolen.',
+    fix: [
+      'Contact your carrier immediately',
+      'Provide proof of ownership',
+      'Request removal from blacklist',
+      'Get written confirmation of clearance'
+    ]
   },
   fmi_active: {
     title: 'FMI/FRP Enabled',
     detail: 'Disable Find My iPhone/FRP and remove all accounts.',
+    fix: [
+      'For iPhone: Go to Settings → [Your Name] → Find My → Turn Off',
+      'For Android: Settings → Security → Factory Reset Protection → Disable',
+      'Sign out of all accounts (iCloud/Google)',
+      'Verify FMI/FRP is fully disabled'
+    ]
   },
 };
 
@@ -500,7 +524,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       body {
         margin: 0;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(to bottom, #f1f5f9 0%, #e2e8f0 100%);
         color: #0f172a;
         min-height: 100vh;
         display: flex;
@@ -523,134 +547,280 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       }
       .main-content {
         flex: 1;
+        padding: 40px 24px;
+        max-width: 1400px;
+        width: 100%;
+        margin: 0 auto;
+      }
+      .page-header {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+      .page-title {
+        margin: 0 0 12px;
+        font-size: 32px;
+        color: #1e293b;
+        font-weight: 700;
+      }
+      .page-subtitle {
+        margin: 0;
+        color: #64748b;
+        font-size: 18px;
+        line-height: 1.6;
+      }
+      .order-card {
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        padding: 24px;
+        margin-bottom: 24px;
+        border: 1px solid #e2e8f0;
+      }
+      .order-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #e2e8f0;
+      }
+      .order-id {
+        font-size: 24px;
+        font-weight: 700;
+        color: #1e293b;
+      }
+      .order-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 9999px;
+        font-weight: 600;
+        font-size: 14px;
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .order-status.completed {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .device-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+      .device-card {
+        background: linear-gradient(to bottom right, #f8fafc, #f1f5f9);
+        border-radius: 12px;
+        padding: 20px;
+        border: 2px solid #cbd5e1;
+        transition: all 0.3s ease;
+      }
+      .device-card:hover {
+        border-color: #94a3b8;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+      }
+      .device-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .device-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 40px 24px;
+        color: white;
+        font-size: 24px;
+        flex-shrink: 0;
       }
-      .card {
-        max-width: 600px;
-        width: 100%;
-        background: #ffffff;
-        border-radius: 20px;
-        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.2);
-        padding: 40px;
-        text-align: center;
+      .device-info {
+        flex: 1;
       }
-      h1 {
-        margin: 0 0 12px;
-        font-size: 28px;
-        color: #1e293b;
-        font-weight: 700;
-      }
-      .subtitle {
-        margin: 0 0 24px;
-        color: #64748b;
-        font-size: 16px;
-        line-height: 1.6;
-      }
-      .order {
-        margin: 20px 0;
-        font-weight: 600;
+      .device-name {
         font-size: 18px;
-        color: #0f172a;
-        padding: 12px 20px;
-        background: #f1f5f9;
-        border-radius: 10px;
-        display: inline-block;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0 0 4px;
       }
-      .issues {
-        margin-top: 30px;
-        display: grid;
-        gap: 18px;
+      .device-storage {
+        font-size: 14px;
+        color: #64748b;
+        margin: 0;
+      }
+      .issues-section {
+        margin-top: 16px;
       }
       .issue-card {
-        border: 2px solid #e2e8f0;
-        border-radius: 16px;
-        padding: 20px;
-        background: linear-gradient(to bottom, #ffffff, #f8fafc);
-        transition: all 0.3s ease;
+        background: white;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 12px;
+        border-left: 4px solid #ef4444;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
       }
-      .issue-card:hover {
-        border-color: #cbd5e1;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-      }
-      .issue-header {
-        display: flex;
-        gap: 12px;
-        justify-content: space-between;
-        align-items: flex-start;
+      .issue-card.resolved {
+        border-left-color: #10b981;
+        opacity: 0.7;
       }
       .issue-title {
         font-weight: 700;
-        font-size: 17px;
+        font-size: 16px;
         color: #1e293b;
-        text-align: left;
+        margin: 0 0 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
       }
-      .issue-detail {
-        font-size: 14px;
-        color: #64748b;
-        margin-top: 6px;
-        text-align: left;
-      }
-      .issue-status {
-        font-size: 11px;
+      .issue-badge {
+        font-size: 10px;
         font-weight: 700;
-        padding: 6px 12px;
+        padding: 4px 10px;
         border-radius: 9999px;
         text-transform: uppercase;
         letter-spacing: 0.05em;
         white-space: nowrap;
       }
-      .issue-status.pending {
+      .issue-badge.pending {
         background: #fef3c7;
         color: #92400e;
       }
-      .issue-status.resolved {
+      .issue-badge.resolved {
         background: #dcfce7;
         color: #166534;
+      }
+      .issue-detail {
+        font-size: 14px;
+        color: #64748b;
+        margin: 0 0 12px;
+        line-height: 1.5;
+      }
+      .fix-instructions {
+        background: #eff6ff;
+        border-left: 3px solid #3b82f6;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin: 12px 0;
+      }
+      .fix-instructions-title {
+        font-weight: 700;
+        font-size: 13px;
+        color: #1e40af;
+        margin: 0 0 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .fix-instructions-list {
+        margin: 0;
+        padding-left: 20px;
+        font-size: 13px;
+        color: #334155;
+      }
+      .fix-instructions-list li {
+        margin-bottom: 4px;
       }
       .issue-meta {
         margin-top: 12px;
         font-size: 13px;
         color: #64748b;
-        text-align: left;
       }
-      .issue-notes {
-        margin: 12px 0 0;
-        font-size: 14px;
-        color: #334155;
-        background: #ffffff;
-        border-radius: 10px;
-        padding: 12px 14px;
-        border: 1px solid #e2e8f0;
-        text-align: left;
+      .issue-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
       }
       .issue-button {
-        margin-top: 16px;
-        background: linear-gradient(135deg, #10b981, #059669);
-        color: #ffffff;
+        flex: 1;
+        padding: 12px 20px;
+        border-radius: 10px;
         border: none;
-        border-radius: 9999px;
-        padding: 14px 36px;
-        font-size: 16px;
-        font-weight: 600;
+        font-weight: 700;
         cursor: pointer;
-        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
-        transition: all 0.2s ease;
+        transition: all 0.2s;
+        font-size: 14px;
       }
-      .issue-button:hover:not([disabled]) {
+      .issue-button.primary {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      }
+      .issue-button.primary:hover:not(:disabled) {
         transform: translateY(-2px);
-        box-shadow: 0 14px 30px rgba(16, 185, 129, 0.4);
+        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
       }
-      .issue-button[disabled] {
+      .issue-button.secondary {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #cbd5e1;
+      }
+      .issue-button.secondary:hover:not(:disabled) {
+        background: #e2e8f0;
+      }
+      .issue-button:disabled {
         opacity: 0.6;
         cursor: not-allowed;
       }
+      .issue-notes {
+        margin: 12px 0;
+        font-size: 13px;
+        color: #334155;
+        background: #fef3c7;
+        border-radius: 8px;
+        padding: 10px 14px;
+        border-left: 3px solid #f59e0b;
+      }
+      .issue-button-group {
+        margin-top: 14px;
+        display: flex;
+        gap: 8px;
+      }
       .issue-feedback {
         margin-top: 12px;
-        font-size: 14px;
-        font-weight: 500;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 8px 12px;
+        border-radius: 8px;
+        display: none;
+      }
+      .issue-feedback.visible {
+        display: block;
+      }
+      .issue-feedback.success {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .issue-feedback.error {
+        background: #fef2f2;
+        color: #dc2626;
+      }
+      .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #64748b;
+      }
+      .empty-state-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+        opacity: 0.3;
+      }
+      @media (max-width: 768px) {
+        .device-grid {
+          grid-template-columns: 1fr;
+        }
+        .order-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 12px;
+        }
+        .issue-actions {
+          flex-direction: column;
+        }
       }
 
       /* ================================
