@@ -7,7 +7,9 @@ const { DOMParser, XMLSerializer } = require("@xmldom/xmldom");
 const { execSync } = require("child_process");
 
 // ---------------- CONFIG ----------------
-const SELLCELL_URL = "http://secondhandcell.com/sellcell/feed.xml";
+const SELLCELL_URL = "http://feed.sellcell.com/secondhandcell/feed.xml";
+const SELLCELL_USERNAME = "secondhandcell";
+const SELLCELL_PASSWORD = "4t#cfo6$eK2N";
 
 // CLI args
 const args = process.argv.slice(2);
@@ -53,6 +55,12 @@ const MODEL_ALIASES = {
   "GALAXY S25+": "GALAXY S25 PLUS",
 
   "GALAXY S23FE": "GALAXY S23 FE",
+  "GALAXY S24FE": "GALAXY S24 FE",
+  "GALAXY S25FE": "GALAXY S25 FE",
+
+  "SAMSUNG GALAXY S23FE": "GALAXY S23 FE",
+  "SAMSUNG GALAXY S24FE": "GALAXY S24 FE",
+  "SAMSUNG GALAXY S25FE": "GALAXY S25 FE",
 
   "GALAXY Z FLIP 4": "GALAXY Z FLIP4",
   "GALAXY Z FLIP 5": "GALAXY Z FLIP5",
@@ -70,6 +78,13 @@ function normalizeModelNameForFeed(rawName) {
     .toUpperCase()
     .replace(/\s+/g, " ")
     .trim();
+
+  // Some feeds prefix Samsung models as "Samsung Galaxy ..." while CSV/template uses "Galaxy ..."
+  if (upper.startsWith("SAMSUNG ")) upper = upper.slice("SAMSUNG ".length).trim();
+
+  // Normalize common 5G suffix variants so model keys line up with CSV/template naming.
+  upper = upper.replace(/\s+5G$/, "");
+
   if (MODEL_ALIASES[upper]) return MODEL_ALIASES[upper];
   return upper;
 }
@@ -735,7 +750,13 @@ async function main() {
   const templateXmlBefore = fs.readFileSync(TEMPLATE_XML_PATH, "utf8");
 
   console.log(`[repricer] downloading SellCell feed: ${SELLCELL_URL}`);
-  const res = await fetch(SELLCELL_URL, { method: "GET" });
+  const authHeader = `Basic ${Buffer.from(`${SELLCELL_USERNAME}:${SELLCELL_PASSWORD}`).toString("base64")}`;
+  const res = await fetch(SELLCELL_URL, {
+    method: "GET",
+    headers: {
+      Authorization: authHeader,
+    },
+  });
   if (!res.ok) throw new Error(`Failed to download SellCell feed: ${res.status} ${res.statusText}`);
   const sellcellXmlText = await res.text();
   console.log(`[repricer] SellCell feed downloaded (${sellcellXmlText.length.toLocaleString()} chars)`);
