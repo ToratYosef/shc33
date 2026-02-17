@@ -309,8 +309,191 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       :root {
+        --site-indigo: #4f46e5;
+        --site-indigo-dark: #4338ca;
+        --site-green: #16a34a;
+        --site-navy: #0f172a;
         color-scheme: light;
       }
+
+      /* Utility */
+      .hidden {
+        display: none !important;
+      }
+
+      /* ================================
+         HEADER
+      ================================ */
+
+      .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        width: 100%;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(14px);
+        box-shadow: 0 10px 30px -20px rgba(15, 23, 42, 0.6);
+        border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+      }
+
+      .site-header__inner {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0.65rem 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        justify-content: space-between;
+      }
+
+      /* Logo Left */
+      .logo-container-left {
+        flex: 1;
+        display: flex;
+        align-items: center;
+      }
+
+      .logo-link {
+        display: inline-flex;
+        align-items: center;
+        height: 2.75rem;
+      }
+
+      .logo-image {
+        height: 150%;
+        max-height: 4rem;
+        width: auto;
+      }
+
+      /* Center Wordmark */
+      .logo-text-container-center {
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.1rem;
+      }
+
+      .logo-wordmark {
+        font-weight: 500;
+        font-size: clamp(1.35rem, 3vw, 2.25rem);
+        letter-spacing: -0.02em;
+        white-space: nowrap;
+      }
+
+      .logo-wordmark__primary {
+        color: #111827;
+      }
+
+      .logo-wordmark__accent {
+        color: var(--site-green);
+      }
+
+      .logo-tagline {
+        font-size: clamp(0.65rem, 1.2vw, 0.95rem);
+        color: var(--site-green);
+        margin: 0;
+        white-space: nowrap;
+      }
+
+      .logo-tagline span {
+        color: var(--site-navy);
+        font-weight: 500;
+      }
+
+      /* Right Auth */
+      .header-auth-nav {
+        flex: 1;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+      }
+
+      .site-header__auth-wrapper {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        position: relative;
+      }
+
+      .site-header__login {
+        font-weight: 600;
+        background: var(--site-indigo);
+        color: #fff;
+        padding: 0.55rem 1.15rem;
+        border-radius: 999px;
+        transition: background 0.2s ease;
+        text-decoration: none;
+      }
+
+      .site-header__login:hover {
+        background: var(--site-indigo-dark);
+      }
+
+      /* User circle */
+      .user-monogram {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      /* Dropdown */
+      .auth-dropdown {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 0.35rem);
+        min-width: 12rem;
+        background: #fff;
+        border-radius: 0.75rem;
+        box-shadow: 0 20px 30px -24px rgba(15, 23, 42, 0.8);
+        padding: 0.35rem 0;
+        display: none;
+        flex-direction: column;
+        z-index: 10000;
+      }
+
+      .auth-dropdown.is-visible {
+        display: flex;
+      }
+
+      .auth-dropdown a,
+      .auth-dropdown button {
+        padding: 0.65rem 1rem;
+        text-align: left;
+        font-weight: 600;
+        background: transparent;
+        border: none;
+        color: #1f2937;
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      .auth-dropdown a:hover,
+      .auth-dropdown button:hover {
+        background: rgba(79, 70, 229, 0.08);
+      }
+
+      .btn-red-logout {
+        color: #dc2626;
+      }
+
+      .btn-red-logout:hover {
+        background-color: #fef2f2;
+      }
+
+      /* ================================
+         BODY & MAIN CONTENT
+      ================================ */
+      /* ================================
+         BODY & MAIN CONTENT
+      ================================ */
       * {
         box-sizing: border-box;
       }
@@ -322,129 +505,6 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         min-height: 100vh;
         display: flex;
         flex-direction: column;
-      }
-      .header {
-        background: #ffffff;
-        padding: 0;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      }
-      .site-header__inner {
-        max-width: 1200px;
-        margin: 0 auto;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 24px;
-        gap: 20px;
-      }
-      .logo-container-left {
-        flex-shrink: 0;
-      }
-      .logo-link {
-        display: block;
-        line-height: 0;
-      }
-      .logo-image {
-        width: 60px;
-        height: 60px;
-        object-fit: contain;
-      }
-      .logo-text-container-center {
-        flex: 1;
-        text-align: center;
-      }
-      .logo-wordmark {
-        font-size: 28px;
-        font-weight: 700;
-        line-height: 1.2;
-        margin-bottom: 4px;
-      }
-      .logo-wordmark__primary {
-        color: #1e293b;
-      }
-      .logo-wordmark__accent {
-        color: #2563eb;
-      }
-      .logo-tagline {
-        margin: 0;
-        font-size: 13px;
-        color: #64748b;
-        font-weight: 500;
-      }
-      .logo-tagline span {
-        color: #2563eb;
-        font-weight: 600;
-      }
-      .header-auth-nav {
-        flex-shrink: 0;
-      }
-      .site-header__auth-wrapper {
-        position: relative;
-      }
-      .site-header__login {
-        display: inline-block;
-        background: #2563eb;
-        color: #ffffff;
-        padding: 10px 20px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 14px;
-        transition: background 0.2s;
-      }
-      .site-header__login:hover {
-        background: #1d4ed8;
-      }
-      .user-monogram {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: #2563eb;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        cursor: pointer;
-      }
-      .auth-dropdown {
-        position: absolute;
-        right: 0;
-        top: 100%;
-        margin-top: 8px;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        min-width: 180px;
-        z-index: 50;
-      }
-      .auth-dropdown a {
-        display: block;
-        padding: 8px 16px;
-        font-size: 14px;
-        color: #334155;
-        text-decoration: none;
-        transition: background 0.2s;
-      }
-      .auth-dropdown a:hover {
-        background: #f1f5f9;
-      }
-      .btn-red-logout {
-        width: 100%;
-        text-align: left;
-        padding: 8px 16px;
-        background: #dc2626;
-        color: white;
-        border: none;
-        font-size: 14px;
-        cursor: pointer;
-        border-radius: 0 0 8px 8px;
-      }
-      .btn-red-logout:hover {
-        background: #b91c1c;
-      }
-      .hidden {
-        display: none;
       }
       .relative {
         position: relative;
@@ -460,26 +520,6 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       }
       .no-underline {
         text-decoration: none;
-      }
-      @media (max-width: 768px) {
-        .site-header__inner {
-          flex-wrap: wrap;
-          justify-content: center;
-        }
-        .logo-container-left {
-          order: 1;
-        }
-        .header-auth-nav {
-          order: 2;
-        }
-        .logo-text-container-center {
-          order: 3;
-          width: 100%;
-          margin-top: 8px;
-        }
-        .logo-wordmark {
-          font-size: 24px;
-        }
       }
       .main-content {
         flex: 1;
