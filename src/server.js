@@ -215,10 +215,15 @@ app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 app.get('/api/orders/:orderId/issue-resolved', (req, res) => {
   const orderId = String(req.params.orderId || '').trim();
+  const deviceKey = req.query.deviceKey ? String(req.query.deviceKey).trim() : '';
   if (!orderId) {
     return res.status(400).send('Order ID is required.');
   }
-  return res.redirect(`https://api.secondhandcell.com/fix-issue/${encodeURIComponent(orderId)}`);
+  const redirectUrl = new URL(`https://api.secondhandcell.com/fix-issue/${encodeURIComponent(orderId)}`);
+  if (deviceKey) {
+    redirectUrl.searchParams.set('deviceKey', deviceKey);
+  }
+  return res.redirect(redirectUrl.toString());
 });
 
 app.get('/fix-issue/:orderId', async (req, res) => {
@@ -235,18 +240,40 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     }
 
     const order = { id: snapshot.id, ...snapshot.data() };
+    const requestedDeviceKey = req.query.deviceKey ? String(req.query.deviceKey).trim() : '';
     const issues = buildIssueList(order);
+    const visibleIssues = requestedDeviceKey
+      ? issues.filter((issue) => issue.deviceKey === requestedDeviceKey)
+      : issues;
     const safeOrderId = escapeHtml(orderId);
     const confirmUrl = `/fix-issue/${encodeURIComponent(orderId)}/confirm`;
 
-    const issuesHtml = issues.length
-      ? issues
+    const getDeviceLabel = (deviceKey) => {
+      if (!deviceKey) return 'Device';
+      const parts = String(deviceKey).split('::');
+      const idx = Number(parts[1]);
+      const deviceNumber = Number.isFinite(idx) ? idx + 1 : 1;
+      const items = Array.isArray(order.items) ? order.items : [];
+      const item = Number.isFinite(idx) ? items[idx] : null;
+      const model = item?.deviceName || item?.model || order?.device || order?.deviceName || '';
+      const storage = item?.storage || item?.capacity || order?.storage || '';
+      const modelLabel = [model, storage].filter(Boolean).join(' ').trim();
+      return modelLabel ? `Device ${deviceNumber}: ${modelLabel}` : `Device ${deviceNumber}`;
+    };
+
+    const focusedDeviceLabel = requestedDeviceKey ? getDeviceLabel(requestedDeviceKey) : '';
+    const safeFocusedDeviceLabel = focusedDeviceLabel ? escapeHtml(focusedDeviceLabel) : '';
+    const safeFocusedDeviceKey = requestedDeviceKey ? escapeHtml(requestedDeviceKey) : '';
+
+    const issuesHtml = visibleIssues.length
+      ? visibleIssues
           .map((issue, index) => {
             const copy = ISSUE_COPY[issue.reason] || {
               title: toTitleCase(issue.reason),
               detail: 'Please resolve this issue so we can continue processing.',
             };
             const safeDeviceKey = escapeHtml(issue.deviceKey);
+            const safeDeviceLabel = escapeHtml(getDeviceLabel(issue.deviceKey));
             const safeReason = escapeHtml(issue.reason);
             const safeNotes = issue.notes ? `<p class="issue-notes">${escapeHtml(issue.notes)}</p>` : '';
             const statusLabel = issue.resolved ? 'Resolved' : 'Needs action';
@@ -263,7 +290,8 @@ app.get('/fix-issue/:orderId', async (req, res) => {
                   </div>
                   <span class="issue-status ${issue.resolved ? 'resolved' : 'pending'}">${statusLabel}</span>
                 </div>
-                <div class="issue-meta">Device: ${safeDeviceKey}</div>
+                <div class="issue-meta">Device: ${safeDeviceLabel}</div>
+                <div class="issue-meta" style="margin-top:4px;">Device Key: ${safeDeviceKey}</div>
                 ${safeNotes}
                 ${buttonHtml}
                 <div class="issue-feedback" aria-live="polite"></div>
@@ -271,7 +299,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
             `;
           })
           .join('')
-      : '<p>No outstanding issues were found for this order.</p>';
+      : '<p>No outstanding issues were found for this device/order.</p>';
 
     res.status(200).send(`<!doctype html>
 <html lang="en">
@@ -399,6 +427,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       <h1>Issue Resolved</h1>
       <p>Resolve each issue below. We will continue once everything is cleared.</p>
       <div class="order">Order #${safeOrderId}</div>
+      ${safeFocusedDeviceLabel ? `<div class="order" style="margin-top:8px;">Focused Device: ${safeFocusedDeviceLabel}</div><div class="issue-meta" style="text-align:center; margin-top:6px;">Device Key: ${safeFocusedDeviceKey}</div>` : ''}
       <div class="issues">${issuesHtml}</div>
     </div>
     <script>
