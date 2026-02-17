@@ -3786,12 +3786,9 @@ async function sendMultipleTestEmails(email, emailTypes) {
               </div>
               <p style="margin-bottom:12px;">Reason for the change:</p>
               <p style="background:#fef3c7; border-radius:14px; border:1px solid #fde68a; color:#92400e; padding:14px 18px; margin:0 0 28px;">${escapeHtml(reasonString).replace(/\n/g, "<br>")}</p>
-              <p style="margin-bottom:20px;">Choose how you'd like to proceed:</p>
+              <p style="margin-bottom:20px;">Review the updated offer and choose how you'd like to proceed:</p>
               <div style="text-align:center; margin-bottom:20px;">
-                <a href="${process.env.APP_FRONTEND_URL}/reoffer-action.html?orderId=${orderToUse.id}&action=accept" class="button-link" style="background-color:#16a34a;">Accept offer ($${orderToUse.reOffer.newPrice.toFixed(2)})</a>
-              </div>
-              <div style="text-align:center; margin-bottom:24px;">
-                <a href="${process.env.APP_FRONTEND_URL}/reoffer-action.html?orderId=${orderToUse.id}&action=return" class="button-link" style="background-color:#dc2626;">Return device instead</a>
+                <a href="https://secondhandcell.com/track-order.html?orderId=${encodeURIComponent(orderToUse.id)}&fromEmailLink=1&fromReofferLink=1&scrollToReoffer=1" class="button-link" style="background-color:#16a34a;">Review offer & choose</a>
               </div>
               <p>Questions or feedback? Reply to this email—we're here to help.</p>
           `,
@@ -4899,8 +4896,7 @@ app.post("/orders/:id/re-offer", async (req, res) => {
     const newOfferValue = Number(newPrice).toFixed(2);
     const customerName = order.shippingInfo.fullName || "there";
     const encodedDeviceKey = encodeURIComponent(resolvedDeviceKey);
-    const acceptUrl = `${process.env.APP_FRONTEND_URL}/reoffer-action.html?orderId=${orderId}&deviceKey=${encodedDeviceKey}&action=accept`;
-    const returnUrl = `${process.env.APP_FRONTEND_URL}/reoffer-action.html?orderId=${orderId}&deviceKey=${encodedDeviceKey}&action=return`;
+    const reviewUrl = `https://secondhandcell.com/track-order.html?orderId=${orderId}&deviceKey=${encodedDeviceKey}&fromEmailLink=1&fromReofferLink=1&scrollToReoffer=1`;
 
     const customerEmailHtml = buildEmailLayout({
       title: "Updated offer available",
@@ -4915,12 +4911,9 @@ app.post("/orders/:id/re-offer", async (req, res) => {
           </div>
           <p style="margin-bottom:12px;">Reason for the change:</p>
           <p style="background:#fef3c7; border-radius:14px; border:1px solid #fde68a; color:#92400e; padding:14px 18px; margin:0 0 28px;">${safeReason}</p>
-          <p style="margin-bottom:20px;">Choose how you'd like to proceed:</p>
+          <p style="margin-bottom:20px;">Review the updated offer and choose how you'd like to proceed:</p>
           <div style="text-align:center; margin-bottom:20px;">
-            <a href="${acceptUrl}" class="button-link" style="background-color:#16a34a;">Accept offer ($${newOfferValue})</a>
-          </div>
-          <div style="text-align:center; margin-bottom:24px;">
-            <a href="${returnUrl}" class="button-link" style="background-color:#dc2626;">Return device instead</a>
+            <a href="${reviewUrl}" class="button-link" style="background-color:#16a34a;">Review offer & choose</a>
           </div>
           <p>Questions or feedback? Reply to this email—we're here to help.</p>
       `,

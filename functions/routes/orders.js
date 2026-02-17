@@ -1208,6 +1208,12 @@ function createOrdersRouter({
           ? 'shipping_kit_requested'
           : 'order_pending';
       let autoLabelResult = null;
+      const trackOrderUrl = `https://secondhandcell.com/track-order.html?orderId=${encodeURIComponent(orderId)}&fromEmailLink=1`;
+      const trackStatusButtonHtml = `
+        <div style="text-align:center; margin-top:18px;">
+          <a href="${trackOrderUrl}" class="button-link" style="background-color:#2563eb;">Track your status here</a>
+        </div>
+      `;
 
       if (orderData.shippingPreference === 'Email Label Requested') {
         try {
@@ -1234,6 +1240,7 @@ function createOrdersRouter({
             <li style="margin-bottom:8px;">Seal the mailer firmly, attach the prepaid label, and drop it at any USPS location.</li>
           </ol>
           <p style="margin:0; color:#475569;">Keep your USPS receipt for tracking. Questions? Just reply to this email.</p>
+          ${trackStatusButtonHtml}
         </div>
       `;
       } else if (autoLabelResult) {
@@ -1244,12 +1251,17 @@ function createOrdersRouter({
         <div style="margin-top: 24px;">
           <h2 style="font-size:18px; color:#0f172a; margin:0 0 10px;">Email label instructions</h2>
           <p style="margin:0 0 12px; color:#475569;">Your prepaid USPS label is ready! Download it from the confirmation page or the button below.${promoLine}</p>
+          <div style="text-align:center; margin:18px 0 14px;">
+            <a href="${autoLabelResult.labelDownloadLink}" class="button-link" style="background-color:#16a34a;">Download shipping label</a>
+          </div>
+          <p style="margin:0 0 12px; color:#475569;"><strong>Tracking Number:</strong> ${autoLabelResult.trackingNumber || 'N/A'}</p>
           <ol style="margin:0 0 12px 18px; padding-left:18px; color:#475569;">
             <li style="margin-bottom:8px;">Print the label and grab a sturdy box with bubble wrap or a soft cloth.</li>
             <li style="margin-bottom:8px;">Power off the device, remove SIM/eSIM, sign out of accounts, and add a note with your order number.</li>
             <li style="margin-bottom:8px;">Seal every edge with tape, place the label flat on the box, and drop it off at USPS. Keep the receipt for your records.</li>
           </ol>
           <p style="margin:0; color:#475569;">Need help? Reply to this email and we'll guide you.</p>
+          ${trackStatusButtonHtml}
         </div>
       `;
       } else {
@@ -1263,6 +1275,7 @@ function createOrdersRouter({
             <li style="margin-bottom:8px;">Once your label arrives, print it, seal the box, attach the label, and drop it at USPS with a receipt.</li>
           </ol>
           <p style="margin:0; color:#475569;">Questions? Reply to this email.</p>
+          ${trackStatusButtonHtml}
         </div>
       `;
       }
@@ -1352,7 +1365,9 @@ function createOrdersRouter({
       const customerMailOptions = {
         from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
         to: orderData.shippingInfo.email,
-        subject: `Your SecondHandCell Order #${orderId} Has Been Received!`,
+        subject: autoLabelResult
+          ? `Your SecondHandCell Order #${orderId} Has Been Received + Label Ready`
+          : `Your SecondHandCell Order #${orderId} Has Been Received!`,
         html: customerEmailHtml,
       };
 
@@ -1393,12 +1408,6 @@ function createOrdersRouter({
           )
         );
       });
-
-      if (autoLabelResult?.customerMailOptions) {
-        notificationPromises.push(
-          transporter.sendMail(autoLabelResult.customerMailOptions)
-        );
-      }
 
       Promise.allSettled(notificationPromises)
         .then((notificationResults) => {
