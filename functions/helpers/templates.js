@@ -23,6 +23,10 @@ const SHIPPING_LABEL_EMAIL_HTML = buildEmailLayout({
       <strong style="display:block; margin-bottom:6px;">Quick reminder</strong>
       Print the label, attach it to your package, and drop it off at any USPS location.
     </div>
+
+    <div style="text-align:center; margin-top:18px;">
+      <a href="**TRACK_STATUS_LINK**" class="button-link" style="background:linear-gradient(135deg,#2563eb,#3b82f6); box-shadow:0 12px 24px rgba(37,99,235,0.25);">Track your status here</a>
+    </div>
   `,
 });
 

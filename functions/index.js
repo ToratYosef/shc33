@@ -2286,6 +2286,9 @@ const SHIPPING_LABEL_EMAIL_HTML = buildEmailLayout({
         <p style="margin:0 0 10px;"><strong style="color:#0f172a;">Tracking Number</strong><br><span style="color:#2563eb; font-weight:600;">**TRACKING_NUMBER**</span></p>
         <p style="margin:0; color:#475569;">Drop your device off with your preferred carrier as soon as you're ready.</p>
       </div>
+      <div style="text-align:center; margin-top:18px;">
+        <a href="**TRACK_STATUS_LINK**" class="button-link" style="background-color:#2563eb;">Track your status here</a>
+      </div>
       <p style="margin-top:28px;">Need a hand? Reply to this email and our team will guide you.</p>
   `,
 });
@@ -3767,7 +3770,8 @@ async function sendMultipleTestEmails(email, emailTypes) {
           .replace(/\*\*CUSTOMER_NAME\*\*/g, orderToUse.shippingInfo.fullName)
           .replace(/\*\*ORDER_ID\*\*/g, orderToUse.id)
           .replace(/\*\*TRACKING_NUMBER\*\*/g, orderToUse.trackingNumber)
-          .replace(/\*\*LABEL_DOWNLOAD_LINK\*\*/g, orderToUse.uspsLabelUrl);
+          .replace(/\*\*LABEL_DOWNLOAD_LINK\*\*/g, orderToUse.uspsLabelUrl)
+          .replace(/\*\*TRACK_STATUS_LINK\*\*/g, `https://secondhandcell.com/track-order.html?orderId=${encodeURIComponent(orderToUse.id)}&fromEmailLink=1`);
         break;
       case "reoffer":
         orderToUse = mockOrderData;

@@ -257,11 +257,13 @@ function createOrdersRouter({
     const labelTimestamp = FieldValue.serverTimestamp();
 
     const customerEmailSubject = `Your SecondHandCell Shipping Label for Order #${orderId}`;
+    const trackStatusLink = `https://secondhandcell.com/track-order.html?orderId=${encodeURIComponent(orderId)}&fromEmailLink=1`;
     const customerEmailHtml = SHIPPING_LABEL_EMAIL_HTML
       .replace(/\*\*CUSTOMER_NAME\*\*/g, shippingInfo.fullName)
       .replace(/\*\*ORDER_ID\*\*/g, orderId)
       .replace(/\*\*TRACKING_NUMBER\*\*/g, labelData.tracking_number || 'N/A')
-      .replace(/\*\*LABEL_DOWNLOAD_LINK\*\*/g, labelDownloadLink);
+      .replace(/\*\*LABEL_DOWNLOAD_LINK\*\*/g, labelDownloadLink)
+      .replace(/\*\*TRACK_STATUS_LINK\*\*/g, trackStatusLink);
 
     const customerMailOptions = {
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
@@ -1737,6 +1739,7 @@ function createOrdersRouter({
         };
 
         customerEmailSubject = `Your SecondHandCell Shipping Label for Order #${order.id}`;
+        const trackStatusLink = `https://secondhandcell.com/track-order.html?orderId=${encodeURIComponent(order.id)}&fromEmailLink=1`;
         customerEmailHtml = SHIPPING_LABEL_EMAIL_HTML
           .replace(/\*\*CUSTOMER_NAME\*\*/g, order.shippingInfo.fullName)
           .replace(/\*\*ORDER_ID\*\*/g, order.id)
@@ -1744,7 +1747,8 @@ function createOrdersRouter({
             /\*\*TRACKING_NUMBER\*\*/g,
             customerLabelData.tracking_number || 'N/A'
           )
-          .replace(/\*\*LABEL_DOWNLOAD_LINK\*\*/g, labelDownloadLink);
+          .replace(/\*\*LABEL_DOWNLOAD_LINK\*\*/g, labelDownloadLink)
+          .replace(/\*\*TRACK_STATUS_LINK\*\*/g, trackStatusLink);
 
         customerMailOptions = {
           from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
