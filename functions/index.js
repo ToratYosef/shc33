@@ -3243,7 +3243,7 @@ async function handleLabelVoid(order, selections, options = {}) {
   }
 
   const approvedCount = results.filter((result) => result && result.approved).length;
-  if (options.reason === 'manual' && approvedCount > 0) {
+  if (approvedCount > 0) {
     Object.assign(updates, buildManualVoidShippingCleanupPayload());
   }
 
@@ -6428,23 +6428,11 @@ async function runAutomaticLabelVoidSweep() {
   }
 
   const primarySnapshot = await ordersCollection
-    .where("hasActiveShipEngineLabel", "==", true)
+    .where('status', '==', 'label_generated')
     .limit(AUTO_VOID_QUERY_LIMIT)
     .get();
 
   const docsToProcess = primarySnapshot.docs ? [...primarySnapshot.docs] : [];
-
-  if (docsToProcess.length < AUTO_VOID_QUERY_LIMIT) {
-    const fallbackLimit = AUTO_VOID_QUERY_LIMIT - docsToProcess.length;
-    const fallbackSnapshot = await ordersCollection
-      .where("hasActiveShipEngineLabel", "==", null)
-      .limit(fallbackLimit)
-      .get();
-
-    fallbackSnapshot.forEach((doc) => {
-      docsToProcess.push(doc);
-    });
-  }
 
   if (!docsToProcess.length) {
     return;
@@ -6459,6 +6447,9 @@ async function runAutomaticLabelVoidSweep() {
     const order = { id: doc.id, ...doc.data() };
     const orderStatus = normalizeStatusValue(order.status);
     if (orderStatus !== 'label_generated') {
+      continue;
+    }
+    if (order.returnAutoVoidedAt || order.autoLabelVoidProcessedAt) {
       continue;
     }
     const labels = normalizeShipEngineLabelMap(order);
@@ -6508,6 +6499,7 @@ async function runAutomaticLabelVoidSweep() {
           cancelReason: 'label_voided_no_response_28_days',
           cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
           returnAutoVoidedAt: admin.firestore.FieldValue.serverTimestamp(),
+          autoLabelVoidProcessedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, {
           logEntries: [
             {
