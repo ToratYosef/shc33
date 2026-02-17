@@ -2232,3 +2232,5 @@ function createOrdersRouter({
 
   return router;
 }
+
+module.exports = createOrdersRouter;
