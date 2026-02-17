@@ -1593,7 +1593,7 @@ function getGreetingName(fullName) {
   return first || "there";
 }
 
-function buildConditionEmail(reason, order, notes) {
+function buildConditionEmail(reason, order, notes, deviceKey = null) {
   const template = CONDITION_EMAIL_TEMPLATES[reason];
   if (!template) {
     throw new Error("Unsupported condition email template.");
