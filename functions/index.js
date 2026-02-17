@@ -6374,6 +6374,10 @@ async function runAutomaticLabelVoidSweep() {
     if (processedIds.has(doc.id)) continue;
     processedIds.add(doc.id);
     const order = { id: doc.id, ...doc.data() };
+    const orderStatus = normalizeStatusValue(order.status);
+    if (orderStatus !== 'label_generated') {
+      continue;
+    }
     const labels = normalizeShipEngineLabelMap(order);
     const selections = [];
 
