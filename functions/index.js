@@ -5296,9 +5296,12 @@ async function refreshKitTrackingById(orderId, options = {}) {
   }
 
   const timestamp = admin.firestore.FieldValue.serverTimestamp();
+  const refreshSource = String(options.source || 'admin_manual').toLowerCase();
   const updateData = {
     ...updatePayload,
     kitTrackingLastRefreshedAt: timestamp,
+    lastTrackingRefreshAt: timestamp,
+    lastTrackingRefreshSource: refreshSource,
   };
 
   if (direction === 'inbound') {
@@ -5324,7 +5327,7 @@ async function refreshKitTrackingById(orderId, options = {}) {
   if (delivered && shipengineKey) {
     try {
       if (shouldTrackInbound(updatedOrder)) {
-        await syncInboundTrackingForOrder(updatedOrder, { shipengineKey });
+        await syncInboundTrackingForOrder(updatedOrder, { shipengineKey, source: refreshSource });
       }
     } catch (inboundError) {
       console.error(
@@ -5348,7 +5351,7 @@ async function refreshKitTrackingById(orderId, options = {}) {
 
 app.post('/orders/:id/refresh-kit-tracking', async (req, res) => {
   try {
-    const payload = await refreshKitTrackingById(req.params.id);
+    const payload = await refreshKitTrackingById(req.params.id, { source: 'admin_manual' });
     res.json(payload);
   } catch (error) {
     if (error?.statusCode) {
@@ -5493,10 +5496,13 @@ async function syncInboundTrackingForOrder(order, options = {}) {
   });
 
   const timestamp = admin.firestore.FieldValue.serverTimestamp();
+  const refreshSource = String(options.source || 'system_automatic').toLowerCase();
 
   if (!trackingData || typeof trackingData !== 'object') {
     const { order: updatedOrder } = await updateOrderBoth(order.id, {
       labelTrackingLastSyncedAt: timestamp,
+      lastTrackingRefreshAt: timestamp,
+      lastTrackingRefreshSource: refreshSource,
     }, {
       autoLogStatus: false,
       logEntries: [
@@ -5524,6 +5530,8 @@ async function syncInboundTrackingForOrder(order, options = {}) {
     labelTrackingEstimatedDelivery:
       trackingData.estimated_delivery_date || trackingData.estimatedDeliveryDate || null,
     labelTrackingLastSyncedAt: timestamp,
+    lastTrackingRefreshAt: timestamp,
+    lastTrackingRefreshSource: refreshSource,
   };
 
   if (Array.isArray(trackingData.events)) {
@@ -5833,7 +5841,7 @@ async function maybeAutoCancelAgingOrder(order, options = {}) {
   return cancelledOrder;
 }
 
-async function refreshEmailLabelTrackingById(orderId) {
+async function refreshEmailLabelTrackingById(orderId, options = {}) {
   if (!orderId) {
     const error = new Error('Order ID is required');
     error.statusCode = 400;
@@ -5851,7 +5859,9 @@ async function refreshEmailLabelTrackingById(orderId) {
   if (isStatusPastReceived(order)) {
     return { skipped: true, reason: 'Order already received/completed. Tracking refresh skipped.' };
   }
-  const result = await syncInboundTrackingForOrder(order);
+  const result = await syncInboundTrackingForOrder(order, {
+    source: options.source || 'admin_manual',
+  });
 
   if (result.skipped === 'no_tracking') {
     return { skipped: true, reason: 'No inbound tracking number on file for this order.' };
@@ -5871,7 +5881,7 @@ async function refreshEmailLabelTrackingById(orderId) {
 
 app.post('/orders/:id/sync-label-tracking', async (req, res) => {
   try {
-    const payload = await refreshEmailLabelTrackingById(req.params.id);
+    const payload = await refreshEmailLabelTrackingById(req.params.id, { source: 'admin_manual' });
     res.json(payload);
   } catch (error) {
     const message = error?.message || 'Failed to sync label tracking';
@@ -6631,7 +6641,7 @@ async function runAutomaticInboundTrackingRefresh() {
     }
 
     try {
-      await syncInboundTrackingForOrder(order);
+      await syncInboundTrackingForOrder(order, { source: 'system_automatic' });
     } catch (error) {
       console.error(`Automatic inbound tracking refresh failed for order ${order.id}:`, error.response?.data || error);
     }
@@ -8216,7 +8226,7 @@ exports.refreshTracking = functions.runWith({ timeoutSeconds: 540, memory: '1GB'
     }
 
     try {
-      const payload = await handler(orderId);
+      const payload = await handler(orderId, { source: 'admin_manual' });
       res.json({ type: normalizedType, ...payload });
     } catch (error) {
       const statusCode = error?.statusCode || 500;
