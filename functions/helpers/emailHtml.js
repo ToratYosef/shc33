@@ -64,6 +64,7 @@ const CONDITION_EMAIL_TEMPLATES = {
       "If you believe this is an error, please contact your carrier to remove the flag.",
       "Provide any supporting documentation by replying to this email so we can review and re-run the check.",
     ],
+    showResolvedButton: true,
   },
   fmi_active: {
     subject: "Find My / Activation Lock Detected",

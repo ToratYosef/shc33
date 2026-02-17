@@ -2189,6 +2189,8 @@ function createOrdersRouter({
         status: 'issue_resolved',
         qcData: null,
         qcDataByDevice: null,
+        qcAwaitingResponse: false,
+        deviceStatusByKey: null,
       };
 
       const logEntries = [
