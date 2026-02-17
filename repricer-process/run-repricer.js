@@ -7,7 +7,9 @@ const { DOMParser, XMLSerializer } = require("@xmldom/xmldom");
 const { execSync } = require("child_process");
 
 // ---------------- CONFIG ----------------
-const SELLCELL_URL = "http://secondhandcell.com/sellcell/feed.xml";
+const SELLCELL_URL = "http://feed.sellcell.com/secondhandcell/feed.xml";
+const SELLCELL_USERNAME = "secondhandcell";
+const SELLCELL_PASSWORD = "4t#cfo6$eK2N";
 
 // CLI args
 const args = process.argv.slice(2);
@@ -735,7 +737,13 @@ async function main() {
   const templateXmlBefore = fs.readFileSync(TEMPLATE_XML_PATH, "utf8");
 
   console.log(`[repricer] downloading SellCell feed: ${SELLCELL_URL}`);
-  const res = await fetch(SELLCELL_URL, { method: "GET" });
+  const authHeader = `Basic ${Buffer.from(`${SELLCELL_USERNAME}:${SELLCELL_PASSWORD}`).toString("base64")}`;
+  const res = await fetch(SELLCELL_URL, {
+    method: "GET",
+    headers: {
+      Authorization: authHeader,
+    },
+  });
   if (!res.ok) throw new Error(`Failed to download SellCell feed: ${res.status} ${res.statusText}`);
   const sellcellXmlText = await res.text();
   console.log(`[repricer] SellCell feed downloaded (${sellcellXmlText.length.toLocaleString()} chars)`);
