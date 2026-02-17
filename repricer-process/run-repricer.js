@@ -10,6 +10,7 @@ const { execSync } = require("child_process");
 const SELLCELL_URL = "http://feed.sellcell.com/secondhandcell/feed.xml";
 const SELLCELL_USERNAME = "secondhandcell";
 const SELLCELL_PASSWORD = "4t#cfo6$eK2N";
+const DOWNLOADED_FEED_PATH = path.join(__dirname, "sellcell-feed-debug.xml");
 
 // CLI args
 const args = process.argv.slice(2);
@@ -759,7 +760,9 @@ async function main() {
   });
   if (!res.ok) throw new Error(`Failed to download SellCell feed: ${res.status} ${res.statusText}`);
   const sellcellXmlText = await res.text();
+  fs.writeFileSync(DOWNLOADED_FEED_PATH, sellcellXmlText, "utf8");
   console.log(`[repricer] SellCell feed downloaded (${sellcellXmlText.length.toLocaleString()} chars)`);
+  console.log(`[repricer] SellCell feed saved for Samsung debugging -> ${DOWNLOADED_FEED_PATH}`);
 
   console.log(`[repricer] building feed index...`);
   const feedIndex = buildFeedIndexFromXml(sellcellXmlText);
