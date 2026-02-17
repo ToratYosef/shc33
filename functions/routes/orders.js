@@ -1651,14 +1651,8 @@ function createOrdersRouter({
         reason: 'manual',
       });
 
-      try {
-        await sendVoidNotificationEmail(order, results, { reason: 'manual' });
-      } catch (notificationError) {
-        console.error(
-          `Failed to send manual void notification for order ${orderId}:`,
-          notificationError
-        );
-      }
+      // Silently void label - no customer email sent
+      // Status automatically set to "canceled" by handleLabelVoid
 
       res.json({ orderId, results });
     } catch (error) {

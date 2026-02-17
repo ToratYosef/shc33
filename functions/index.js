@@ -3245,6 +3245,7 @@ async function handleLabelVoid(order, selections, options = {}) {
   const approvedCount = results.filter((result) => result && result.approved).length;
   if (approvedCount > 0) {
     Object.assign(updates, buildManualVoidShippingCleanupPayload());
+    updates.status = "canceled";
   }
 
   if (changed) {
@@ -6518,18 +6519,8 @@ async function runAutomaticLabelVoidSweep() {
         });
       }
 
-      try {
-        await sendVoidNotificationEmail(order, results, {
-          reason: "automatic",
-          sendAdmin: false,
-          sendCustomer: false,
-        });
-      } catch (notificationError) {
-        console.error(
-          `Failed to send automatic void notification for order ${order.id}:`,
-          notificationError
-        );
-      }
+      // Silently void label - no customer email sent
+      // Status automatically set to "canceled" by handleLabelVoid
     } catch (error) {
       console.error(
         `Automatic label void failed for order ${order.id}:`,
