@@ -2,7 +2,6 @@ const path = require('path');
 const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
-const rateLimit = require('express-rate-limit');
 
 const isServerless = Boolean(
   process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME
@@ -313,25 +312,6 @@ app.use((req, res, next) => {
   return next();
 });
 
-const shouldRateLimit =
-  !isServerless || String(process.env.RATE_LIMIT_ENABLE || '').toLowerCase() === 'true';
-if (shouldRateLimit) {
-  const limiter = rateLimit({
-    windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 900000),
-    max: Number(process.env.RATE_LIMIT_MAX || 300),
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: (req) => {
-      const trustProxySetting = app.get('trust proxy');
-      if (trustProxySetting) {
-        return req.ip;
-      }
-      return req.socket?.remoteAddress || req.ip || 'unknown';
-    },
-  });
-
-  app.use(limiter);
-}
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '1mb' }));
 
 app.get('/', (req, res) => {
