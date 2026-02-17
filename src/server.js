@@ -537,6 +537,36 @@ app.use('/terminal', express.static(path.join(__dirname, '..', 'public', 'termin
   fallthrough: false,
 }));
 
+const sellcellDebugFeedPath = path.join(
+  __dirname,
+  '..',
+  'repricer-process',
+  'sellcell-feed-debug.xml'
+);
+
+function sendSellcellDebugFeed(req, res) {
+  return res.sendFile(sellcellDebugFeedPath, (err) => {
+    if (!err) {
+      return;
+    }
+    if (err.code === 'ENOENT') {
+      return res.status(404).json({
+        ok: false,
+        error: 'Debug feed file not found. Run repricer-process/run-repricer.js first.',
+        path: req.originalUrl,
+      });
+    }
+    return res.status(err.statusCode || 500).json({
+      ok: false,
+      error: err.message || 'Unable to load debug feed file.',
+      path: req.originalUrl,
+    });
+  });
+}
+
+app.get('/repricer-process/sellcell-feed-debug.xml', sendSellcellDebugFeed);
+app.get('/shc33/repricer-process/sellcell-feed-debug.xml', sendSellcellDebugFeed);
+
 
 const apiBasePath = (() => {
   const raw = typeof process.env.API_BASE_PATH === 'string'
