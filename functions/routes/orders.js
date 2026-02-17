@@ -525,9 +525,10 @@ function createOrdersRouter({
       .replace(/[^a-zA-Z0-9._-]+/g, '-');
   }
 
-  async function collectOrderPrintParts(order) {
+  async function collectOrderPrintParts(order, options = {}) {
     const parts = [];
     const seenUrls = new Set();
+    const includeShippingLabels = options.includeShippingLabels !== false;
     const shippingPreference = String(
       order.shippingPreference || order.shipping_preference || ''
     ).toLowerCase();
@@ -567,31 +568,33 @@ function createOrdersRouter({
 
     let hasInboundLabel = false;
 
-    await pushLabelPart(order.outboundLabelUrl, 'outbound');
+    if (includeShippingLabels) {
+      await pushLabelPart(order.outboundLabelUrl, 'outbound');
 
-    if (order.inboundLabelUrl) {
-      await pushLabelPart(order.inboundLabelUrl, 'inbound');
-      hasInboundLabel = true;
-    }
-
-    if (order.uspsLabelUrl) {
-      if (!hasInboundLabel) {
-        await pushLabelPart(order.uspsLabelUrl, 'inbound');
+      if (order.inboundLabelUrl) {
+        await pushLabelPart(order.inboundLabelUrl, 'inbound');
         hasInboundLabel = true;
-      } else {
-        await pushLabelPart(order.uspsLabelUrl, 'extra');
       }
-    }
 
-    const labelUrls = Array.from(collectLabelUrlCandidates(order));
-    for (const url of labelUrls) {
-      if (seenUrls.has(url)) {
-        continue;
+      if (order.uspsLabelUrl) {
+        if (!hasInboundLabel) {
+          await pushLabelPart(order.uspsLabelUrl, 'inbound');
+          hasInboundLabel = true;
+        } else {
+          await pushLabelPart(order.uspsLabelUrl, 'extra');
+        }
       }
-      const nextKind = hasInboundLabel ? 'extra' : 'inbound';
-      await pushLabelPart(url, nextKind);
-      if (nextKind === 'inbound') {
-        hasInboundLabel = true;
+
+      const labelUrls = Array.from(collectLabelUrlCandidates(order));
+      for (const url of labelUrls) {
+        if (seenUrls.has(url)) {
+          continue;
+        }
+        const nextKind = hasInboundLabel ? 'extra' : 'inbound';
+        await pushLabelPart(url, nextKind);
+        if (nextKind === 'inbound') {
+          hasInboundLabel = true;
+        }
       }
     }
 
@@ -619,7 +622,7 @@ function createOrdersRouter({
       ['outbound', 'inbound', 'extra'].includes(part?.kind)
     );
 
-    if (isKitOrder && shippingParts.length === 1) {
+    if (includeShippingLabels && isKitOrder && shippingParts.length === 1) {
       const duplicate = shippingParts[0];
       const duplicateBuffer = normaliseBuffer(duplicate?.buffer);
       if (duplicateBuffer?.length) {
@@ -743,7 +746,13 @@ function createOrdersRouter({
     return { folderName, sequence, jobId };
   }
 
-  async function buildPrintBundleResponse({ orderIds = [], res, origin, allowEmptySelection = false }) {
+  async function buildPrintBundleResponse({
+    orderIds = [],
+    res,
+    origin,
+    allowEmptySelection = false,
+    includeShippingLabels = true,
+  }) {
     const cleanedOrderIds = Array.isArray(orderIds)
       ? orderIds.map((id) => String(id).trim()).filter(Boolean)
       : [];
@@ -765,7 +774,7 @@ function createOrdersRouter({
     const bulkPlans = [];
 
     for (const order of orders) {
-      const parts = await collectOrderPrintParts(order);
+      const parts = await collectOrderPrintParts(order, { includeShippingLabels });
       if (!parts.length) {
         console.warn(`No printable documents generated for order ${order.id}`);
         continue;
@@ -948,6 +957,7 @@ function createOrdersRouter({
         res,
         origin: req.headers.origin,
         allowEmptySelection: false,
+        includeShippingLabels: false,
       });
     } catch (error) {
       console.error('Failed to generate merge print bundle (POST):', error);
@@ -969,6 +979,7 @@ function createOrdersRouter({
         res,
         origin: req.headers.origin,
         allowEmptySelection: false,
+        includeShippingLabels: false,
       });
     } catch (error) {
       console.error('Failed to generate merge print bundle:', error);
