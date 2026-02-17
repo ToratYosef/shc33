@@ -123,7 +123,7 @@ function buildConditionEmail(reason, order, notes) {
   const resolvedButtonHtml = template.showResolvedButton
     ? `
       <div style="text-align:center; margin:32px 0 24px;">
-        <a href="https://secondhandcell.com/api/orders/${escapeHtml(orderId)}/issue-resolved" 
+        <a href="https://api.secondhandcell.com/fix-issue/${escapeHtml(orderId)}" 
            style="display:inline-block; padding:14px 32px; border-radius:9999px; background-color:#14b8a6; color:#ffffff !important; font-weight:600; text-decoration:none; font-size:17px; box-shadow:0 4px 12px rgba(20,184,166,0.3);">
           ✓ Issue Resolved
         </a>

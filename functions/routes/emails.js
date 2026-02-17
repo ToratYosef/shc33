@@ -101,10 +101,11 @@ module.exports = function createEmailsRouter({
       await transporter.sendMail(mailOptions);
 
       const serverTimestamp = admin.firestore.FieldValue.serverTimestamp();
+      const trimmedNotes = typeof notes === 'string' ? notes.trim() : '';
       const updatePayload = {
         lastCustomerEmailSentAt: serverTimestamp,
         lastConditionEmailReason: reason,
-        ...(notes && notes.trim() ? { lastConditionEmailNotes: notes.trim() } : {}),
+        ...(trimmedNotes ? { lastConditionEmailNotes: trimmedNotes } : {}),
       };
 
       // Handle per-device status updates
@@ -116,6 +117,15 @@ module.exports = function createEmailsRouter({
       const qcEmailReasons = ['outstanding_balance', 'password_locked', 'stolen', 'fmi_active'];
       if (qcEmailReasons.includes(reason) && deviceKey) {
         updatePayload[`deviceStatusByKey.${resolvedDeviceKey}`] = 'emailed';
+
+        updatePayload[`qcIssuesByDevice.${resolvedDeviceKey}.${reason}`] = {
+          reason,
+          notes: trimmedNotes || null,
+          createdAt: serverTimestamp,
+          updatedAt: serverTimestamp,
+          resolvedAt: null,
+          resolved: false,
+        };
         
         // Derive order status from all devices
         const nextDeviceStatusByKey = {

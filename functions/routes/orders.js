@@ -2166,68 +2166,13 @@ function createOrdersRouter({
     }
   });
 
-  // Issue Resolved endpoint - customer indicates they've fixed the issue (FRP, passcode, etc.)
-  router.get('/orders/:id/issue-resolved', async (req, res) => {
-    try {
-      const orderId = req.params.id;
-
-      if (!orderId) {
-        return res.status(400).json({ error: 'Order ID is required.' });
-      }
-
-      const orderRef = ordersCollection.doc(orderId);
-      const orderSnap = await orderRef.get();
-      if (!orderSnap.exists) {
-        return res.status(404).json({ error: 'Order not found.' });
-      }
-
-      const existingOrder = orderSnap.data();
-      const customerName = existingOrder?.shippingInfo?.fullName || 'Customer';
-
-      // Update order: set status to issue_resolved and clear QC data to restart inspection
-      const updatePayload = {
-        status: 'issue_resolved',
-        qcData: null,
-        qcDataByDevice: null,
-        qcAwaitingResponse: false,
-        deviceStatusByKey: null,
-      };
-
-      const logEntries = [
-        {
-          type: 'status_change',
-          message: `Customer reported issue resolved via email link. QC data cleared for re-inspection.`,
-        },
-      ];
-
-      await updateOrderBoth(orderId, updatePayload, {
-        autoLogStatus: false,
-        logEntries,
-      });
-
-      // Notify admin
-      try {
-        await sendAdminPushNotification(
-          `${customerName} marked issue resolved`,
-          `Order #${orderId} issue has been resolved by customer. Ready for QC restart.`,
-          `/admin?order=${orderId}`
-        );
-        await addAdminFirestoreNotification({
-          title: `Issue Resolved: ${orderId}`,
-          message: `${customerName} indicated the device issue has been fixed.`,
-          link: `/admin?order=${orderId}`,
-          type: 'qc',
-        });
-      } catch (notifError) {
-        console.error('Failed to send admin notification:', notifError);
-      }
-
-      // Redirect to confirmation page
-      res.redirect('https://secondhandcell.com/issue-resolved-confirmation.html?orderId=' + encodeURIComponent(orderId));
-    } catch (error) {
-      console.error('Error marking issue as resolved:', error);
-      res.status(500).send('Unable to process your request. Please reply to the email or contact support.');
+  // Issue Resolved endpoint - redirect legacy links to the new fix-issue page.
+  router.get('/orders/:id/issue-resolved', (req, res) => {
+    const orderId = String(req.params.id || '').trim();
+    if (!orderId) {
+      return res.status(400).send('Order ID is required.');
     }
+    return res.redirect(`https://api.secondhandcell.com/fix-issue/${encodeURIComponent(orderId)}`);
   });
 
   return router;
