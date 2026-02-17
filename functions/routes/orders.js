@@ -56,7 +56,6 @@ function createOrdersRouter({
   const firestore = admin.firestore();
   const FieldValue = admin.firestore.FieldValue;
   const Timestamp = admin.firestore.Timestamp;
-  const promoCodesCollection = firestore.collection('promo_codes');
 
   const SWIFT_BUYBACK_ADDRESS = {
     name: 'SHC Returns',
@@ -81,90 +80,10 @@ function createOrdersRouter({
     return Math.max(1, count);
   }
 
-  function normalizePromoCode(value) {
-    if (!value) return '';
-    return String(value).trim().toUpperCase();
-  }
-
   function buildHttpError(message, status = 400) {
     const error = new Error(message);
     error.status = status;
     return error;
-  }
-
-  async function reservePromoCodeUsage({
-    code,
-    orderId,
-    shippingPreference,
-    shippingInfo,
-  }) {
-    const normalizedCode = normalizePromoCode(code);
-    if (!normalizedCode) {
-      return null;
-    }
-
-    const promoRef = promoCodesCollection.doc(normalizedCode);
-    return firestore.runTransaction(async (transaction) => {
-      const snapshot = await transaction.get(promoRef);
-      if (!snapshot.exists) {
-        throw buildHttpError('Invalid promo code.', 400);
-      }
-
-      const data = snapshot.data() || {};
-      const usesLeftRaw = Number(data.uses_left ?? data.usesLeft ?? 0);
-      const usesLeft = Number.isFinite(usesLeftRaw) ? usesLeftRaw : 0;
-      if (usesLeft <= 0) {
-        throw buildHttpError('Promo code has been fully redeemed.', 400);
-      }
-
-      const requiresEmailLabel = Boolean(
-        data.requires_email_label ?? data.requiresEmailLabel ?? false
-      );
-      const preferenceValue = (shippingPreference || '').toLowerCase();
-      if (
-        requiresEmailLabel &&
-        preferenceValue !== 'email label requested'
-      ) {
-        throw buildHttpError(
-          'This promo code is only valid with the email label option.',
-          400
-        );
-      }
-
-      const bonusAmountRaw = Number(data.bonus_amount ?? data.bonusAmount ?? 0);
-      const bonusAmount =
-        Number.isFinite(bonusAmountRaw) && bonusAmountRaw > 0
-          ? bonusAmountRaw
-          : 10;
-
-      const maxUsesRaw = Number(data.max_uses ?? data.maxUses ?? 0);
-      const maxUses = Number.isFinite(maxUsesRaw) && maxUsesRaw > 0
-        ? maxUsesRaw
-        : usesLeft;
-
-      transaction.update(promoRef, {
-        uses_left: usesLeft - 1,
-        last_redeemed_at: FieldValue.serverTimestamp(),
-      });
-
-      const redemptionRef = promoRef.collection('redemptions').doc(orderId);
-      transaction.set(redemptionRef, {
-        orderId,
-        customerName: shippingInfo?.fullName || null,
-        customerEmail: shippingInfo?.email || null,
-        bonusAmount,
-        shippingPreference: shippingPreference || null,
-        createdAt: FieldValue.serverTimestamp(),
-      });
-
-      return {
-        code: normalizedCode,
-        amount: bonusAmount,
-        usesLeft: usesLeft - 1,
-        maxUses,
-        requiresEmailLabel,
-      };
-    });
   }
 
   async function autoGenerateEmailLabel(orderId, orderData) {
@@ -1146,49 +1065,12 @@ function createOrdersRouter({
       orderData.originalQuote = originalToPersist;
 
       const orderId = await generateNextOrderNumber();
-      const normalizedPromoCode = normalizePromoCode(
-        orderData.promoCode || orderData.promo_code || ''
-      );
-      let appliedPromo = null;
-
-      if (normalizedPromoCode) {
-        try {
-          appliedPromo = await reservePromoCodeUsage({
-            code: normalizedPromoCode,
-            orderId,
-            shippingPreference: orderData.shippingPreference,
-            shippingInfo: orderData.shippingInfo,
-          });
-        } catch (promoError) {
-          console.error(
-            `Promo code validation failed for order ${orderId}:`,
-            promoError
-          );
-          throw promoError;
-        }
-      }
-
-      const promoBonusAmount = appliedPromo?.amount || 0;
       const finalPayout = payoutToPersist;
       orderData.totalPayout = finalPayout;
       orderData.estimatedQuote =
         Number.isFinite(normalizedEstimated) && normalizedEstimated !== null
           ? normalizedEstimated
           : finalPayout;
-
-      if (appliedPromo) {
-        orderData.promoCode = appliedPromo.code;
-        orderData.promoBonusAmount = promoBonusAmount;
-        orderData.promoRequiresEmailLabel = appliedPromo.requiresEmailLabel;
-        orderData.promoMaxUsesSnapshot = appliedPromo.maxUses ?? null;
-        orderData.promoUsesRemainingSnapshot =
-          typeof appliedPromo.usesLeft === 'number'
-            ? appliedPromo.usesLeft
-            : null;
-      } else {
-        delete orderData.promoCode;
-        delete orderData.promoBonusAmount;
-      }
 
       if (typeof orderData.shippingKitFee !== 'undefined') {
         const normalizedFee = normalizeAmount(orderData.shippingKitFee);
@@ -1229,8 +1111,6 @@ function createOrdersRouter({
         }
       }
 
-      const promoIsShip48 = appliedPromo?.code === 'SHIP48';
-
       if (orderData.shippingPreference === 'Shipping Kit Requested') {
         shippingInstructions = `
         <div style="margin-top: 24px;">
@@ -1246,13 +1126,10 @@ function createOrdersRouter({
         </div>
       `;
       } else if (autoLabelResult) {
-        const promoLine = promoIsShip48
-          ? ' Ship within 48 hours to keep your $10 Ship48 bonus.'
-          : ' Ship within 48 hours and use promo code SHIP48 to add an extra $10 to your payout.';
         shippingInstructions = `
         <div style="margin-top: 24px;">
           <h2 style="font-size:18px; color:#0f172a; margin:0 0 10px;">Email label instructions</h2>
-          <p style="margin:0 0 12px; color:#475569;">Your prepaid USPS label is ready! Download it from the confirmation page or the button below.${promoLine}</p>
+          <p style="margin:0 0 12px; color:#475569;">Your prepaid USPS label is ready! Download it from the confirmation page or the button below.</p>
           <div style="text-align:center; margin:18px 0 14px;">
             <a href="${autoLabelResult.labelDownloadLink}" class="button-link" style="background-color:#16a34a;">Download shipping label</a>
           </div>
@@ -1453,53 +1330,11 @@ function createOrdersRouter({
         responsePayload.autoLabelStatus = 'pending';
       }
 
-      if (appliedPromo) {
-        responsePayload.promo = appliedPromo;
-      }
-
       res.status(201).json(responsePayload);
     } catch (err) {
       console.error('Error submitting order:', err);
       const statusCode = err.status || 500;
       res.status(statusCode).json({ error: err.message || 'Failed to submit order' });
-    }
-  });
-
-  router.get('/promo-codes/:code', async (req, res) => {
-    try {
-      const normalizedCode = normalizePromoCode(req.params.code);
-      if (!normalizedCode) {
-        return res.status(400).json({ error: 'Promo code is required.' });
-      }
-
-      const doc = await promoCodesCollection.doc(normalizedCode).get();
-      if (!doc.exists) {
-        return res.status(404).json({ error: 'Promo code not found.' });
-      }
-
-      const data = doc.data() || {};
-      const usesLeftRaw = Number(data.uses_left ?? data.usesLeft ?? 0);
-      const usesLeft = Number.isFinite(usesLeftRaw) ? usesLeftRaw : 0;
-      const maxUsesRaw = Number(data.max_uses ?? data.maxUses ?? 0);
-      const maxUses = Number.isFinite(maxUsesRaw) && maxUsesRaw > 0 ? maxUsesRaw : usesLeft;
-      const bonusAmountRaw = Number(data.bonus_amount ?? data.bonusAmount ?? 0);
-      const bonusAmount =
-        Number.isFinite(bonusAmountRaw) && bonusAmountRaw > 0 ? bonusAmountRaw : 10;
-      const requiresEmailLabel = Boolean(
-        data.requires_email_label ?? data.requiresEmailLabel ?? false
-      );
-
-      res.json({
-        code: normalizedCode,
-        usesLeft,
-        maxUses,
-        bonusAmount,
-        requiresEmailLabel,
-        description: data.description || data.details || '',
-      });
-    } catch (error) {
-      console.error('Failed to fetch promo code info:', error);
-      res.status(500).json({ error: 'Failed to fetch promo code info' });
     }
   });
 

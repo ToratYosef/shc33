@@ -665,7 +665,7 @@ const publicExactPaths = new Set([
   '/email-support',
   '/submit-chat-feedback',
 ]);
-const publicPrefixPaths = ['/promo-codes/', '/wholesale'];
+const publicPrefixPaths = ['/wholesale'];
 
 apiRouter.use((req, res, next) => {
   if (req.method === 'OPTIONS') {
