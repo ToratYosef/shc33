@@ -741,14 +741,14 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       }
       .main-content {
         flex: 1;
-        padding: 40px 24px;
+        padding: 24px 16px;
         max-width: 1400px;
         width: 100%;
         margin: 0 auto;
       }
       .page-header {
         text-align: center;
-        margin-bottom: 40px;
+        margin-bottom: 24px;
       }
       .page-title {
         margin: 0 0 12px;
@@ -766,16 +766,16 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         background: #ffffff;
         border-radius: 16px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        padding: 24px;
-        margin-bottom: 24px;
+        padding: 16px;
+        margin-bottom: 16px;
         border: 1px solid #e2e8f0;
       }
       .order-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 20px;
-        padding-bottom: 16px;
+        margin-bottom: 12px;
+        padding-bottom: 12px;
         border-bottom: 2px solid #e2e8f0;
       }
       .order-id {
@@ -800,9 +800,9 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       }
       .issues-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        gap: 20px;
-        margin-top: 20px;
+        grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+        gap: 16px;
+        margin-top: 16px;
       }
       .issue-column {
         background: white;
@@ -828,18 +828,18 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       .issue-column-header {
         background: linear-gradient(135deg, #f8fafc, #f1f5f9);
         border-bottom: 2px solid #e2e8f0;
-        padding: 12px;
+        padding: 8px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         flex-shrink: 0;
       }
       .device-badge {
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 6px 12px;
+        gap: 6px;
+        padding: 4px 8px;
         background: #eff6ff;
         border-radius: 6px;
         border: 1px solid #bfdbfe;
@@ -856,7 +856,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         text-overflow: ellipsis;
       }
       .issue-column-content {
-        padding: 12px;
+        padding: 8px;
         flex: 1;
         display: flex;
         flex-direction: column;
@@ -907,9 +907,9 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       }
       .issue-title {
         font-weight: 700;
-        font-size: 16px;
+        font-size: 14px;
         color: #1e293b;
-        margin: 0 0 8px;
+        margin: 0 0 6px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -941,9 +941,9 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       .fix-instructions {
         background: #eff6ff;
         border-left: 3px solid #3b82f6;
-        padding: 10px 12px;
+        padding: 8px 10px;
         border-radius: 6px;
-        margin: 8px 0;
+        margin: 6px 0;
         font-size: 12px;
       }
       .fix-instructions-title {
@@ -965,7 +965,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         margin-bottom: 4px;
       }
       .fix-section {
-        margin-bottom: 10px;
+        margin-bottom: 6px;
       }
       .fix-section-title {
         font-weight: 700;
@@ -1058,21 +1058,21 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       }
       .issue-actions {
         display: flex;
-        gap: 8px;
-        padding: 12px;
+        gap: 6px;
+        padding: 8px;
         flex-shrink: 0;
         border-top: 1px solid #e2e8f0;
       }
       .issue-button {
         flex: 1;
-        padding: 10px 12px;
+        padding: 8px 10px;
         border-radius: 8px;
         border: none;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
         font-size: 13px;
-        min-height: 40px;
+        min-height: 36px;
       }
       .issue-button.primary {
         background: linear-gradient(135deg, #10b981, #059669);
@@ -1096,12 +1096,12 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         cursor: not-allowed;
       }
       .issue-notes {
-        margin: 8px 0;
-        font-size: 12px;
+        margin: 6px 0;
+        font-size: 11px;
         color: #334155;
         background: #fef3c7;
         border-radius: 6px;
-        padding: 8px 10px;
+        padding: 6px 8px;
         border-left: 3px solid #f59e0b;
       }
       .issue-button-group {
