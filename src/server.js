@@ -522,9 +522,9 @@ app.get('/fix-issue/:orderId', async (req, res) => {
               </div>
               ${safeNotes}
               ${fixInstructionsHtml}
-              ${buttonsHtml}
               <div class="issue-feedback" aria-live="polite"></div>
             </div>
+            ${buttonsHtml}
           </div>
         `);
       });
@@ -1079,8 +1079,9 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       .issue-actions {
         display: flex;
         gap: 8px;
-        margin-top: 12px;
-        margin-bottom: auto;
+        padding: 12px;
+        flex-shrink: 0;
+        border-top: 1px solid #e2e8f0;
       }
       .issue-button {
         flex: 1;

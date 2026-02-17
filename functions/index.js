@@ -1048,9 +1048,9 @@ app.get('/fix-issue/:orderId', async (req, res) => {
               </div>
               ${safeNotes}
               ${fixInstructionsHtml}
-              ${buttonsHtml}
               <div class="issue-feedback" aria-live="polite"></div>
             </div>
+            ${buttonsHtml}
           </div>
         `);
       });
