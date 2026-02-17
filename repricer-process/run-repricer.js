@@ -55,6 +55,12 @@ const MODEL_ALIASES = {
   "GALAXY S25+": "GALAXY S25 PLUS",
 
   "GALAXY S23FE": "GALAXY S23 FE",
+  "GALAXY S24FE": "GALAXY S24 FE",
+  "GALAXY S25FE": "GALAXY S25 FE",
+
+  "SAMSUNG GALAXY S23FE": "GALAXY S23 FE",
+  "SAMSUNG GALAXY S24FE": "GALAXY S24 FE",
+  "SAMSUNG GALAXY S25FE": "GALAXY S25 FE",
 
   "GALAXY Z FLIP 4": "GALAXY Z FLIP4",
   "GALAXY Z FLIP 5": "GALAXY Z FLIP5",
@@ -72,6 +78,13 @@ function normalizeModelNameForFeed(rawName) {
     .toUpperCase()
     .replace(/\s+/g, " ")
     .trim();
+
+  // Some feeds prefix Samsung models as "Samsung Galaxy ..." while CSV/template uses "Galaxy ..."
+  if (upper.startsWith("SAMSUNG ")) upper = upper.slice("SAMSUNG ".length).trim();
+
+  // Normalize common 5G suffix variants so model keys line up with CSV/template naming.
+  upper = upper.replace(/\s+5G$/, "");
+
   if (MODEL_ALIASES[upper]) return MODEL_ALIASES[upper];
   return upper;
 }
