@@ -42,6 +42,7 @@ const CONDITION_EMAIL_TEMPLATES = {
       "Contact your carrier to clear the remaining balance on the device.",
       "Reply to this email with confirmation so we can re-run the check and release your payout.",
     ],
+    showResolvedButton: true,
   },
   password_locked: {
     subject: "Device Locked: Action Needed",
@@ -52,6 +53,7 @@ const CONDITION_EMAIL_TEMPLATES = {
       "Send us the any passcode, password, PIN, or pattern required to unlock the device so that we can properly inspect it amd data wipe it.",
       "Reply to this email once the lock has been cleared so we can finish processing the order.",
     ],
+    showResolvedButton: true,
   },
   stolen: {
     subject: "Important: Device Reported Lost or Stolen",
@@ -73,6 +75,7 @@ const CONDITION_EMAIL_TEMPLATES = {
       "Remove the device from your trusted devices list.",
       "Reply to this email once the lock has been removed so we can verify and continue.",
     ],
+    showResolvedButton: true,
   },
 };
 
@@ -116,6 +119,18 @@ function buildConditionEmail(reason, order, notes) {
     fmi_active: "#f59e0b",
   };
 
+  const resolvedButtonHtml = template.showResolvedButton
+    ? `
+      <div style="text-align:center; margin:32px 0 24px;">
+        <a href="https://secondhandcell.com/api/orders/${escapeHtml(orderId)}/issue-resolved" 
+           style="display:inline-block; padding:14px 32px; border-radius:9999px; background-color:#14b8a6; color:#ffffff !important; font-weight:600; text-decoration:none; font-size:17px; box-shadow:0 4px 12px rgba(20,184,166,0.3);">
+          ✓ Issue Resolved
+        </a>
+        <p style="font-size:14px; color:#64748b; margin-top:12px;">Click this button once you've fixed the issue</p>
+      </div>
+    `
+    : "";
+
   const bodyHtml = `
       <p>Hi ${escapeHtml(greetingName)},</p>
       <p>During our inspection of the device you sent in for order <strong>#${escapeHtml(orderId)}</strong>, we detected an issue:</p>
@@ -129,6 +144,7 @@ function buildConditionEmail(reason, order, notes) {
       </ul>
       ${noteHtml}
       <p>Reply to this email once you've taken care of the issue so we can recheck your device and keep your payout moving.</p>
+      ${resolvedButtonHtml}
   `;
 
   const html = buildEmailLayout({

@@ -3476,6 +3476,9 @@ const emailsRouter = createEmailsRouter({
   buildConditionEmail,
   ordersCollection,
   updateOrderBoth,
+  buildOrderDeviceKey,
+  collectOrderDeviceKeys,
+  deriveOrderStatusFromDevices,
 });
 
 app.use('/', emailsRouter);
@@ -4444,12 +4447,36 @@ app.post("/orders/:id/re-offer", async (req, res) => {
       autoAcceptDate: admin.firestore.Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000),
     };
 
-    await updateOrderBoth(orderId, {
+    // Compute new device statuses after this device is re-offered
+    const nextDeviceStatusByKey = {
+      ...(order.deviceStatusByKey || {}),
+      [resolvedDeviceKey]: "re-offered-pending",
+    };
+
+    // Derive order status from all device statuses
+    const derivedStatus = deriveOrderStatusFromDevices(order, nextDeviceStatusByKey);
+    
+    const updatePayload = {
       reOffer: nextOffer,
-      status: "re-offered-pending",
       [`deviceStatusByKey.${resolvedDeviceKey}`]: "re-offered-pending",
       [`reOfferByDevice.${resolvedDeviceKey}`]: nextOffer,
-    });
+    };
+    
+    // Only update order-level status if derived status is available
+    // Otherwise, maintain current order status (devices may still be in various states)
+    if (derivedStatus) {
+      updatePayload.status = derivedStatus;
+    } else {
+      // If not all devices are in terminal states, check if we should update to re-offered-pending
+      // Only do so if this is a single-device order or all devices have been processed
+      const deviceKeys = collectOrderDeviceKeys(order);
+      if (deviceKeys.length === 1) {
+        updatePayload.status = "re-offered-pending";
+      }
+      // For multi-device orders, keep the current status until all devices are processed
+    }
+
+    await updateOrderBoth(orderId, updatePayload);
 
     let reasonString = reasons.join(", ");
     if (comments) reasonString += `; ${comments}`;
