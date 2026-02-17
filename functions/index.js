@@ -1629,7 +1629,7 @@ function buildConditionEmail(reason, order, notes, deviceKey = null) {
   const resolvedButtonHtml = template.showResolvedButton
     ? `
       <div style="text-align:center; margin:32px 0 24px;">
-        <a href="https://secondhandcell.com/api/orders/${escapeHtml(orderId)}/issue-resolved${deviceKeyParam}" 
+        <a href="https://api.secondhandcell.com/api/orders/${escapeHtml(orderId)}/issue-resolved${deviceKeyParam}" 
            style="display:inline-block; padding:14px 32px; border-radius:9999px; background-color:#10b981; color:#ffffff !important; font-weight:600; text-decoration:none; font-size:17px; box-shadow:0 4px 12px rgba(16,185,129,0.3);">
           ✓ Issue Resolved
         </a>
