@@ -56,7 +56,7 @@ function toTitleCase(value) {
 
 const ISSUE_COPY = {
   fmi_active: {
-    title: 'iPhone 14 Pro – iCloud / FMI ON',
+    title: 'iCloud / FMI ON',
     problem: 'Find My iPhone (FMI) is still enabled. The device is locked to your Apple ID.',
     why: 'We cannot use or resell the device while it is linked to your Apple ID.',
     fixOptions: [
@@ -89,7 +89,7 @@ const ISSUE_COPY = {
         note: 'You must either recover your Apple ID at https://iforgot.apple.com OR provide the original purchase receipt so Apple can unlock it'
       }
     ],
-    afterComplete: 'Reply to this email saying: "I removed the device from my Apple ID". We will verify and mark as Status: ✅ Received & Cleared'
+    afterComplete: 'Once complete, press the button below to mark as resolved. We will verify and update: Status: ✅ Received & Cleared'
   },
 
   password_locked: {
@@ -112,7 +112,7 @@ const ISSUE_COPY = {
         ]
       }
     ],
-    afterComplete: 'Reply with confirmation. Status: ✅ Received & Accessible'
+    afterComplete: 'Once complete, press the button below to mark as resolved. Status: ✅ Received & Accessible'
   },
 
   stolen: {
@@ -145,7 +145,7 @@ const ISSUE_COPY = {
         ]
       }
     ],
-    afterComplete: 'Reply with confirmation from carrier. Status: ✅ Received & Clean'
+    afterComplete: 'Once complete, press the button below to mark as resolved. Status: ✅ Received & Clean'
   },
 
   outstanding_balance: {
@@ -164,11 +164,11 @@ const ISSUE_COPY = {
         ]
       }
     ],
-    afterComplete: 'Reply with carrier confirmation. Status: ✅ Received & Paid'
+    afterComplete: 'Once complete, press the button below to mark as resolved. Status: ✅ Received & Paid'
   },
 
   google_frp_active: {
-    title: 'Samsung Galaxy S22 – Google Lock (FRP ON)',
+    title: 'Google Lock (FRP ON)',
     problem: 'Google account is still signed in. Factory Reset Protection (FRP) is active.',
     why: 'We cannot use or resell the device while FRP is active and linked to your Google account.',
     fixOptions: [
@@ -196,7 +196,7 @@ const ISSUE_COPY = {
         note: 'Recover it here: https://accounts.google.com/signin/recovery'
       }
     ],
-    afterComplete: 'Reply saying: "I removed the Google account from the device". We will verify and update: Status: ✅ Received & Cleared'
+    afterComplete: 'Once complete, press the button below to mark as resolved. We will verify and update: Status: ✅ Received & Cleared'
   }
 };
 
@@ -833,6 +833,8 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        max-height: calc(100vh - 240px);
+        height: 100%;
       }
       .issue-column:hover {
         border-color: #cbd5e1;
@@ -846,11 +848,12 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       .issue-column-header {
         background: linear-gradient(135deg, #f8fafc, #f1f5f9);
         border-bottom: 2px solid #e2e8f0;
-        padding: 16px;
+        padding: 12px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 12px;
+        gap: 8px;
+        flex-shrink: 0;
       }
       .device-badge {
         display: flex;
@@ -873,10 +876,13 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         text-overflow: ellipsis;
       }
       .issue-column-content {
-        padding: 16px;
+        padding: 12px;
         flex: 1;
         display: flex;
         flex-direction: column;
+        overflow-y: auto;
+        overflow-x: hidden;
+        min-height: 0;
       }
       .device-icon {
         width: 48px;
@@ -955,9 +961,10 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       .fix-instructions {
         background: #eff6ff;
         border-left: 3px solid #3b82f6;
-        padding: 12px 16px;
-        border-radius: 8px;
-        margin: 12px 0;
+        padding: 10px 12px;
+        border-radius: 6px;
+        margin: 8px 0;
+        font-size: 12px;
       }
       .fix-instructions-title {
         font-weight: 700;
@@ -978,22 +985,22 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         margin-bottom: 4px;
       }
       .fix-section {
-        margin-bottom: 16px;
+        margin-bottom: 10px;
       }
       .fix-section-title {
         font-weight: 700;
-        font-size: 14px;
+        font-size: 12px;
         color: #1e40af;
-        margin: 0 0 8px;
+        margin: 0 0 6px;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
       }
       .fix-section-content {
-        font-size: 13px;
+        font-size: 12px;
         color: #334155;
         margin: 0;
-        line-height: 1.5;
+        line-height: 1.4;
       }
       .fix-reasons-list {
         margin: 0;
@@ -1007,39 +1014,40 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       .fix-options-container {
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        margin-bottom: 12px;
+        gap: 8px;
+        margin-bottom: 8px;
       }
       .fix-option {
         background: #f0f9ff;
         border: 1px solid #bfdbfe;
-        border-radius: 6px;
-        padding: 12px;
+        border-radius: 4px;
+        padding: 8px;
+        font-size: 12px;
       }
       .fix-option-title {
         font-weight: 700;
-        font-size: 13px;
+        font-size: 11px;
         color: #0369a1;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
       }
       .fix-prerequisite {
-        font-size: 12px;
+        font-size: 11px;
         color: #0c4a6e;
         font-style: italic;
-        margin-bottom: 8px;
-        padding: 6px 8px;
+        margin-bottom: 6px;
+        padding: 4px 6px;
         background: #e0f2fe;
-        border-radius: 4px;
+        border-radius: 3px;
       }
       .fix-steps {
-        margin: 8px 0;
-        padding-left: 20px;
-        font-size: 13px;
+        margin: 6px 0;
+        padding-left: 18px;
+        font-size: 11px;
         color: #334155;
       }
       .fix-steps li {
-        margin-bottom: 6px;
-        line-height: 1.4;
+        margin-bottom: 4px;
+        line-height: 1.3;
       }
       .fix-note {
         font-size: 12px;
@@ -1070,18 +1078,20 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       }
       .issue-actions {
         display: flex;
-        gap: 12px;
-        margin-top: 16px;
+        gap: 8px;
+        margin-top: 12px;
+        margin-bottom: auto;
       }
       .issue-button {
         flex: 1;
-        padding: 12px 20px;
-        border-radius: 10px;
+        padding: 10px 12px;
+        border-radius: 8px;
         border: none;
-        font-weight: 700;
+        font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
-        font-size: 14px;
+        font-size: 13px;
+        min-height: 40px;
       }
       .issue-button.primary {
         background: linear-gradient(135deg, #10b981, #059669);
@@ -1105,12 +1115,12 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         cursor: not-allowed;
       }
       .issue-notes {
-        margin: 12px 0;
-        font-size: 13px;
+        margin: 8px 0;
+        font-size: 12px;
         color: #334155;
         background: #fef3c7;
-        border-radius: 8px;
-        padding: 10px 14px;
+        border-radius: 6px;
+        padding: 8px 10px;
         border-left: 3px solid #f59e0b;
       }
       .issue-button-group {

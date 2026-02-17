@@ -691,7 +691,7 @@ function toTitleCase(value) {
 
 const ISSUE_COPY = {
   fmi_active: {
-    title: 'iPhone 14 Pro – iCloud / FMI ON',
+    title: 'iCloud / FMI ON',
     problem: 'Find My iPhone (FMI) is still enabled. The device is locked to your Apple ID.',
     why: 'We cannot use or resell the device while it is linked to your Apple ID.',
     fixOptions: [
@@ -724,7 +724,7 @@ const ISSUE_COPY = {
         note: 'You must either recover your Apple ID at https://iforgot.apple.com OR provide the original purchase receipt so Apple can unlock it'
       }
     ],
-    afterComplete: 'Reply to this email saying: "I removed the device from my Apple ID". We will verify and mark as Status: ✅ Received & Cleared'
+    afterComplete: 'Once complete, press the button below to mark as resolved. We will verify and update: Status: ✅ Received & Cleared'
   },
 
   password_locked: {
@@ -747,7 +747,7 @@ const ISSUE_COPY = {
         ]
       }
     ],
-    afterComplete: 'Reply with confirmation. Status: ✅ Received & Accessible'
+    afterComplete: 'Once complete, press the button below to mark as resolved. Status: ✅ Received & Accessible'
   },
 
   stolen: {
@@ -780,7 +780,7 @@ const ISSUE_COPY = {
         ]
       }
     ],
-    afterComplete: 'Reply with confirmation from carrier. Status: ✅ Received & Clean'
+    afterComplete: 'Once complete, press the button below to mark as resolved. Status: ✅ Received & Clean'
   },
 
   outstanding_balance: {
@@ -799,11 +799,11 @@ const ISSUE_COPY = {
         ]
       }
     ],
-    afterComplete: 'Reply with carrier confirmation. Status: ✅ Received & Paid'
+    afterComplete: 'Once complete, press the button below to mark as resolved. Status: ✅ Received & Paid'
   },
 
   google_frp_active: {
-    title: 'Samsung Galaxy S22 – Google Lock (FRP ON)',
+    title: 'Google Lock (FRP ON)',
     problem: 'Google account is still signed in. Factory Reset Protection (FRP) is active.',
     why: 'We cannot use or resell the device while FRP is active and linked to your Google account.',
     fixOptions: [
@@ -831,7 +831,7 @@ const ISSUE_COPY = {
         note: 'Recover it here: https://accounts.google.com/signin/recovery'
       }
     ],
-    afterComplete: 'Reply saying: "I removed the Google account from the device". We will verify and update: Status: ✅ Received & Cleared'
+    afterComplete: 'Once complete, press the button below to mark as resolved. We will verify and update: Status: ✅ Received & Cleared'
   }
 };
 
