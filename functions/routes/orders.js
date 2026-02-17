@@ -2252,8 +2252,14 @@ function createOrdersRouter({
         console.error('Failed to send admin notification:', notifError);
       }
 
-      // Redirect to confirmation page
-      return res.redirect('/issue-resolved-confirmation.html');
+      // Redirect to confirmation page with device context
+      const deviceIndex = Number(resolvedDeviceKey.split('::')[1] || '0');
+      const confirmationParams = new URLSearchParams({
+        orderId,
+        deviceKey: resolvedDeviceKey,
+        deviceLabel: `Device ${deviceIndex + 1}`,
+      });
+      return res.redirect(`/issue-resolved-confirmation.html?${confirmationParams.toString()}`);
     } catch (error) {
       console.error('Error processing issue resolution:', error);
       return res.status(500).send('Failed to process issue resolution.');
