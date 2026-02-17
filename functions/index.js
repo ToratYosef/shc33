@@ -2728,6 +2728,8 @@ const AUTO_VOID_DELAY_MS = 28 * 24 * 60 * 60 * 1000; // 28 days
 const AUTO_VOID_QUERY_LIMIT = 50;
 const AUTO_VOID_RETRY_DELAY_MS = 12 * 60 * 60 * 1000; // 12 hours between automatic retry attempts
 const AUTO_TRACKING_REFRESH_QUERY_LIMIT = 200;
+const AUTO_REDUCED_PAYOUT_DELAY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const AUTO_REDUCED_PAYOUT_QUERY_LIMIT = 300;
 
 
 function formatOrderAgeInDays(order = {}) {
@@ -2956,20 +2958,23 @@ async function requestShipEngineVoid(labelId, shipengineKey) {
 }
 
 async function sendVoidNotificationEmail(order, results, options = {}) {
-  const recipient = getLabelVoidNotificationEmail();
-  if (!recipient) {
-    console.warn("Void notification email skipped: no recipient configured.");
-    return;
-  }
-
   const approvedResults = results.filter((result) => result.approved);
   if (!approvedResults.length) {
     return;
   }
 
-  const ageDescription = formatOrderAgeInDays(order);
-
+  const recipient = getLabelVoidNotificationEmail();
   const reasonKey = options.reason === "automatic" ? "automatic" : "manual";
+  const sendAdmin = options.sendAdmin !== false;
+  const sendCustomer =
+    options.sendCustomer === true ||
+    (options.sendCustomer !== false && reasonKey !== "automatic");
+
+  if (sendAdmin && !recipient) {
+    console.warn("Void notification email skipped: no recipient configured.");
+  }
+
+  const ageDescription = formatOrderAgeInDays(order);
   const subject = `Shipping label voided for order ${order.id}`;
   const lines = approvedResults.map((result) => {
     const labelName = formatLabelDisplayNameFromKey(result.key);
@@ -3015,17 +3020,17 @@ async function sendVoidNotificationEmail(order, results, options = {}) {
     `,
   });
 
-  // Send to admin
-  await transporter.sendMail({
-    from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
-    to: recipient,
-    subject,
-    text: textBody,
-    html: htmlBody,
-  });
+  if (sendAdmin && recipient) {
+    await transporter.sendMail({
+      from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+      to: recipient,
+      subject,
+      text: textBody,
+      html: htmlBody,
+    });
+  }
 
-  // Send to customer
-  if (order.shippingInfo && order.shippingInfo.email) {
+  if (sendCustomer && order.shippingInfo && order.shippingInfo.email) {
     const customerSubject = reasonKey === 'automatic'
       ? `Order #${order.id} label voided and cancelled after 28 days`
       : subject;
@@ -6111,128 +6116,9 @@ app.post("/orders/:id/return-label", async (req, res) => {
 });
 
 app.post("/orders/:id/auto-requote", async (req, res) => {
-  try {
-    const orderId = req.params.id;
-    if (!orderId) {
-      return res.status(400).json({ error: "Order ID is required." });
-    }
-
-    const docRef = ordersCollection.doc(orderId);
-    const doc = await docRef.get();
-    if (!doc.exists) {
-      return res.status(404).json({ error: "Order not found." });
-    }
-
-    const order = { id: doc.id, ...doc.data() };
-    const status = (order.status || '').toString().toLowerCase();
-
-    if (MANUAL_AUTO_REQUOTE_INELIGIBLE_STATUSES.has(status)) {
-      return res
-        .status(409)
-        .json({ error: "Order status is not eligible for manual auto-requote." });
-    }
-
-    if (order.autoRequote?.manual === true) {
-      return res.status(409).json({ error: "This order has already been manually auto-requoted." });
-    }
-
-    const customerEmail = order.shippingInfo?.email;
-    if (!customerEmail) {
-      return res.status(409).json({ error: "Order is missing a customer email address." });
-    }
-
-    const lastEmailMs = getLastCustomerEmailMillis(order);
-    const lastEmailTimestamp = lastEmailMs
-      ? admin.firestore.Timestamp.fromMillis(lastEmailMs)
-      : null;
-
-    const baseAmount = Number(order.reOffer?.newPrice ?? getOrderPayout(order));
-    if (!Number.isFinite(baseAmount) || baseAmount <= 0) {
-      return res.status(409).json({ error: "No valid quoted amount available for auto-requote." });
-    }
-
-    const reducedAmount = Number((baseAmount * 0.25).toFixed(2));
-    if (!Number.isFinite(reducedAmount) || reducedAmount <= 0) {
-      return res.status(409).json({ error: "Unable to calculate the adjusted payout amount." });
-    }
-
-    const customerName = order.shippingInfo?.fullName || 'there';
-    const baseDisplay = baseAmount.toFixed(2);
-    const reducedDisplay = reducedAmount.toFixed(2);
-    const timestampField = admin.firestore.FieldValue.serverTimestamp();
-
-    const autoRequotePayload = {
-      reducedFrom: Number(baseDisplay),
-      reducedTo: reducedAmount,
-      manual: true,
-      initiatedBy: req.body?.initiatedBy || 'admin_manual_auto_requote',
-      completedAt: timestampField,
-    };
-
-    if (lastEmailTimestamp) {
-      autoRequotePayload.lastCustomerEmailAt = lastEmailTimestamp;
-    }
-
-    const { order: updatedOrder } = await updateOrderBoth(orderId, {
-      status: 'completed',
-      finalPayoutAmount: reducedAmount,
-      finalOfferAmount: reducedAmount,
-      finalPayout: reducedAmount,
-      requoteAcceptedAt: timestampField,
-      autoRequote: autoRequotePayload,
-    }, {
-      logEntries: [
-        {
-          type: 'auto_requote',
-          message: `Order manually finalized at $${reducedDisplay} after unresolved customer communication.`,
-          metadata: {
-            previousStatus: order.status || null,
-            reducedFrom: Number(baseDisplay),
-            reducedTo: reducedAmount,
-            reductionPercent: 75,
-          },
-        },
-      ],
-    });
-
-    const emailHtml = buildEmailLayout({
-      title: 'Order finalized at adjusted payout',
-      accentColor: '#dc2626',
-      includeTrustpilot: false,
-      bodyHtml: `
-        <p>Hi ${escapeHtml(customerName)},</p>
-        <p>Since we have not received a response after multiple emails, we’ve finalized order <strong>#${escapeHtml(order.id)}</strong> at a payout that is 75% less than the previous quote of $${baseDisplay}.</p>
-        <p>Your new payout amount is <strong>$${reducedDisplay}</strong>. You will receive your payment shortly.</p>
-        <p>If you have any questions, just reply to this email and our team will be happy to help.</p>
-      `,
-    });
-
-    await transporter.sendMail({
-      from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
-      to: customerEmail,
-      subject: `Order #${order.id} finalized at adjusted payout`,
-      html: emailHtml,
-    });
-
-    await recordCustomerEmail(
-      orderId,
-      'Manual auto-requote email sent to customer.',
-      {
-        status: 'completed',
-        reducedFrom: baseDisplay,
-        reducedTo: reducedDisplay,
-      },
-      { logType: 'auto_requote_email' }
-    );
-
-    res.json({
-      message: `Order finalized at $${reducedDisplay} after admin confirmation.`,
-      order: { id: updatedOrder.id, status: updatedOrder.status, finalPayoutAmount: reducedAmount },
-    });
-  } catch (error) {
-    console.error('Error performing manual auto-requote:', error);
-    res.status(500).json({ error: 'Failed to finalize the order with the adjusted payout.' });
-  }
+  return res.status(410).json({
+    error: 'Manual auto-requote is disabled. Orders are finalized automatically after 7 days when unresolved.',
+  });
 });
 
 app.post("/orders/:id/cancel", async (req, res) => {
@@ -6482,6 +6368,7 @@ async function runAutomaticLabelVoidSweep() {
   }
 
   const processedIds = new Set();
+  const autoVoidedSummary = [];
 
   for (const doc of docsToProcess) {
     if (processedIds.has(doc.id)) continue;
@@ -6545,10 +6432,19 @@ async function runAutomaticLabelVoidSweep() {
             },
           ],
         });
+
+        autoVoidedSummary.push({
+          orderId: order.id,
+          labelIds: approvedResults.map((entry) => entry.labelId).filter(Boolean),
+        });
       }
 
       try {
-        await sendVoidNotificationEmail(order, results, { reason: "automatic" });
+        await sendVoidNotificationEmail(order, results, {
+          reason: "automatic",
+          sendAdmin: false,
+          sendCustomer: false,
+        });
       } catch (notificationError) {
         console.error(
           `Failed to send automatic void notification for order ${order.id}:`,
@@ -6560,6 +6456,157 @@ async function runAutomaticLabelVoidSweep() {
         `Automatic label void failed for order ${order.id}:`,
         error
       );
+    }
+  }
+
+  if (autoVoidedSummary.length) {
+    try {
+      const recipient = getLabelVoidNotificationEmail();
+      if (!recipient) {
+        console.warn('Automatic void summary email skipped: no recipient configured.');
+        return;
+      }
+
+      const textLines = autoVoidedSummary.map((entry) => {
+        const labelText = entry.labelIds.length ? entry.labelIds.join(', ') : 'N/A';
+        return `• Order #${entry.orderId} | Voided labels: ${labelText}`;
+      });
+
+      const textBody = [
+        'Automatic 28-day label void sweep completed.',
+        '',
+        `Orders voided: ${autoVoidedSummary.length}`,
+        ...textLines,
+      ].join('\n');
+
+      const htmlBody = buildEmailLayout({
+        title: 'Automatic label void summary',
+        accentColor: '#0ea5e9',
+        includeTrustpilot: false,
+        bodyHtml: `
+          <p>Automatic 28-day label void sweep completed.</p>
+          <p><strong>Orders voided:</strong> ${autoVoidedSummary.length}</p>
+          <ul style="padding-left:22px; color:#475569;">
+            ${autoVoidedSummary
+              .map((entry) => {
+                const labelText = entry.labelIds.length ? entry.labelIds.join(', ') : 'N/A';
+                return `<li><strong>Order #${escapeHtml(entry.orderId)}</strong> — Voided labels: ${escapeHtml(labelText)}</li>`;
+              })
+              .join('')}
+          </ul>
+        `,
+      });
+
+      await transporter.sendMail({
+        from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+        to: recipient,
+        subject: `Auto-void summary: ${autoVoidedSummary.length} order${autoVoidedSummary.length === 1 ? '' : 's'} updated`,
+        text: textBody,
+        html: htmlBody,
+      });
+    } catch (summaryError) {
+      console.error('Failed to send automatic void summary email:', summaryError);
+    }
+  }
+}
+
+async function runAutomaticReducedPayoutSweep() {
+  const nowMs = Date.now();
+  const eligibleSnapshot = await ordersCollection
+    .where('status', '==', 'emailed')
+    .limit(AUTO_REDUCED_PAYOUT_QUERY_LIMIT)
+    .get();
+
+  for (const doc of eligibleSnapshot.docs) {
+    const order = { id: doc.id, ...doc.data() };
+    if (!order.qcAwaitingResponse) continue;
+    if (order.autoRequote?.automatic === true || order.autoRequote?.manual === true) continue;
+
+    const status = String(order.status || '').toLowerCase();
+    if (MANUAL_AUTO_REQUOTE_INELIGIBLE_STATUSES.has(status)) continue;
+
+    const lastEmailMs = getLastCustomerEmailMillis(order);
+    if (!Number.isFinite(lastEmailMs)) continue;
+    if (nowMs - lastEmailMs < AUTO_REDUCED_PAYOUT_DELAY_MS) continue;
+
+    const baseAmount = Number(order.reOffer?.newPrice ?? getOrderPayout(order));
+    if (!Number.isFinite(baseAmount) || baseAmount <= 0) continue;
+
+    const reducedAmount = Number((baseAmount * 0.25).toFixed(2));
+    if (!Number.isFinite(reducedAmount) || reducedAmount <= 0) continue;
+
+    const customerName = order.shippingInfo?.fullName || 'there';
+    const customerEmail = order.shippingInfo?.email;
+    const baseDisplay = baseAmount.toFixed(2);
+    const reducedDisplay = reducedAmount.toFixed(2);
+    const timestampField = admin.firestore.FieldValue.serverTimestamp();
+
+    try {
+      await updateOrderBoth(order.id, {
+        status: 'completed',
+        finalPayoutAmount: reducedAmount,
+        finalOfferAmount: reducedAmount,
+        finalPayout: reducedAmount,
+        requoteAcceptedAt: timestampField,
+        qcAwaitingResponse: false,
+        autoRequote: {
+          reducedFrom: Number(baseDisplay),
+          reducedTo: reducedAmount,
+          manual: false,
+          automatic: true,
+          initiatedBy: 'system_auto_requote_7_day_unresolved',
+          completedAt: timestampField,
+          lastCustomerEmailAt: admin.firestore.Timestamp.fromMillis(lastEmailMs),
+        },
+      }, {
+        logEntries: [
+          {
+            type: 'auto_requote',
+            message: `Order auto-finalized at $${reducedDisplay} after unresolved customer communication for 7 days.`,
+            metadata: {
+              previousStatus: order.status || null,
+              reducedFrom: Number(baseDisplay),
+              reducedTo: reducedAmount,
+              reductionPercent: 75,
+              automatic: true,
+            },
+          },
+        ],
+      });
+
+      if (customerEmail) {
+        const emailHtml = buildEmailLayout({
+          title: 'Order finalized at adjusted payout',
+          accentColor: '#dc2626',
+          includeTrustpilot: false,
+          bodyHtml: `
+            <p>Hi ${escapeHtml(customerName)},</p>
+            <p>Since we did not receive a response within 7 days, we finalized order <strong>#${escapeHtml(order.id)}</strong> at a payout that is 75% less than the previous quote of $${baseDisplay}, per our terms.</p>
+            <p>Your payout amount is <strong>$${reducedDisplay}</strong>. If you have any questions, reply to this email and we can review with you.</p>
+          `,
+        });
+
+        await transporter.sendMail({
+          from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+          to: customerEmail,
+          subject: `Order #${order.id} finalized at adjusted payout`,
+          html: emailHtml,
+        });
+
+        await recordCustomerEmail(
+          order.id,
+          'Automatic 7-day unresolved issue payout finalization email sent to customer.',
+          {
+            status: 'completed',
+            reducedFrom: baseDisplay,
+            reducedTo: reducedDisplay,
+            automatic: true,
+          },
+          { logType: 'auto_requote_email' }
+        );
+      }
+    } catch (error) {
+      console.error(`Failed automatic reduced payout finalization for order ${order.id}:`, error);
     }
   }
 }
@@ -6622,6 +6669,17 @@ exports.autoRefreshInboundTracking = functions.pubsub
       await runAutomaticInboundTrackingRefresh();
     } catch (error) {
       console.error('Automatic inbound tracking refresh sweep failed:', error);
+    }
+    return null;
+  });
+
+exports.autoFinalizeUnresolvedPayouts = functions.pubsub
+  .schedule('every 60 minutes')
+  .onRun(async () => {
+    try {
+      await runAutomaticReducedPayoutSweep();
+    } catch (error) {
+      console.error('Automatic unresolved payout finalization sweep failed:', error);
     }
     return null;
   });
