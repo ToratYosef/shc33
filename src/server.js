@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
@@ -544,24 +545,61 @@ const sellcellDebugFeedPath = path.join(
   'sellcell-feed-debug.xml'
 );
 
-function sendSellcellDebugFeed(req, res) {
-  return res.sendFile(sellcellDebugFeedPath, (err) => {
-    if (!err) {
+function prettyPrintXml(xmlText) {
+  const parts = String(xmlText || '').replace(/>\s*</g, '><').split(/></);
+  const lines = [];
+  let indent = 0;
+
+  parts.forEach((part, index) => {
+    const prefix = index === 0 ? '' : '<';
+    const suffix = index === parts.length - 1 ? '' : '>';
+    const token = `${prefix}${part}${suffix}`.trim();
+    if (!token) {
       return;
     }
-    if (err.code === 'ENOENT') {
+
+    const isDeclaration = token.startsWith('<?') || token.startsWith('<!');
+    const isClosing = /^<\//.test(token);
+    const isSelfClosing = /\/>$/.test(token);
+    const isOpening = /^<[^!?/][^>]*>$/.test(token);
+
+    if (isClosing) {
+      indent = Math.max(indent - 1, 0);
+    }
+
+    const pad = '  '.repeat(indent);
+    lines.push(`${pad}${token}`);
+
+    if (!isDeclaration && isOpening && !isSelfClosing && !isClosing) {
+      indent += 1;
+    }
+  });
+
+  return `${lines.join('\n')}\n`;
+}
+
+async function sendSellcellDebugFeed(req, res) {
+  try {
+    const xmlText = await fs.promises.readFile(sellcellDebugFeedPath, 'utf8');
+    const prettyXml = prettyPrintXml(xmlText);
+    return res
+      .status(200)
+      .type('application/xml')
+      .send(prettyXml);
+  } catch (err) {
+    if (err && err.code === 'ENOENT') {
       return res.status(404).json({
         ok: false,
         error: 'Debug feed file not found. Run repricer-process/run-repricer.js first.',
         path: req.originalUrl,
       });
     }
-    return res.status(err.statusCode || 500).json({
+    return res.status(err?.statusCode || 500).json({
       ok: false,
-      error: err.message || 'Unable to load debug feed file.',
+      error: err?.message || 'Unable to load debug feed file.',
       path: req.originalUrl,
     });
-  });
+  }
 }
 
 app.get('/repricer-process/sellcell-feed-debug.xml', sendSellcellDebugFeed);
