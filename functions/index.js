@@ -2260,7 +2260,6 @@ app.get('/fix-issue/:orderId', async (req, res) => {
             dot.addEventListener('pointerdown', function (event) {
               event.preventDefault();
               drawing = true;
-              sequence = [];
               addDot(dot);
             });
             dot.addEventListener('pointerenter', function () {
