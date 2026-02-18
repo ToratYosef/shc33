@@ -624,6 +624,29 @@ async function seedFakeOrdersForDay(now = new Date()) {
 }
 
 const app = express();
+const API_ACTION_LOGGING_ENABLED = !['0', 'false', 'off', 'no'].includes(
+  String(process.env.API_ACTION_LOGGING_ENABLED || 'true').trim().toLowerCase()
+);
+
+function summarizeApiActionContext(req) {
+  const body = req && typeof req.body === 'object' && req.body ? req.body : {};
+  const params = req && typeof req.params === 'object' && req.params ? req.params : {};
+  const labels = Array.isArray(body.labels) ? body.labels.length : 0;
+  const orderId =
+    params.id ||
+    params.orderId ||
+    body.orderId ||
+    body.id ||
+    null;
+
+  const parts = [];
+  if (orderId) parts.push(`order=${orderId}`);
+  if (body.type) parts.push(`type=${body.type}`);
+  if (labels) parts.push(`labels=${labels}`);
+  if (req?.user?.uid) parts.push(`uid=${req.user.uid}`);
+
+  return parts.join(' ');
+}
 
 const allowedOrigins = [
   "https://toratyosef.github.io",
@@ -672,6 +695,26 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+
+app.use((req, res, next) => {
+  if (!API_ACTION_LOGGING_ENABLED) {
+    return next();
+  }
+
+  const startedAtMs = Date.now();
+  const context = summarizeApiActionContext(req);
+  const requestLine = `[API] -> ${req.method} ${req.originalUrl || req.url}${context ? ` | ${context}` : ''}`;
+  console.log(requestLine);
+
+  res.on('finish', () => {
+    const durationMs = Date.now() - startedAtMs;
+    const responseLine = `[API] <- ${req.method} ${req.originalUrl || req.url} ${res.statusCode} ${durationMs}ms${context ? ` | ${context}` : ''}`;
+    console.log(responseLine);
+  });
+
+  return next();
+});
+
 app.use('/wholesale', wholesaleRouter);
 
 function normalizeIssueReason(value) {
@@ -3340,6 +3383,11 @@ async function handleLabelVoid(order, selections, options = {}) {
       labels[key] = entry;
       changed = true;
       results.push({ key, labelId, approved, message });
+      if (approved) {
+        console.log(`[Order Action] Voided label ${labelId} for order ${order.id} (${options.reason || 'manual'})`);
+      } else {
+        console.log(`[Order Action] Void denied for label ${labelId} on order ${order.id} (${options.reason || 'manual'})`);
+      }
     } catch (error) {
       const message =
         error.response?.data?.message ||
@@ -3466,6 +3514,10 @@ async function cancelOrderAndNotify(order, options = {}) {
   const { order: updatedOrder } = await updateOrderBoth(order.id, updatePayload, {
     logEntries,
   });
+
+  console.log(
+    `[Order Action] Cancelled order ${updatedOrder?.id || order.id} reason=${reason} auto=${auto} labelsVoided=${voidResults.filter((result) => result.approved).length}`
+  );
 
   if (notifyCustomer && updatedOrder?.shippingInfo?.email) {
     const customerName = updatedOrder.shippingInfo.fullName || "there";
@@ -6556,6 +6608,8 @@ app.delete("/orders/:id", async (req, res) => {
       const userOrderRef = usersCollection.doc(userId).collection("orders").doc(orderId);
       await userOrderRef.delete();
     }
+
+    console.log(`[Order Action] Deleted order ${orderId} userId=${userId || 'none'}`);
 
     res.status(200).json({ message: `Order ${orderId} deleted successfully.` });
   } catch (err) {
