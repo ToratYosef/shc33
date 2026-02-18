@@ -1,9 +1,7 @@
 const path = require('path');
 const fs = require('fs');
-const { execFile } = require('child_process');
 const express = require('express');
 const cors = require('cors');
-const { parse: parseCsv } = require('csv-parse/sync');
 
 const isServerless = Boolean(
   process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME
@@ -1823,34 +1821,6 @@ async function sendSellcellDebugFeed(req, res) {
 app.get('/repricer-process/sellcell-feed-debug.xml', sendSellcellDebugFeed);
 app.get('/shc33/repricer-process/sellcell-feed-debug.xml', sendSellcellDebugFeed);
 
-const repricerScriptPath = path.join(__dirname, '..', 'repricer-process', 'run-repricer.js');
-const repricerWorkingDir = path.join(__dirname, '..', 'repricer-process');
-const repricerFeedDir = '/shc33/feed';
-const repricerCsvPath = path.join(repricerFeedDir, 'amz.csv');
-const repricerXmlPath = path.join(repricerFeedDir, 'feed.xml');
-const repricerOutputCsvPath = path.join(repricerFeedDir, 'repricer-output.csv');
-let repricerRunPromise = null;
-
-function parseRepricerCsvPreview(csvText, limit = 200) {
-  const safeLimit = Math.max(1, Math.min(Number(limit) || 200, 1000));
-  const rows = parseCsv(String(csvText || ''), {
-    columns: true,
-    skip_empty_lines: true,
-    trim: true,
-  });
-  return rows.slice(0, safeLimit);
-}
-
-async function readRepricerPreview(limit = 200) {
-  const csvText = await fs.promises.readFile(repricerOutputCsvPath, 'utf8');
-  const rows = parseRepricerCsvPreview(csvText, limit);
-  return {
-    rowCount: rows.length,
-    outputPath: repricerOutputCsvPath,
-    rows,
-  };
-}
-
 
 const apiBasePath = (() => {
   const raw = typeof process.env.API_BASE_PATH === 'string'
@@ -1908,7 +1878,6 @@ const adminPrefixPaths = [
   '/merge-print',
   '/labels/print/queue',
   '/admin/reminders',
-  '/repricer',
 ];
 
 apiRouter.use((req, res, next) => {
@@ -1924,104 +1893,6 @@ apiRouter.use((req, res, next) => {
 
 apiRouter.get('/health', (req, res) => {
   res.json({ ok: true });
-});
-
-apiRouter.get('/repricer/preview', async (req, res) => {
-  try {
-    const preview = await readRepricerPreview(req.query.limit);
-    return res.status(200).json({ ok: true, ...preview });
-  } catch (error) {
-    if (error && error.code === 'ENOENT') {
-      return res.status(404).json({
-        ok: false,
-        error: 'Repricer output CSV not found. Run repricer first.',
-        outputPath: repricerOutputCsvPath,
-      });
-    }
-
-    return res.status(500).json({
-      ok: false,
-      error: error?.message || 'Unable to load repricer preview.',
-    });
-  }
-});
-
-apiRouter.post('/repricer/run', async (_req, res) => {
-  if (repricerRunPromise) {
-    return res.status(409).json({
-      ok: false,
-      error: 'Repricer is already running. Please wait for completion.',
-    });
-  }
-
-  const missingFiles = [];
-  if (!fs.existsSync(repricerScriptPath)) missingFiles.push(repricerScriptPath);
-  if (!fs.existsSync(repricerCsvPath)) missingFiles.push(repricerCsvPath);
-  if (!fs.existsSync(repricerXmlPath)) missingFiles.push(repricerXmlPath);
-
-  if (missingFiles.length) {
-    return res.status(400).json({
-      ok: false,
-      error: 'Missing required repricer files.',
-      missingFiles,
-    });
-  }
-
-  const args = [
-    repricerScriptPath,
-    '--dir',
-    repricerFeedDir,
-    '--write-csv',
-    '--no-gca',
-  ];
-
-  repricerRunPromise = new Promise((resolve, reject) => {
-    execFile(
-      process.execPath,
-      args,
-      {
-        cwd: repricerWorkingDir,
-        timeout: 15 * 60 * 1000,
-        maxBuffer: 10 * 1024 * 1024,
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject({
-            message: error?.message || 'Failed to run repricer.',
-            stdout: String(stdout || ''),
-            stderr: String(stderr || ''),
-          });
-          return;
-        }
-
-        resolve({
-          stdout: String(stdout || ''),
-          stderr: String(stderr || ''),
-        });
-      }
-    );
-  });
-
-  try {
-    const runResult = await repricerRunPromise;
-    const preview = await readRepricerPreview(200);
-    return res.status(200).json({
-      ok: true,
-      message: 'Repricer completed.',
-      ...preview,
-      stdoutTail: runResult.stdout.split('\n').slice(-80).join('\n').trim(),
-      stderrTail: runResult.stderr.split('\n').slice(-80).join('\n').trim(),
-    });
-  } catch (error) {
-    return res.status(500).json({
-      ok: false,
-      error: error?.message || 'Repricer run failed.',
-      stdoutTail: String(error?.stdout || '').split('\n').slice(-80).join('\n').trim(),
-      stderrTail: String(error?.stderr || '').split('\n').slice(-80).join('\n').trim(),
-    });
-  } finally {
-    repricerRunPromise = null;
-  }
 });
 
 apiRouter.use(profileRouter);
