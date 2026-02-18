@@ -862,20 +862,20 @@
       <storageSize>128GB</storageSize>
       <priceValue>
         <att>
-          <flawless>260</flawless>
-          <good>210</good>
+          <flawless>279</flawless>
+          <good>217</good>
           <fair>166</fair>
           <broken>164</broken>
         </att>
         <verizon>
-          <flawless>258</flawless>
-          <good>208</good>
+          <flawless>279</flawless>
+          <good>217</good>
           <fair>166</fair>
           <broken>164</broken>
         </verizon>
         <tmobile>
-          <flawless>250</flawless>
-          <good>205.5</good>
+          <flawless>279</flawless>
+          <good>217</good>
           <fair>150</fair>
           <broken>136</broken>
         </tmobile>
@@ -903,7 +903,7 @@
           <broken>189</broken>
         </verizon>
         <tmobile>
-          <flawless>293</flawless>
+          <flawless>296</flawless>
           <good>235</good>
           <fair>170</fair>
           <broken>151</broken>
@@ -1161,7 +1161,7 @@
         <unlocked>
           <flawless>406</flawless>
           <good>369</good>
-          <fair>288</fair>
+          <fair>284</fair>
           <broken>211</broken>
         </unlocked>
       </priceValue>
@@ -3065,7 +3065,7 @@
           <flawless>151</flawless>
           <good>131</good>
           <fair>96</fair>
-          <broken>42</broken>
+          <broken>36</broken>
         </tmobile>
         <unlocked>
           <flawless>191</flawless>
@@ -3094,7 +3094,7 @@
           <flawless>173</flawless>
           <good>141</good>
           <fair>96</fair>
-          <broken>44</broken>
+          <broken>41</broken>
         </tmobile>
         <unlocked>
           <flawless>206</flawless>
@@ -3262,7 +3262,7 @@
         <unlocked>
           <flawless>371</flawless>
           <good>354</good>
-          <fair>291</fair>
+          <fair>270</fair>
           <broken>106</broken>
         </unlocked>
       </priceValue>
@@ -3301,7 +3301,7 @@
           <flawless>295</flawless>
           <good>295</good>
           <fair>221</fair>
-          <broken>94</broken>
+          <broken>91</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -3330,7 +3330,7 @@
           <flawless>375</flawless>
           <good>335</good>
           <fair>261</fair>
-          <broken>102</broken>
+          <broken>101</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -3560,7 +3560,7 @@
           <flawless>399</flawless>
           <good>399</good>
           <fair>332</fair>
-          <broken>97</broken>
+          <broken>96</broken>
         </unlocked>
       </priceValue>
     </prices>
