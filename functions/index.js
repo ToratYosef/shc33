@@ -2521,6 +2521,20 @@ app.post('/fix-issue/:orderId/confirm', async (req, res) => {
       .filter((value) => Number.isFinite(value) && value >= 1 && value <= 9);
 
     if (reason === 'password_locked' && action === 'resolve') {
+      const existingUnlockInfo =
+        order?.unlockInfoByDevice?.[deviceKey] ||
+        order?.qcIssuesByDevice?.[deviceKey]?.[reason]?.unlockInfo ||
+        null;
+      const hasExistingUnlockInfo = !!(
+        existingUnlockInfo &&
+        typeof existingUnlockInfo === 'object' &&
+        (String(existingUnlockInfo.value || '').trim().length > 0 ||
+          (Array.isArray(existingUnlockInfo.patternPath) && existingUnlockInfo.patternPath.length > 0))
+      );
+      if (hasExistingUnlockInfo) {
+        return res.status(409).json({ error: 'Unlock info already submitted and cannot be changed.' });
+      }
+
       const allowedMethods = new Set(['pin', 'password', 'pattern']);
       if (!allowedMethods.has(unlockMethod)) {
         return res.status(400).json({ error: 'Unlock method is required.' });
