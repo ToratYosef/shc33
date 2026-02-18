@@ -2914,15 +2914,34 @@ function getPendingVoidSelections(order = {}) {
 
 function isAlreadyProcessedForBulkVoid(order = {}) {
   const status = normalizeStatusValue(order.status);
-  if (status === 'cancelled' || status === 'canceled') {
+  return status === 'cancelled' || status === 'canceled';
+}
+
+function hasAnyVoidedLabel(order = {}) {
+  const labels = normalizeShipEngineLabelMap(order);
+  const labelMarkedVoided = Object.values(labels).some((entry) => {
+    if (!entry || !entry.id) return false;
+    const status = getLabelStatus(entry);
+    return status === 'voided' || Boolean(entry.voidedAt);
+  });
+
+  if (labelMarkedVoided) {
     return true;
   }
-  return Boolean(
-    order.returnAutoVoidedAt ||
-    order.autoLabelVoidProcessedAt ||
-    order.adminBulkVoidProcessedAt ||
-    order.testOrderAutoVoidProcessedAt
-  );
+
+  return normalizeStatusValue(order.labelVoidStatus) === 'voided' || Boolean(order.labelVoidedAt);
+}
+
+function getVoidedLabelIds(order = {}) {
+  const labels = normalizeShipEngineLabelMap(order);
+  return Object.values(labels)
+    .filter((entry) => {
+      if (!entry || !entry.id) return false;
+      const status = getLabelStatus(entry);
+      return status === 'voided' || Boolean(entry.voidedAt);
+    })
+    .map((entry) => entry.id)
+    .filter(Boolean);
 }
 
 function isTestOrderMatch(order = {}) {
@@ -6772,7 +6791,9 @@ async function runAdminBulkVoidJob({
     candidates = agedSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   }
 
+  const totalCandidates = candidates.length;
   candidates = candidates.slice(0, normalizedMaxOrders);
+  const hasMore = totalCandidates > candidates.length;
 
   for (const order of candidates) {
     try {
@@ -6786,29 +6807,33 @@ async function runAdminBulkVoidJob({
       }
 
       if (isAlreadyProcessedForBulkVoid(order)) {
-        skippedEntries.push({ orderId: order.id, reason: 'already_voided_or_cancelled' });
+        skippedEntries.push({ orderId: order.id, reason: 'already_cancelled' });
         continue;
       }
 
       const selections = getPendingVoidSelections(order);
-      if (!selections.length) {
-        skippedEntries.push({ orderId: order.id, reason: 'no_pending_labels' });
+      let approvedResults = [];
+
+      if (selections.length) {
+        const { results } = await handleLabelVoid(order, selections, {
+          reason: 'automatic',
+          shipengineKey,
+        });
+
+        approvedResults = Array.isArray(results)
+          ? results.filter((entry) => entry && entry.approved)
+          : [];
+      }
+
+      const hasVoidedLabels = approvedResults.length > 0 || hasAnyVoidedLabel(order);
+      if (!hasVoidedLabels) {
+        skippedEntries.push({ orderId: order.id, reason: selections.length ? 'no_labels_approved_for_void' : 'no_labels_to_void_or_cancel' });
         continue;
       }
 
-      const { results } = await handleLabelVoid(order, selections, {
-        reason: 'automatic',
-        shipengineKey,
-      });
-
-      const approvedResults = Array.isArray(results)
-        ? results.filter((entry) => entry && entry.approved)
-        : [];
-
-      if (!approvedResults.length) {
-        skippedEntries.push({ orderId: order.id, reason: 'no_labels_approved_for_void' });
-        continue;
-      }
+      const voidedLabelIds = approvedResults.length
+        ? approvedResults.map((entry) => entry.labelId).filter(Boolean)
+        : getVoidedLabelIds(order);
 
       const timestampField = admin.firestore.FieldValue.serverTimestamp();
       const updatePayload = {
@@ -6833,7 +6858,7 @@ async function runAdminBulkVoidJob({
                 ? 'Order cancelled by admin bulk test-order void action.'
                 : `Order cancelled by admin bulk aged-label void action (${Number(minDays)}+ days).`,
             metadata: {
-              labelsVoided: approvedResults.map((entry) => entry.labelId).filter(Boolean),
+              labelsVoided: voidedLabelIds,
               ageDays,
               mode,
             },
@@ -6844,7 +6869,7 @@ async function runAdminBulkVoidJob({
       cancelledEntries.push({
         orderId: order.id,
         ageDays,
-        labelIds: approvedResults.map((entry) => entry.labelId).filter(Boolean),
+        labelIds: voidedLabelIds,
       });
     } catch (error) {
       failedEntries.push({ orderId: order.id, reason: error?.message || 'unknown_error' });
@@ -6871,6 +6896,8 @@ async function runAdminBulkVoidJob({
     mode,
     minDays: Number(minDays || ADMIN_BULK_VOID_MIN_DAYS_DEFAULT),
     maxOrders: normalizedMaxOrders,
+    totalCandidates,
+    hasMore,
     scanned: candidates.length,
     cancelled: cancelledEntries.length,
     skipped: skippedEntries.length,
