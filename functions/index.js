@@ -6836,6 +6836,7 @@ async function runAdminBulkVoidJob({
   const skippedEntries = [];
   const failedEntries = [];
   const normalizedMaxOrders = Math.max(1, Number(maxOrders || ADMIN_BULK_VOID_MAX_PER_RUN));
+  let totalVoidedLabelCount = 0;
 
   let candidates = [];
 
@@ -6883,15 +6884,9 @@ async function runAdminBulkVoidJob({
           : [];
       }
 
-      const hasVoidedLabels = approvedResults.length > 0 || hasAnyVoidedLabel(order);
-      if (!hasVoidedLabels) {
-        skippedEntries.push({ orderId: order.id, reason: selections.length ? 'no_labels_approved_for_void' : 'no_labels_to_void_or_cancel' });
-        continue;
-      }
-
       const voidedLabelIds = approvedResults.length
         ? approvedResults.map((entry) => entry.labelId).filter(Boolean)
-        : getVoidedLabelIds(order);
+        : (hasAnyVoidedLabel(order) ? getVoidedLabelIds(order) : []);
 
       const timestampField = admin.firestore.FieldValue.serverTimestamp();
       const updatePayload = {
@@ -6929,6 +6924,7 @@ async function runAdminBulkVoidJob({
         ageDays,
         labelIds: voidedLabelIds,
       });
+      totalVoidedLabelCount += voidedLabelIds.length;
     } catch (error) {
       failedEntries.push({ orderId: order.id, reason: error?.message || 'unknown_error' });
     }
@@ -6941,17 +6937,23 @@ async function runAdminBulkVoidJob({
     ? `Admin test-order void summary: ${cancelledEntries.length} cancelled`
     : `Admin bulk void summary (${Number(minDays)}+ days): ${cancelledEntries.length} cancelled`;
 
-  try {
-    await sendBulkVoidSummaryEmail({
-      title,
-      subject,
-      reason: mode === 'test' ? 'test_order_cleanup' : `${Number(minDays)}_day_threshold`,
-      cancelledEntries,
-      skippedEntries,
-      failedEntries,
-    });
-  } catch (error) {
-    console.error('[Bulk Void] Unexpected summary email error:', error?.message || error);
+  if (cancelledEntries.length > 0 && totalVoidedLabelCount > 0) {
+    try {
+      await sendBulkVoidSummaryEmail({
+        title,
+        subject,
+        reason: mode === 'test' ? 'test_order_cleanup' : `${Number(minDays)}_day_threshold`,
+        cancelledEntries,
+        skippedEntries,
+        failedEntries,
+      });
+    } catch (error) {
+      console.error('[Bulk Void] Unexpected summary email error:', error?.message || error);
+    }
+  } else {
+    console.log(
+      `[Bulk Void] Summary email skipped mode=${mode} cancelled=${cancelledEntries.length} voidedLabels=${totalVoidedLabelCount}`
+    );
   }
 
   return {
@@ -6962,6 +6964,7 @@ async function runAdminBulkVoidJob({
     hasMore,
     scanned: candidates.length,
     cancelled: cancelledEntries.length,
+    voidedLabels: totalVoidedLabelCount,
     skipped: skippedEntries.length,
     failed: failedEntries.length,
     cancelledEntries,
