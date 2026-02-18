@@ -5582,7 +5582,6 @@ async function sendMultipleTestEmails(email, emailTypes) {
           <p>Hello ${orderToUse.shippingInfo.fullName},</p>
           <p>As requested, here is your return shipping label for your device (Order ID: ${orderToUse.id}):</p>
           <p>Return Tracking Number: <strong>${orderToUse.returnTrackingNumber}</strong></p>
-          <a href="${orderToUse.returnLabelUrl}">Download Return Label</a>
           <p>Thank you,</p>
           <p>The SecondHandCell Team</p>
         `;
@@ -6842,7 +6841,6 @@ app.post("/orders/:id/return-label", async (req, res) => {
         <p>Hello ${order.shippingInfo.fullName},</p>
         <p>As requested, here is your return shipping label for your device (Order ID: ${order.id}):</p>
         <p>Return Tracking Number: <strong>${returnTrackingNumber || "N/A"}</strong></p>
-        <a href="${returnLabelData.label_download?.pdf}">Download Return Label</a>
         <p>Thank you,</p>
         <p>The SecondHandCell Team</p>
       `,
