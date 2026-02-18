@@ -95,6 +95,16 @@ function getBumpForProfitPct(profitPct, rules) {
   return 0;
 }
 
+function roundRepricerPrice(value) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return amount;
+  const dollars = Math.floor(amount);
+  const cents = Math.round((amount - dollars) * 100);
+  if (cents < 50) return dollars;
+  if (cents === 50) return dollars + 0.5;
+  return dollars + 1;
+}
+
 function getFirestoreDb() {
   const admin = require("firebase-admin");
   if (admin.apps.length === 0) {
@@ -487,7 +497,7 @@ function repriceRowFromFeed(row, feedIndex, rules) {
     new_price = total_walkaway / (1 + rules.targetProfitPct);
   }
 
-  new_price = Math.round(new_price * 100) / 100;
+  new_price = roundRepricerPrice(new_price);
 
   result.amazon_price = amazonPrice;
   result.after_amazon = after_amazon;
