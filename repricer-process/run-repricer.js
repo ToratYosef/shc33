@@ -397,7 +397,7 @@ function buildCanonicalDeeplink(modelNode) {
   const deviceSlug = getCanonicalDeviceSlug(modelNode);
   if (!deviceSlug) return "";
 
-  return `https://secondhandcell.com/sell/?device=${deviceSlug}&storage={storage}&carrier={carrier}&power={power}&functionality={functionality}&quality={quality}`;
+  return `https://secondhandcell.com/sell/?device=${deviceSlug}&storage={storage}&carrier={carrier}&quality={quality}`;
 }
 
 function normalizeModelDeeplink(modelNode) {
