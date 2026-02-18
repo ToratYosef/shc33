@@ -94,7 +94,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i12p</imageUrl>
     <name>IPHONE 12 PRO</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-12-pro&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=12-pro&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-12-pro</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -190,7 +190,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i12pm</imageUrl>
     <name>IPHONE 12 PRO MAX</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-12-pro-max&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=12-pro-max&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-12-pro-max</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -286,7 +286,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i13</imageUrl>
     <name>IPHONE 13</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-13&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=13&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-13</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -382,7 +382,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i13m</imageUrl>
     <name>IPHONE 13 MINI</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-13-mini&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=13-mini&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-13-mini</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -507,7 +507,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i13p</imageUrl>
     <name>IPHONE 13 PRO</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-13-pro&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=13-pro&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-13-pro</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -632,7 +632,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i13pm</imageUrl>
     <name>IPHONE 13 PRO MAX</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-13-pro-max&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=13-pro-max&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-13-pro-max</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -728,7 +728,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i14</imageUrl>
     <name>IPHONE 14</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-14&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=14&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-14</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -824,7 +824,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i14pl</imageUrl>
     <name>IPHONE 14 PLUS</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-14-plus&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=14-plus&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-14-plus</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -949,7 +949,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i14p</imageUrl>
     <name>IPHONE 14 PRO</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-14-pro&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=14-pro&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-14-pro</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -1074,7 +1074,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i14pm</imageUrl>
     <name>IPHONE 14 PRO MAX</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-14-pro-max&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=14-pro-max&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-14-pro-max</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -1170,7 +1170,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i15</imageUrl>
     <name>IPHONE 15</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-15&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=15&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-15</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -1266,7 +1266,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i15pl</imageUrl>
     <name>IPHONE 15 PLUS</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-15-plus&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=15-plus&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-15-plus</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -1391,7 +1391,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i15p</imageUrl>
     <name>IPHONE 15 PRO</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-15-pro&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=15-pro&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-15-pro</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -1487,7 +1487,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i15pm</imageUrl>
     <name>IPHONE 15 PRO MAX</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-15-pro-max&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=15-pro-max&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-15-pro-max</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -1583,7 +1583,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i16</imageUrl>
     <name>IPHONE 16</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-16&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=16&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-16</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -1679,7 +1679,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i16pl</imageUrl>
     <name>IPHONE 16 PLUS</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-16-plus&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=16-plus&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-16-plus</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -1804,7 +1804,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i16p</imageUrl>
     <name>IPHONE 16 PRO</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-16-pro&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=16-pro&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-16-pro</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -1900,7 +1900,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i16pm</imageUrl>
     <name>IPHONE 16 PRO MAX</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-16-pro-max&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=16-pro-max&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-16-pro-max</deeplink>
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
@@ -2025,7 +2025,7 @@
     <imageUrl>https://raw.githubusercontent.com/ToratYosef/BuyBacking/main/iphone/assets/i16e</imageUrl>
     <name>iPhone 16e</name>
     <brand>iphone</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=iphone-16-se&amp;storage={storage}&amp;carrier={carrier}&amp;power={power}&amp;functionality={functionality}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?brand=iphone&amp;model=16-se&amp;storage={storage}&amp;lock={carrier}&amp;power={power}&amp;functionality={functionality}&amp;condition={quality}&amp;device=iphone-16-se</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
