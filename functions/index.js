@@ -1267,10 +1267,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
               return `
                 <div class="issue-actions">
                   <button class="issue-button primary" data-device-key="${safeDeviceKey}" data-reason="${safeReason}" data-action="resolve" ${requiresUnlockInfo ? 'disabled data-requires-unlock="1"' : ''}>
-                    ✓ Mark as Resolved
-                  </button>
-                  <button class="issue-button secondary" data-device-key="${safeDeviceKey}" data-reason="${safeReason}" data-action="received">
-                    📦 Mark as Received
+                    ✓ Submit as Resolved
                   </button>
                 </div>
                 ${unlockSectionHtml}
@@ -2337,8 +2334,8 @@ app.get('/fix-issue/:orderId', async (req, res) => {
 
             button.disabled = true;
             
-            var actionMessage = action === 'received' ? 'Marking as received...' : 'Sending confirmation...';
-            var successMessage = action === 'received' ? 'Marked as received!' : 'Confirmed. Thank you!';
+            var actionMessage = 'Submitting your resolution...';
+            var successMessage = 'Submitted successfully. Thank you — we received your update.';
             
             setFeedback(feedback, actionMessage, '#64748b');
             var payload = { deviceKey: deviceKey, reason: reason, action: action };
@@ -2363,7 +2360,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
               .then(function () {
                 setFeedback(feedback, successMessage, '#16a34a');
                 if (statusLabel) {
-                  statusLabel.textContent = action === 'received' ? 'Received' : 'Resolved';
+                  statusLabel.textContent = 'Resolved';
                   statusLabel.classList.remove('pending');
                   statusLabel.classList.add('resolved');
                 }
