@@ -362,37 +362,49 @@ function templateModelToSellcellName(modelNode) {
   return normalizeModelNameForFeed(upper);
 }
 
-function getSamsungModelSlug(modelNode) {
+function getCanonicalBrandFromModel(modelNode) {
+  const raw = (getTextFromNode(modelNode, "brand") || getTextFromNode(modelNode, "parentDevice") || "").trim().toLowerCase();
+  if (!raw) return "";
+  if (raw === "apple") return "iphone";
+  return normalizeSlugSegment(raw);
+}
+
+function getCanonicalDeviceSlug(modelNode) {
+  const brand = getCanonicalBrandFromModel(modelNode);
+  if (!brand) return "";
+
   const deeplink = getTextFromNode(modelNode, "deeplink");
   const deeplinkDevice = parseDeviceParamFromDeeplink(deeplink);
   if (deeplinkDevice) {
-    const normalized = normalizeSlugSegment(deeplinkDevice.replace(/^samsung-/, ""));
-    if (normalized) return normalized;
+    const normalized = normalizeSlugSegment(deeplinkDevice);
+    if (!normalized) return "";
+    return normalized.startsWith(`${brand}-`) ? normalized : `${brand}-${normalized}`;
   }
 
   const slugRaw = getTextFromNode(modelNode, "slug") || getTextFromNode(modelNode, "modelID");
-  const normalizedSlug = normalizeSlugSegment(slugRaw.replace(/^samsung-/, ""));
-  if (normalizedSlug) return normalizedSlug;
+  if (slugRaw) {
+    const normalized = normalizeSlugSegment(slugRaw);
+    if (normalized) return normalized.startsWith(`${brand}-`) ? normalized : `${brand}-${normalized}`;
+  }
 
   const nameRaw = getTextFromNode(modelNode, "name");
-  return normalizeSlugSegment(nameRaw.replace(/^samsung\s+/i, ""));
+  const normalizedName = normalizeSlugSegment(nameRaw);
+  if (!normalizedName) return "";
+  return normalizedName.startsWith(`${brand}-`) ? normalizedName : `${brand}-${normalizedName}`;
 }
 
-function buildSamsungDeeplink(modelNode) {
-  const modelSlug = getSamsungModelSlug(modelNode);
-  if (!modelSlug) return "";
+function buildCanonicalDeeplink(modelNode) {
+  const deviceSlug = getCanonicalDeviceSlug(modelNode);
+  if (!deviceSlug) return "";
 
-  return `https://secondhandcell.com/sell/?brand=samsung&model=${modelSlug}&storage={storage}&lock={carrier}&condition={quality}&device=${modelSlug}`;
+  return `https://secondhandcell.com/sell/?device=${deviceSlug}&storage={storage}&carrier={carrier}&power={power}&functionality={functionality}&quality={quality}`;
 }
 
-function normalizeSamsungDeeplink(modelNode) {
-  const brandRaw = (getTextFromNode(modelNode, "brand") || getTextFromNode(modelNode, "parentDevice") || "").trim().toLowerCase();
-  if (brandRaw !== "samsung") return false;
-
+function normalizeModelDeeplink(modelNode) {
   const deeplinkEl = modelNode.getElementsByTagName("deeplink")[0];
   if (!deeplinkEl) return false;
 
-  const normalizedDeeplink = buildSamsungDeeplink(modelNode);
+  const normalizedDeeplink = buildCanonicalDeeplink(modelNode);
   if (!normalizedDeeplink) return false;
 
   const currentDeeplink = String(deeplinkEl.textContent || "").trim();
@@ -614,13 +626,13 @@ function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
   let changedNodes = 0;
   const changedModels = new Set();
   let matchedKeys = 0;
-  let normalizedSamsungDeeplinks = 0;
+  let normalizedDeeplinks = 0;
 
   const models = doc.getElementsByTagName("model");
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
 
-    if (normalizeSamsungDeeplink(model)) normalizedSamsungDeeplinks++;
+    if (normalizeModelDeeplink(model)) normalizedDeeplinks++;
 
     // KEY FIX: use deeplink device param to derive SellCell name
     const modelSellcellName = templateModelToSellcellName(model);
@@ -673,7 +685,7 @@ function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
     changedModelsCount: changedModels.size,
     matchedKeys,
     priceMapSize: priceMap.size,
-    normalizedSamsungDeeplinks,
+    normalizedDeeplinks,
   };
 }
 
@@ -929,14 +941,14 @@ async function main() {
 
   const resultRows = rawRecords.map((r) => repriceRowFromFeed(r, feedIndex, repricerRules));
 
-  const { updatedXml, changedNodes, changedModelsCount, matchedKeys, priceMapSize, normalizedSamsungDeeplinks } =
+  const { updatedXml, changedNodes, changedModelsCount, matchedKeys, priceMapSize, normalizedDeeplinks } =
     buildUpdatedXmlFromTemplateWithDiff(templateXmlBefore, resultRows);
 
   fs.writeFileSync(TEMPLATE_XML_PATH, updatedXml, "utf8");
   console.log(`[repricer] updated template written -> ${TEMPLATE_XML_PATH}`);
   console.log(`[repricer] priceMap=${priceMapSize.toLocaleString()}  matchedKeys=${matchedKeys.toLocaleString()}`);
   console.log(`[repricer] xml price nodes changed=${changedNodes.toLocaleString()}  models touched=${changedModelsCount.toLocaleString()}`);
-  console.log(`[repricer] samsung deeplinks normalized=${normalizedSamsungDeeplinks.toLocaleString()}`);
+  console.log(`[repricer] deeplinks normalized=${normalizedDeeplinks.toLocaleString()}`);
 
   if (WRITE_OUTPUT_CSV) {
     const outCsv = buildOutputCsv(resultRows);
