@@ -1228,16 +1228,55 @@ app.get('/fix-issue/:orderId', async (req, res) => {
 
         const buttonsHtml = issue.resolved
           ? '<div class="issue-actions"><button class="issue-button primary" disabled>✓ Resolved</button></div>'
-          : `
-            <div class="issue-actions">
-              <button class="issue-button primary" data-device-key="${safeDeviceKey}" data-reason="${safeReason}" data-action="resolve">
-                ✓ Mark as Resolved
-              </button>
-              <button class="issue-button secondary" data-device-key="${safeDeviceKey}" data-reason="${safeReason}" data-action="received">
-                📦 Mark as Received
-              </button>
-            </div>
-          `;
+          : (() => {
+              const requiresUnlockInfo = issue.reason === 'password_locked' && !issue.resolved;
+              const unlockSectionHtml = requiresUnlockInfo
+                ? `
+                  <div class="unlock-section" data-unlock-section="1">
+                    <label class="unlock-label">Unlock Method</label>
+                    <select class="unlock-select" data-unlock-method>
+                      <option value="">Select method...</option>
+                      <option value="pin">PIN</option>
+                      <option value="password">Password</option>
+                      <option value="pattern">Pattern</option>
+                    </select>
+                    <div class="unlock-pane hidden" data-unlock-pane="pin">
+                      <label class="unlock-label">Enter PIN</label>
+                      <input type="text" class="unlock-input" data-unlock-pin placeholder="Enter PIN" autocomplete="off" />
+                    </div>
+                    <div class="unlock-pane hidden" data-unlock-pane="password">
+                      <label class="unlock-label">Enter Password</label>
+                      <input type="text" class="unlock-input" data-unlock-password placeholder="Enter password" autocomplete="off" />
+                    </div>
+                    <div class="unlock-pane hidden" data-unlock-pane="pattern">
+                      <label class="unlock-label">Draw Pattern</label>
+                      <div class="unlock-pattern-grid" data-pattern-grid>
+                        ${Array.from({ length: 9 }, (_, i) => `<button type="button" class="unlock-dot" data-dot-id="${i + 1}" aria-label="Dot ${i + 1}"></button>`).join('')}
+                      </div>
+                      <input type="hidden" data-pattern-path value="" />
+                      <div class="unlock-pattern-meta">
+                        <span data-pattern-display>Pattern not set</span>
+                        <button type="button" class="unlock-clear" data-pattern-clear>Clear</button>
+                      </div>
+                    </div>
+                    <p class="unlock-hint" data-unlock-hint>Please select unlock method and complete it to submit as resolved.</p>
+                  </div>
+                `
+                : '';
+
+              return `
+                <div class="issue-actions">
+                  <button class="issue-button primary" data-device-key="${safeDeviceKey}" data-reason="${safeReason}" data-action="resolve" ${requiresUnlockInfo ? 'disabled data-requires-unlock="1"' : ''}>
+                    ✓ Mark as Resolved
+                  </button>
+                  <button class="issue-button secondary" data-device-key="${safeDeviceKey}" data-reason="${safeReason}" data-action="received">
+                    📦 Mark as Received
+                  </button>
+                </div>
+                ${unlockSectionHtml}
+              `;
+            })()
+          ;
 
         allIssueCards.push(`
           <div class="issue-column ${issue.resolved ? 'resolved' : ''}" data-issue-index="${index}">
@@ -1621,6 +1660,76 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         margin-top: 12px;
         font-size: 14px;
         font-weight: 500;
+      }
+      .unlock-section {
+        margin-top: 12px;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        text-align: left;
+      }
+      .unlock-label {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        color: #334155;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+      .unlock-select,
+      .unlock-input {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 9px 10px;
+        font-size: 14px;
+        background: #fff;
+        color: #0f172a;
+      }
+      .unlock-pane { margin-top: 10px; }
+      .unlock-pattern-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 42px);
+        gap: 10px;
+        touch-action: none;
+        user-select: none;
+      }
+      .unlock-dot {
+        width: 42px;
+        height: 42px;
+        border-radius: 999px;
+        border: 2px solid #64748b;
+        background: #fff;
+        cursor: crosshair;
+      }
+      .unlock-dot.active {
+        background: #4f46e5;
+        border-color: #4f46e5;
+      }
+      .unlock-pattern-meta {
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 12px;
+        color: #334155;
+        gap: 8px;
+      }
+      .unlock-clear {
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        background: #fff;
+        padding: 5px 8px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #334155;
+      }
+      .unlock-hint {
+        margin: 8px 0 0;
+        font-size: 11px;
+        color: #64748b;
       }
       .fix-instructions {
         background: #eff6ff;
@@ -2073,6 +2182,138 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     </footer>
     <script>
       (function () {
+        function parsePatternPath(raw) {
+          return String(raw || '')
+            .split('-')
+            .map(function (part) { return Number(part); })
+            .filter(function (num) { return Number.isFinite(num) && num >= 1 && num <= 9; });
+        }
+
+        function wireUnlockSection(card) {
+          var unlockSection = card ? card.querySelector('[data-unlock-section]') : null;
+          if (!unlockSection) return;
+
+          var methodSelect = unlockSection.querySelector('[data-unlock-method]');
+          var pinPane = unlockSection.querySelector('[data-unlock-pane="pin"]');
+          var passwordPane = unlockSection.querySelector('[data-unlock-pane="password"]');
+          var patternPane = unlockSection.querySelector('[data-unlock-pane="pattern"]');
+          var pinInput = unlockSection.querySelector('[data-unlock-pin]');
+          var passwordInput = unlockSection.querySelector('[data-unlock-password]');
+          var patternInput = unlockSection.querySelector('[data-pattern-path]');
+          var patternDisplay = unlockSection.querySelector('[data-pattern-display]');
+          var patternClearBtn = unlockSection.querySelector('[data-pattern-clear]');
+          var hint = unlockSection.querySelector('[data-unlock-hint]');
+          var resolveBtn = card.querySelector('[data-action="resolve"]');
+          var dots = Array.prototype.slice.call(unlockSection.querySelectorAll('[data-dot-id]'));
+
+          var drawing = false;
+          var sequence = [];
+
+          function updateUnlockState() {
+            var method = methodSelect ? String(methodSelect.value || '').trim() : '';
+            var complete = false;
+            if (method === 'pin') complete = !!(pinInput && String(pinInput.value || '').trim().length);
+            if (method === 'password') complete = !!(passwordInput && String(passwordInput.value || '').trim().length);
+            if (method === 'pattern') complete = parsePatternPath(patternInput ? patternInput.value : '').length > 0;
+            if (resolveBtn && resolveBtn.hasAttribute('data-requires-unlock')) resolveBtn.disabled = !complete;
+            if (hint) {
+              hint.textContent = complete
+                ? 'Unlock details captured. You can submit as resolved.'
+                : 'Please select unlock method and complete it to submit as resolved.';
+              hint.style.color = complete ? '#15803d' : '#64748b';
+            }
+          }
+
+          function updatePatternUi() {
+            if (patternInput) patternInput.value = sequence.join('-');
+            if (patternDisplay) patternDisplay.textContent = sequence.length ? ('Pattern: ' + sequence.join(' → ')) : 'Pattern not set';
+            dots.forEach(function (dot) {
+              var id = Number(dot.getAttribute('data-dot-id'));
+              dot.classList.toggle('active', sequence.indexOf(id) !== -1);
+            });
+            updateUnlockState();
+          }
+
+          function addDot(dotEl) {
+            var id = Number(dotEl && dotEl.getAttribute('data-dot-id'));
+            if (!Number.isFinite(id)) return;
+            if (sequence.indexOf(id) !== -1) return;
+            sequence.push(id);
+            updatePatternUi();
+          }
+
+          function setMethod(method) {
+            [pinPane, passwordPane, patternPane].forEach(function (pane) {
+              if (pane) pane.classList.add('hidden');
+            });
+            if (method === 'pin' && pinPane) pinPane.classList.remove('hidden');
+            if (method === 'password' && passwordPane) passwordPane.classList.remove('hidden');
+            if (method === 'pattern' && patternPane) patternPane.classList.remove('hidden');
+            updateUnlockState();
+          }
+
+          if (methodSelect) methodSelect.addEventListener('change', function () { setMethod(String(methodSelect.value || '').trim()); });
+          if (pinInput) pinInput.addEventListener('input', updateUnlockState);
+          if (passwordInput) passwordInput.addEventListener('input', updateUnlockState);
+
+          dots.forEach(function (dot) {
+            dot.addEventListener('pointerdown', function (event) {
+              event.preventDefault();
+              drawing = true;
+              sequence = [];
+              addDot(dot);
+            });
+            dot.addEventListener('pointerenter', function () {
+              if (drawing) addDot(dot);
+            });
+            dot.addEventListener('pointerup', function () {
+              drawing = false;
+            });
+          });
+
+          window.addEventListener('pointerup', function () {
+            drawing = false;
+          });
+
+          if (patternClearBtn) {
+            patternClearBtn.addEventListener('click', function () {
+              sequence = [];
+              updatePatternUi();
+            });
+          }
+
+          setMethod(methodSelect ? String(methodSelect.value || '').trim() : '');
+          updatePatternUi();
+        }
+
+        function collectUnlockPayload(card, reason, action) {
+          if (reason !== 'password_locked' || action !== 'resolve') return { ok: true, payload: null };
+          var unlockSection = card ? card.querySelector('[data-unlock-section]') : null;
+          if (!unlockSection) return { ok: false, error: 'Unlock details are required for password lock resolution.' };
+
+          var methodSelect = unlockSection.querySelector('[data-unlock-method]');
+          var pinInput = unlockSection.querySelector('[data-unlock-pin]');
+          var passwordInput = unlockSection.querySelector('[data-unlock-password]');
+          var patternInput = unlockSection.querySelector('[data-pattern-path]');
+          var method = methodSelect ? String(methodSelect.value || '').trim().toLowerCase() : '';
+          if (!method || ['pin', 'password', 'pattern'].indexOf(method) === -1) return { ok: false, error: 'Please select unlock method.' };
+          if (method === 'pin') {
+            var pin = String(pinInput && pinInput.value ? pinInput.value : '').trim();
+            if (!pin) return { ok: false, error: 'Please enter PIN before submitting.' };
+            return { ok: true, payload: { unlockMethod: 'pin', unlockValue: pin, unlockPatternPath: [] } };
+          }
+          if (method === 'password') {
+            var password = String(passwordInput && passwordInput.value ? passwordInput.value : '').trim();
+            if (!password) return { ok: false, error: 'Please enter password before submitting.' };
+            return { ok: true, payload: { unlockMethod: 'password', unlockValue: password, unlockPatternPath: [] } };
+          }
+          var patternPath = parsePatternPath(patternInput ? patternInput.value : '');
+          if (!patternPath.length) return { ok: false, error: 'Please draw pattern before submitting.' };
+          return { ok: true, payload: { unlockMethod: 'pattern', unlockValue: patternPath.join('-'), unlockPatternPath: patternPath } };
+        }
+
+        document.querySelectorAll('.issue-column').forEach(wireUnlockSection);
+
         var buttons = document.querySelectorAll('.issue-button');
         function setFeedback(container, message, color) {
           if (!container) return;
@@ -2085,25 +2326,40 @@ app.get('/fix-issue/:orderId', async (req, res) => {
             var deviceKey = button.getAttribute('data-device-key');
             var reason = button.getAttribute('data-reason');
             var action = button.getAttribute('data-action') || 'resolve';
-            var card = button.closest('.issue-card');
+            var card = button.closest('.issue-column');
             var feedback = card ? card.querySelector('.issue-feedback') : null;
-            var statusLabel = card ? card.querySelector('.issue-status') : null;
+            var statusLabel = card ? card.querySelector('.issue-badge') : null;
+
+            var unlockResult = collectUnlockPayload(card, reason, action);
+            if (!unlockResult.ok) {
+              setFeedback(feedback, unlockResult.error || 'Unlock info is required.', '#dc2626');
+              return;
+            }
+
             button.disabled = true;
             
             var actionMessage = action === 'received' ? 'Marking as received...' : 'Sending confirmation...';
             var successMessage = action === 'received' ? 'Marked as received!' : 'Confirmed. Thank you!';
             
             setFeedback(feedback, actionMessage, '#64748b');
+            var payload = { deviceKey: deviceKey, reason: reason, action: action };
+            if (unlockResult.payload) {
+              payload.unlockMethod = unlockResult.payload.unlockMethod;
+              payload.unlockValue = unlockResult.payload.unlockValue;
+              payload.unlockPatternPath = unlockResult.payload.unlockPatternPath;
+            }
             fetch('${confirmUrl}', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ deviceKey: deviceKey, reason: reason, action: action }),
+              body: JSON.stringify(payload),
             })
               .then(function (response) {
-                if (!response.ok) {
-                  throw new Error('Request failed. Please try again.');
-                }
-                return response.json();
+                return response.json().then(function (data) {
+                  if (!response.ok) {
+                    throw new Error(data && (data.error || data.message) ? (data.error || data.message) : 'Request failed. Please try again.');
+                  }
+                  return data;
+                });
               })
               .then(function () {
                 setFeedback(feedback, successMessage, '#16a34a');
@@ -2242,6 +2498,7 @@ app.post('/fix-issue/:orderId/confirm', async (req, res) => {
     }
 
     const reason = normalizeIssueReason(req.body?.reason);
+    const action = String(req.body?.action || 'resolve').trim().toLowerCase();
     const deviceKey = typeof req.body?.deviceKey === 'string' && req.body.deviceKey.trim()
       ? req.body.deviceKey.trim()
       : buildOrderDeviceKey(orderId, 0);
@@ -2259,6 +2516,44 @@ app.post('/fix-issue/:orderId/confirm', async (req, res) => {
 
     const updatePayload = {};
     const serverTimestamp = admin.firestore.FieldValue.serverTimestamp();
+
+    const unlockMethod = String(req.body?.unlockMethod || '').trim().toLowerCase();
+    const unlockValueRaw = String(req.body?.unlockValue || '').trim();
+    const unlockPatternPathRaw = Array.isArray(req.body?.unlockPatternPath) ? req.body.unlockPatternPath : [];
+    const unlockPatternPath = unlockPatternPathRaw
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value) && value >= 1 && value <= 9);
+
+    if (reason === 'password_locked' && action === 'resolve') {
+      const allowedMethods = new Set(['pin', 'password', 'pattern']);
+      if (!allowedMethods.has(unlockMethod)) {
+        return res.status(400).json({ error: 'Unlock method is required.' });
+      }
+      if ((unlockMethod === 'pin' || unlockMethod === 'password') && !unlockValueRaw) {
+        return res.status(400).json({ error: `Unlock ${unlockMethod} is required.` });
+      }
+      if (unlockMethod === 'pattern' && !unlockPatternPath.length) {
+        return res.status(400).json({ error: 'Unlock pattern is required.' });
+      }
+
+      const normalizedUnlockValue = unlockMethod === 'pattern'
+        ? unlockPatternPath.join('-')
+        : unlockValueRaw;
+
+      updatePayload[`qcIssuesByDevice.${deviceKey}.${reason}.unlockInfo`] = {
+        method: unlockMethod,
+        value: normalizedUnlockValue,
+        patternPath: unlockMethod === 'pattern' ? unlockPatternPath : [],
+        updatedAt: new Date().toISOString(),
+      };
+      updatePayload[`unlockInfoByDevice.${deviceKey}`] = {
+        reason,
+        method: unlockMethod,
+        value: normalizedUnlockValue,
+        patternPath: unlockMethod === 'pattern' ? unlockPatternPath : [],
+        updatedAt: new Date().toISOString(),
+      };
+    }
 
     updatePayload[`qcIssuesByDevice.${deviceKey}.${reason}.resolvedAt`] = serverTimestamp;
     updatePayload[`qcIssuesByDevice.${deviceKey}.${reason}.resolved`] = true;
