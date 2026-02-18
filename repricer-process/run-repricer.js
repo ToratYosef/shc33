@@ -27,7 +27,17 @@ const CSV_PATH = path.join(cwd, "amz.csv");
 const TEMPLATE_XML_PATH = path.join(cwd, "feed.xml");
 
 // repricer tuning
-const PRICE_INCREASE = Number.parseFloat(getArg("bump", "1.00")) || 1.00;
+const CLI_BUMP_VALUE = Number.parseFloat(getArg("bump", ""));
+const HAS_CLI_BUMP_OVERRIDE = Number.isFinite(CLI_BUMP_VALUE);
+
+const DEFAULT_REPRICER_RULES = {
+  targetProfitPct: 0.15,
+  tiers: [
+    { minProfitPct: 0.75, bumpAmount: 5 },
+    { minProfitPct: 0.45, bumpAmount: 3 },
+    { minProfitPct: 0.15, bumpAmount: 1 },
+  ],
+};
 
 // optional outputs
 const WRITE_OUTPUT_CSV = !!getArg("write-csv", false);
@@ -38,6 +48,89 @@ const RUN_GCA = !getArg("no-gca", false);
 
 // optional: use explicit project id (otherwise uses service account / default creds)
 const FIREBASE_PROJECT_ID = getArg("project-id", null);
+
+function normalizeRepricerRules(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  const targetCandidate = Number(source.targetProfitPct);
+  const targetProfitPct =
+    Number.isFinite(targetCandidate) && targetCandidate > 0 && targetCandidate < 1
+      ? targetCandidate
+      : DEFAULT_REPRICER_RULES.targetProfitPct;
+
+  const sourceTiers = Array.isArray(source.tiers) ? source.tiers : [];
+  const tiers = sourceTiers
+    .map((tier) => {
+      if (!tier || typeof tier !== "object") return null;
+      const minProfitPct = Number(tier.minProfitPct);
+      const bumpAmount = Number(tier.bumpAmount);
+      if (!Number.isFinite(minProfitPct) || !Number.isFinite(bumpAmount)) return null;
+      if (minProfitPct <= 0 || minProfitPct >= 1 || bumpAmount < 0) return null;
+      return {
+        minProfitPct: Math.round(minProfitPct * 10000) / 10000,
+        bumpAmount: Math.round(bumpAmount * 100) / 100,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.minProfitPct - a.minProfitPct);
+
+  if (!tiers.length) {
+    return {
+      targetProfitPct: DEFAULT_REPRICER_RULES.targetProfitPct,
+      tiers: DEFAULT_REPRICER_RULES.tiers.map((tier) => ({ ...tier })),
+    };
+  }
+
+  return {
+    targetProfitPct,
+    tiers,
+  };
+}
+
+function getBumpForProfitPct(profitPct, rules) {
+  const value = Number(profitPct);
+  if (!Number.isFinite(value)) return 0;
+  for (const tier of rules.tiers) {
+    if (value >= tier.minProfitPct) return tier.bumpAmount;
+  }
+  return 0;
+}
+
+function getFirestoreDb() {
+  const admin = require("firebase-admin");
+  if (admin.apps.length === 0) {
+    const opts = {};
+    if (FIREBASE_PROJECT_ID) opts.projectId = FIREBASE_PROJECT_ID;
+    admin.initializeApp(opts);
+  }
+  return admin.firestore();
+}
+
+async function loadRepricerRules() {
+  const useDefaultViaFlag = getArg("default-rules", false);
+  if (HAS_CLI_BUMP_OVERRIDE) {
+    return {
+      targetProfitPct: DEFAULT_REPRICER_RULES.targetProfitPct,
+      tiers: [
+        {
+          minProfitPct: DEFAULT_REPRICER_RULES.targetProfitPct,
+          bumpAmount: Math.round(CLI_BUMP_VALUE * 100) / 100,
+        },
+      ],
+    };
+  }
+  if (useDefaultViaFlag) {
+    return normalizeRepricerRules(null);
+  }
+
+  try {
+    const db = getFirestoreDb();
+    const snap = await db.collection("config").doc("repricerRules").get();
+    return normalizeRepricerRules(snap.exists ? snap.data() : null);
+  } catch (error) {
+    console.warn(`[repricer] failed to load Firestore rules, using defaults: ${error?.message || error}`);
+    return normalizeRepricerRules(null);
+  }
+}
 
 // ---------------- HELPERS ----------------
 
@@ -336,7 +429,7 @@ function buildFeedIndexFromXml(xmlText) {
 }
 
 // ===================== REPRICER LOGIC =====================
-function repriceRowFromFeed(row, feedIndex, priceIncrease) {
+function repriceRowFromFeed(row, feedIndex, rules) {
   const result = { ...row };
 
   const name = row.name;
@@ -386,9 +479,13 @@ function repriceRowFromFeed(row, feedIndex, priceIncrease) {
   const profit = total_walkaway - original_price;
   const profit_pct = original_price ? profit / original_price : null;
 
+  const bumpAmount = getBumpForProfitPct(profit_pct, rules);
   let new_price;
-  if (profit_pct != null && profit_pct >= 0.15) new_price = original_price + priceIncrease;
-  else new_price = total_walkaway / 1.15;
+  if (profit_pct != null && profit_pct >= rules.targetProfitPct) {
+    new_price = original_price + bumpAmount;
+  } else {
+    new_price = total_walkaway / (1 + rules.targetProfitPct);
+  }
 
   new_price = Math.round(new_price * 100) / 100;
 
@@ -400,13 +497,14 @@ function repriceRowFromFeed(row, feedIndex, priceIncrease) {
   result.total_walkaway = total_walkaway;
   result.profit = profit;
   result.profit_pct = profit_pct;
+  result.applied_bump = bumpAmount;
   result.new_price = new_price;
   result.new_profit = total_walkaway - new_price;
   result.new_profit_pct = new_price ? (result.new_profit / new_price) : null;
 
-  result._status = (profit_pct != null && profit_pct >= 0.15)
-    ? `Already ≥ 15% profit – bumped $${priceIncrease.toFixed(2)}`
-    : "Repriced to hit 15% profit";
+  result._status = (profit_pct != null && profit_pct >= rules.targetProfitPct)
+    ? `Already ≥ ${(rules.targetProfitPct * 100).toFixed(0)}% profit – bumped $${bumpAmount.toFixed(2)}`
+    : `Repriced to hit ${(rules.targetProfitPct * 100).toFixed(0)}% profit`;
   result._statusClass = "status-ok";
 
   // IMPORTANT: keep normalized condition for template match
@@ -660,15 +758,7 @@ function parseDevicePricesXmlForImport(content) {
 }
 
 async function importToFirestoreAlways(updatedXmlText) {
-  const admin = require("firebase-admin");
-
-  if (admin.apps.length === 0) {
-    const opts = {};
-    if (FIREBASE_PROJECT_ID) opts.projectId = FIREBASE_PROJECT_ID;
-    admin.initializeApp(opts);
-  }
-
-  const db = admin.firestore();
+  const db = getFirestoreDb();
   const { models, warnings } = parseDevicePricesXmlForImport(updatedXmlText);
 
   let success = 0;
@@ -742,8 +832,14 @@ function countPriceLeafDiffs(beforePrices, afterPrices) {
 
 // ---------------- MAIN ----------------
 async function main() {
+  const repricerRules = await loadRepricerRules();
+
   console.log(`[repricer] dir=${cwd}`);
-  console.log(`[repricer] bump=$${PRICE_INCREASE.toFixed(2)}  write-csv=${WRITE_OUTPUT_CSV ? "yes" : "no"}  firestore=YES  gca=${RUN_GCA ? "yes" : "no"}`);
+  console.log(
+    `[repricer] tiers=${repricerRules.tiers
+      .map((tier) => `${(tier.minProfitPct * 100).toFixed(0)}%=>+$${tier.bumpAmount.toFixed(2)}`)
+      .join(", ")}  target=${(repricerRules.targetProfitPct * 100).toFixed(0)}%  write-csv=${WRITE_OUTPUT_CSV ? "yes" : "no"}  firestore=YES  gca=${RUN_GCA ? "yes" : "no"}`
+  );
 
   if (!fs.existsSync(CSV_PATH)) throw new Error(`Missing ${CSV_PATH}. Put your CSV there as amz.csv`);
   if (!fs.existsSync(TEMPLATE_XML_PATH)) throw new Error(`Missing ${TEMPLATE_XML_PATH}. Put your template device-prices XML there as feed.xml`);
@@ -777,7 +873,7 @@ async function main() {
 
   console.log(`[repricer] csvRows=${rawRecords.length}  newVariants=0  total=${rawRecords.length}`);
 
-  const resultRows = rawRecords.map((r) => repriceRowFromFeed(r, feedIndex, PRICE_INCREASE));
+  const resultRows = rawRecords.map((r) => repriceRowFromFeed(r, feedIndex, repricerRules));
 
   const { updatedXml, changedNodes, changedModelsCount, matchedKeys, priceMapSize } =
     buildUpdatedXmlFromTemplateWithDiff(templateXmlBefore, resultRows);

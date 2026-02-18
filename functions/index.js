@@ -82,6 +82,102 @@ const CONDITION_XML_MAP = {
   damaged: "prices_faulty",
 };
 
+const DEFAULT_REPRICER_RULES = {
+  targetProfitPct: 0.15,
+  tiers: [
+    { minProfitPct: 0.75, bumpAmount: 5 },
+    { minProfitPct: 0.45, bumpAmount: 3 },
+    { minProfitPct: 0.15, bumpAmount: 1 },
+  ],
+};
+
+let cachedRepricerRules = null;
+let cachedRepricerRulesAt = 0;
+const REPRICER_RULES_CACHE_MS = 60 * 1000;
+
+function normalizeRepricerRules(raw) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const targetCandidate = Number(source.targetProfitPct);
+  const targetProfitPct =
+    Number.isFinite(targetCandidate) && targetCandidate > 0 && targetCandidate < 1
+      ? targetCandidate
+      : DEFAULT_REPRICER_RULES.targetProfitPct;
+
+  const sourceTiers = Array.isArray(source.tiers) ? source.tiers : [];
+  const tiers = sourceTiers
+    .map((tier) => {
+      if (!tier || typeof tier !== 'object') return null;
+      const minProfitPct = Number(tier.minProfitPct);
+      const bumpAmount = Number(tier.bumpAmount);
+      if (!Number.isFinite(minProfitPct) || !Number.isFinite(bumpAmount)) return null;
+      if (minProfitPct <= 0 || minProfitPct >= 1 || bumpAmount < 0) return null;
+      return {
+        minProfitPct: Math.round(minProfitPct * 10000) / 10000,
+        bumpAmount: Math.round(bumpAmount * 100) / 100,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.minProfitPct - a.minProfitPct);
+
+  if (!tiers.length) {
+    return {
+      targetProfitPct: DEFAULT_REPRICER_RULES.targetProfitPct,
+      tiers: DEFAULT_REPRICER_RULES.tiers.map((tier) => ({ ...tier })),
+    };
+  }
+
+  return {
+    targetProfitPct,
+    tiers,
+  };
+}
+
+function serializeRepricerRulesForStorage(rules, actorUid = null) {
+  return {
+    targetProfitPct: rules.targetProfitPct,
+    tiers: rules.tiers.map((tier) => ({
+      minProfitPct: tier.minProfitPct,
+      bumpAmount: tier.bumpAmount,
+    })),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    ...(actorUid ? { updatedBy: actorUid } : {}),
+  };
+}
+
+function getBumpForProfitPct(profitPct, rules) {
+  const safeProfitPct = Number(profitPct);
+  if (!Number.isFinite(safeProfitPct)) return 0;
+
+  const tiers = Array.isArray(rules?.tiers) ? rules.tiers : [];
+  for (const tier of tiers) {
+    if (safeProfitPct >= tier.minProfitPct) {
+      return tier.bumpAmount;
+    }
+  }
+  return 0;
+}
+
+async function getRepricerRules({ forceRefresh = false } = {}) {
+  const now = Date.now();
+  if (!forceRefresh && cachedRepricerRules && now - cachedRepricerRulesAt < REPRICER_RULES_CACHE_MS) {
+    return cachedRepricerRules;
+  }
+
+  try {
+    const snap = await db.collection('config').doc('repricerRules').get();
+    const rules = normalizeRepricerRules(snap.exists ? snap.data() : null);
+    cachedRepricerRules = rules;
+    cachedRepricerRulesAt = now;
+    return rules;
+  } catch (error) {
+    console.error('Failed to load repricer rules, using defaults:', error?.message || error);
+    const fallback = normalizeRepricerRules(null);
+    cachedRepricerRules = fallback;
+    cachedRepricerRulesAt = now;
+    return fallback;
+  }
+}
+
 function normalizeName(name) {
   return String(name || "").trim().toUpperCase();
 }
@@ -231,6 +327,7 @@ exports.repriceFeed = functions.https.onRequest(async (req, res) => {
     // Build SellCell feed index
     const feedIndex = await buildFeedIndex(xmlInput);
 
+    const repricerRules = await getRepricerRules();
     const resultRows = [];
 
     for (const row of records) {
@@ -320,14 +417,12 @@ exports.repriceFeed = functions.https.onRequest(async (req, res) => {
       const profit = total_walkaway - original_price;
       const profit_pct = profit / original_price;
 
+      const bumpAmount = getBumpForProfitPct(profit_pct, repricerRules);
       let new_price;
-      if (profit_pct >= 0.15) {
-        // Already ≥ 15%, bump buy price by $1
-        new_price = original_price + 1;
+      if (profit_pct >= repricerRules.targetProfitPct) {
+        new_price = original_price + bumpAmount;
       } else {
-        // Force exactly 15% profit:
-        // total_walkaway = 1.15 * buy_price → buy_price = total_walkaway / 1.15
-        new_price = total_walkaway / 1.15;
+        new_price = total_walkaway / (1 + repricerRules.targetProfitPct);
       }
 
       new_price = Math.round(new_price * 100) / 100;
@@ -346,17 +441,75 @@ exports.repriceFeed = functions.https.onRequest(async (req, res) => {
         total_walkaway,
         profit,
         profit_pct,
+        applied_bump: bumpAmount,
         new_price,
         new_profit,
         new_profit_pct,
+        repricer_target_profit_pct: repricerRules.targetProfitPct,
       });
     }
 
-    res.json({ rows: resultRows });
+    res.json({ rows: resultRows, rules: repricerRules });
   } catch (err) {
     console.error(err);
     res.status(500).send(err && err.message ? err.message : "Server error");
   }
+});
+
+exports.getRepricerRules = functions.https.onCall(async (_data, context) => {
+  const authContext = getCallableAuth(context);
+  if (!authContext) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be logged in');
+  }
+
+  if (!isAuthDisabled()) {
+    const adminDoc = await adminsCollection.doc(authContext.uid).get();
+    if (!adminDoc.exists) {
+      throw new functions.https.HttpsError('permission-denied', 'Only admins can view repricer rules');
+    }
+  }
+
+  const rules = await getRepricerRules();
+  return {
+    rules,
+    targetProfitPctDisplay: Number((rules.targetProfitPct * 100).toFixed(2)),
+    tiers: rules.tiers.map((tier) => ({
+      minProfitPct: tier.minProfitPct,
+      minProfitPctDisplay: Number((tier.minProfitPct * 100).toFixed(2)),
+      bumpAmount: tier.bumpAmount,
+    })),
+  };
+});
+
+exports.setRepricerRules = functions.https.onCall(async (data, context) => {
+  const authContext = getCallableAuth(context);
+  if (!authContext) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be logged in');
+  }
+
+  if (!isAuthDisabled()) {
+    const adminDoc = await adminsCollection.doc(authContext.uid).get();
+    if (!adminDoc.exists) {
+      throw new functions.https.HttpsError('permission-denied', 'Only admins can update repricer rules');
+    }
+  }
+
+  const payload = data && typeof data === 'object' ? data : {};
+  const normalized = normalizeRepricerRules(payload.rules || {});
+
+  if (!Array.isArray(normalized.tiers) || !normalized.tiers.length) {
+    throw new functions.https.HttpsError('invalid-argument', 'At least one tier is required');
+  }
+
+  await db
+    .collection('config')
+    .doc('repricerRules')
+    .set(serializeRepricerRulesForStorage(normalized, authContext.uid), { merge: true });
+
+  cachedRepricerRules = normalized;
+  cachedRepricerRulesAt = Date.now();
+
+  return { success: true, rules: normalized };
 });
 
 function isValidImei(imei) {
