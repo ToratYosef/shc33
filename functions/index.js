@@ -2732,6 +2732,10 @@ const TRACKING_REFRESH_MIN_INTERVAL_MS = Math.max(
   0,
   Number(process.env.TRACKING_REFRESH_MIN_INTERVAL_MS || 10 * 60 * 1000)
 );
+const ADMIN_BULK_VOID_MIN_DAYS_DEFAULT = 27;
+const ADMIN_BULK_VOID_QUERY_LIMIT = Math.max(50, Number(process.env.ADMIN_BULK_VOID_QUERY_LIMIT || 500));
+const TEST_ORDER_EMAILS = new Set(['eesetton@gmail.com', 'saulsetton16@gmail.com']);
+const TEST_ORDER_ADDRESS_NEEDLE = '1966 west 3rd st';
 const AUTO_REDUCED_PAYOUT_DELAY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const AUTO_REDUCED_PAYOUT_QUERY_LIMIT = 300;
 let automaticInboundTrackingRefreshInProgress = false;
@@ -2885,6 +2889,128 @@ function toDate(value) {
     }
   }
   return null;
+}
+
+function normalizeAddressText(value) {
+  return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function getOrderAgeInDays(order = {}) {
+  const anchorDate = toDate(order.labelGeneratedAt || order.kitLabelGeneratedAt || order.emailedAt || order.createdAt);
+  if (!anchorDate) {
+    return null;
+  }
+  const ageDays = (Date.now() - anchorDate.getTime()) / (24 * 60 * 60 * 1000);
+  return Number.isFinite(ageDays) ? Number(ageDays.toFixed(1)) : null;
+}
+
+function getPendingVoidSelections(order = {}) {
+  const labels = normalizeShipEngineLabelMap(order);
+  return Object.entries(labels)
+    .filter(([, entry]) => entry && entry.id && isLabelPendingVoid(entry))
+    .map(([key, entry]) => ({ key, id: entry.id }));
+}
+
+function isAlreadyProcessedForBulkVoid(order = {}) {
+  const status = normalizeStatusValue(order.status);
+  if (status === 'cancelled' || status === 'canceled') {
+    return true;
+  }
+  return Boolean(
+    order.returnAutoVoidedAt ||
+    order.autoLabelVoidProcessedAt ||
+    order.adminBulkVoidProcessedAt ||
+    order.testOrderAutoVoidProcessedAt
+  );
+}
+
+function isTestOrderMatch(order = {}) {
+  const email = String(
+    order?.shippingInfo?.email || order?.email || order?.customerEmail || order?.userEmail || ''
+  )
+    .trim()
+    .toLowerCase();
+
+  const addressCombined = normalizeAddressText([
+    order?.shippingInfo?.address,
+    order?.shippingInfo?.address1,
+    order?.shippingInfo?.addressLine1,
+    order?.shippingInfo?.street,
+    order?.shippingAddress?.address,
+    order?.shippingAddress?.address1,
+    order?.shippingAddress?.addressLine1,
+    order?.shippingAddress?.street,
+  ].filter(Boolean).join(' '));
+
+  return TEST_ORDER_EMAILS.has(email) || addressCombined.includes(TEST_ORDER_ADDRESS_NEEDLE);
+}
+
+async function sendBulkVoidSummaryEmail({
+  title,
+  subject,
+  reason,
+  cancelledEntries = [],
+  skippedEntries = [],
+  failedEntries = [],
+}) {
+  const recipient = getLabelVoidNotificationEmail();
+  if (!recipient) {
+    console.warn('Bulk void summary email skipped: no admin recipient configured.');
+    return;
+  }
+
+  const cancelledLines = cancelledEntries.length
+    ? cancelledEntries.map((entry) => {
+      const ageLabel = entry.ageDays === null ? 'Unknown age' : `${entry.ageDays} days old`;
+      return `• Order #${entry.orderId} | ${ageLabel} | Labels: ${entry.labelIds?.length ? entry.labelIds.join(', ') : 'N/A'}`;
+    })
+    : ['• None'];
+
+  const skippedLines = skippedEntries.slice(0, 25).map((entry) => `• #${entry.orderId}: ${entry.reason}`);
+  const failedLines = failedEntries.slice(0, 25).map((entry) => `• #${entry.orderId}: ${entry.reason}`);
+
+  const textBody = [
+    title,
+    `Reason: ${reason}`,
+    '',
+    `Cancelled: ${cancelledEntries.length}`,
+    ...cancelledLines,
+    '',
+    `Skipped: ${skippedEntries.length}`,
+    ...(skippedLines.length ? skippedLines : ['• None']),
+    '',
+    `Failed: ${failedEntries.length}`,
+    ...(failedLines.length ? failedLines : ['• None']),
+  ].join('\n');
+
+  const htmlBody = buildEmailLayout({
+    title,
+    accentColor: '#0ea5e9',
+    includeTrustpilot: false,
+    bodyHtml: `
+      <p><strong>Reason:</strong> ${escapeHtml(reason)}</p>
+      <p><strong>Cancelled:</strong> ${cancelledEntries.length}</p>
+      <ul style="padding-left:22px; color:#475569;">
+        ${cancelledLines.map((line) => `<li>${escapeHtml(line.substring(2))}</li>`).join('')}
+      </ul>
+      <p><strong>Skipped:</strong> ${skippedEntries.length}</p>
+      <ul style="padding-left:22px; color:#475569;">
+        ${(skippedLines.length ? skippedLines : ['• None']).map((line) => `<li>${escapeHtml(line.substring(2))}</li>`).join('')}
+      </ul>
+      <p><strong>Failed:</strong> ${failedEntries.length}</p>
+      <ul style="padding-left:22px; color:#475569;">
+        ${(failedLines.length ? failedLines : ['• None']).map((line) => `<li>${escapeHtml(line.substring(2))}</li>`).join('')}
+      </ul>
+    `,
+  });
+
+  await transporter.sendMail({
+    from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+    to: recipient,
+    subject,
+    text: textBody,
+    html: htmlBody,
+  });
 }
 
 function getMostRecentTrackingRefreshAt(order = {}, mode = 'inbound') {
@@ -6579,6 +6705,197 @@ async function runAutomaticLabelVoidSweep() {
     }
   }
 }
+
+async function collectTestOrderCandidates(maxCandidates = ADMIN_BULK_VOID_QUERY_LIMIT) {
+  const candidates = [];
+  let lastDoc = null;
+  const pageSize = 200;
+
+  while (candidates.length < maxCandidates) {
+    let query = ordersCollection
+      .orderBy(admin.firestore.FieldPath.documentId())
+      .limit(pageSize);
+
+    if (lastDoc) {
+      query = query.startAfter(lastDoc);
+    }
+
+    const snapshot = await query.get();
+    if (snapshot.empty) {
+      break;
+    }
+
+    for (const doc of snapshot.docs) {
+      lastDoc = doc;
+      const order = { id: doc.id, ...doc.data() };
+      if (isTestOrderMatch(order)) {
+        candidates.push(order);
+        if (candidates.length >= maxCandidates) {
+          break;
+        }
+      }
+    }
+
+    if (snapshot.size < pageSize) {
+      break;
+    }
+  }
+
+  return candidates;
+}
+
+async function runAdminBulkVoidJob({ mode = 'aged', minDays = ADMIN_BULK_VOID_MIN_DAYS_DEFAULT } = {}) {
+  const shipengineKey = getShipEngineApiKey();
+  if (!shipengineKey) {
+    throw new Error("ShipEngine API key not configured. Please set 'shipengine.key' or SHIPENGINE_KEY.");
+  }
+
+  const cancelledEntries = [];
+  const skippedEntries = [];
+  const failedEntries = [];
+
+  let candidates = [];
+
+  if (mode === 'test') {
+    candidates = await collectTestOrderCandidates(ADMIN_BULK_VOID_QUERY_LIMIT);
+  } else {
+    const agedSnapshot = await ordersCollection
+      .where('status', '==', 'label_generated')
+      .limit(ADMIN_BULK_VOID_QUERY_LIMIT)
+      .get();
+    candidates = agedSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  }
+
+  for (const order of candidates) {
+    try {
+      const ageDays = getOrderAgeInDays(order);
+
+      if (mode !== 'test') {
+        if (ageDays === null || ageDays < Number(minDays || ADMIN_BULK_VOID_MIN_DAYS_DEFAULT)) {
+          skippedEntries.push({ orderId: order.id, reason: 'below_age_threshold' });
+          continue;
+        }
+      }
+
+      if (isAlreadyProcessedForBulkVoid(order)) {
+        skippedEntries.push({ orderId: order.id, reason: 'already_voided_or_cancelled' });
+        continue;
+      }
+
+      const selections = getPendingVoidSelections(order);
+      if (!selections.length) {
+        skippedEntries.push({ orderId: order.id, reason: 'no_pending_labels' });
+        continue;
+      }
+
+      const { results } = await handleLabelVoid(order, selections, {
+        reason: 'automatic',
+        shipengineKey,
+      });
+
+      const approvedResults = Array.isArray(results)
+        ? results.filter((entry) => entry && entry.approved)
+        : [];
+
+      if (!approvedResults.length) {
+        skippedEntries.push({ orderId: order.id, reason: 'no_labels_approved_for_void' });
+        continue;
+      }
+
+      const timestampField = admin.firestore.FieldValue.serverTimestamp();
+      const updatePayload = {
+        status: 'canceled',
+        autoCancelled: true,
+        cancelReason: mode === 'test' ? 'admin_bulk_void_test_order' : 'admin_bulk_void_27_days',
+        cancelledAt: timestampField,
+        adminBulkVoidProcessedAt: timestampField,
+        autoLabelVoidProcessedAt: timestampField,
+      };
+
+      if (mode === 'test') {
+        updatePayload.testOrderAutoVoidProcessedAt = timestampField;
+      }
+
+      await updateOrderBoth(order.id, updatePayload, {
+        logEntries: [
+          {
+            type: 'cancellation',
+            message:
+              mode === 'test'
+                ? 'Order cancelled by admin bulk test-order void action.'
+                : `Order cancelled by admin bulk aged-label void action (${Number(minDays)}+ days).`,
+            metadata: {
+              labelsVoided: approvedResults.map((entry) => entry.labelId).filter(Boolean),
+              ageDays,
+              mode,
+            },
+          },
+        ],
+      });
+
+      cancelledEntries.push({
+        orderId: order.id,
+        ageDays,
+        labelIds: approvedResults.map((entry) => entry.labelId).filter(Boolean),
+      });
+    } catch (error) {
+      failedEntries.push({ orderId: order.id, reason: error?.message || 'unknown_error' });
+    }
+  }
+
+  const title = mode === 'test'
+    ? 'Admin test-order bulk void completed'
+    : `Admin ${Number(minDays)}+ day bulk void completed`;
+  const subject = mode === 'test'
+    ? `Admin test-order void summary: ${cancelledEntries.length} cancelled`
+    : `Admin bulk void summary (${Number(minDays)}+ days): ${cancelledEntries.length} cancelled`;
+
+  await sendBulkVoidSummaryEmail({
+    title,
+    subject,
+    reason: mode === 'test' ? 'test_order_cleanup' : `${Number(minDays)}_day_threshold`,
+    cancelledEntries,
+    skippedEntries,
+    failedEntries,
+  });
+
+  return {
+    mode,
+    minDays: Number(minDays || ADMIN_BULK_VOID_MIN_DAYS_DEFAULT),
+    scanned: candidates.length,
+    cancelled: cancelledEntries.length,
+    skipped: skippedEntries.length,
+    failed: failedEntries.length,
+    cancelledEntries,
+    skippedEntries: skippedEntries.slice(0, 25),
+    failedEntries: failedEntries.slice(0, 25),
+  };
+}
+
+app.post('/orders/admin/bulk-void-aged', async (req, res) => {
+  try {
+    const parsedMinDays = Number(req.body?.minDays);
+    const minDays = Number.isFinite(parsedMinDays) && parsedMinDays >= 0
+      ? parsedMinDays
+      : ADMIN_BULK_VOID_MIN_DAYS_DEFAULT;
+
+    const payload = await runAdminBulkVoidJob({ mode: 'aged', minDays });
+    res.json(payload);
+  } catch (error) {
+    console.error('Admin bulk aged void failed:', error);
+    res.status(500).json({ error: error?.message || 'Failed to run admin bulk aged void.' });
+  }
+});
+
+app.post('/orders/admin/bulk-void-test-orders', async (req, res) => {
+  try {
+    const payload = await runAdminBulkVoidJob({ mode: 'test' });
+    res.json(payload);
+  } catch (error) {
+    console.error('Admin bulk test-order void failed:', error);
+    res.status(500).json({ error: error?.message || 'Failed to run admin bulk test-order void.' });
+  }
+});
 
 async function runAutomaticReducedPayoutSweep() {
   const nowMs = Date.now();
