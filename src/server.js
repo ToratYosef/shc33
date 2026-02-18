@@ -2064,7 +2064,11 @@ app.post('/fix-issue/:orderId/confirm', async (req, res) => {
         (String(existingUnlockInfo.value || '').trim().length > 0 ||
           (Array.isArray(existingUnlockInfo.patternPath) && existingUnlockInfo.patternPath.length > 0))
       );
-      if (hasExistingUnlockInfo) {
+      const orderStatus = String(order?.status || '').trim().toLowerCase();
+      const deviceStatus = String(order?.deviceStatusByKey?.[deviceKey] || '').trim().toLowerCase();
+      const allowOverwriteWhileEmailed = orderStatus === 'emailed' || deviceStatus === 'emailed';
+
+      if (hasExistingUnlockInfo && !allowOverwriteWhileEmailed) {
         return res.status(409).json({ error: 'Unlock info already submitted and cannot be changed.' });
       }
 
