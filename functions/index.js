@@ -2734,6 +2734,7 @@ const TRACKING_REFRESH_MIN_INTERVAL_MS = Math.max(
 );
 const ADMIN_BULK_VOID_MIN_DAYS_DEFAULT = 27;
 const ADMIN_BULK_VOID_QUERY_LIMIT = Math.max(50, Number(process.env.ADMIN_BULK_VOID_QUERY_LIMIT || 500));
+const ADMIN_BULK_VOID_MAX_PER_RUN = Math.max(1, Number(process.env.ADMIN_BULK_VOID_MAX_PER_RUN || 12));
 const TEST_ORDER_EMAILS = new Set(['eesetton@gmail.com', 'saulsetton16@gmail.com']);
 const TEST_ORDER_ADDRESS_NEEDLE = '1966 west 3rd st';
 const AUTO_REDUCED_PAYOUT_DELAY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -6744,7 +6745,11 @@ async function collectTestOrderCandidates(maxCandidates = ADMIN_BULK_VOID_QUERY_
   return candidates;
 }
 
-async function runAdminBulkVoidJob({ mode = 'aged', minDays = ADMIN_BULK_VOID_MIN_DAYS_DEFAULT } = {}) {
+async function runAdminBulkVoidJob({
+  mode = 'aged',
+  minDays = ADMIN_BULK_VOID_MIN_DAYS_DEFAULT,
+  maxOrders = ADMIN_BULK_VOID_MAX_PER_RUN,
+} = {}) {
   const shipengineKey = getShipEngineApiKey();
   if (!shipengineKey) {
     throw new Error("ShipEngine API key not configured. Please set 'shipengine.key' or SHIPENGINE_KEY.");
@@ -6753,6 +6758,7 @@ async function runAdminBulkVoidJob({ mode = 'aged', minDays = ADMIN_BULK_VOID_MI
   const cancelledEntries = [];
   const skippedEntries = [];
   const failedEntries = [];
+  const normalizedMaxOrders = Math.max(1, Number(maxOrders || ADMIN_BULK_VOID_MAX_PER_RUN));
 
   let candidates = [];
 
@@ -6765,6 +6771,8 @@ async function runAdminBulkVoidJob({ mode = 'aged', minDays = ADMIN_BULK_VOID_MI
       .get();
     candidates = agedSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   }
+
+  candidates = candidates.slice(0, normalizedMaxOrders);
 
   for (const order of candidates) {
     try {
@@ -6862,6 +6870,7 @@ async function runAdminBulkVoidJob({ mode = 'aged', minDays = ADMIN_BULK_VOID_MI
   return {
     mode,
     minDays: Number(minDays || ADMIN_BULK_VOID_MIN_DAYS_DEFAULT),
+    maxOrders: normalizedMaxOrders,
     scanned: candidates.length,
     cancelled: cancelledEntries.length,
     skipped: skippedEntries.length,
@@ -6878,8 +6887,12 @@ app.post('/orders/admin/bulk-void-aged', async (req, res) => {
     const minDays = Number.isFinite(parsedMinDays) && parsedMinDays >= 0
       ? parsedMinDays
       : ADMIN_BULK_VOID_MIN_DAYS_DEFAULT;
+    const parsedLimit = Number(req.body?.limit);
+    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0
+      ? parsedLimit
+      : ADMIN_BULK_VOID_MAX_PER_RUN;
 
-    const payload = await runAdminBulkVoidJob({ mode: 'aged', minDays });
+    const payload = await runAdminBulkVoidJob({ mode: 'aged', minDays, maxOrders: limit });
     res.json(payload);
   } catch (error) {
     console.error('Admin bulk aged void failed:', error);
@@ -6889,7 +6902,12 @@ app.post('/orders/admin/bulk-void-aged', async (req, res) => {
 
 app.post('/orders/admin/bulk-void-test-orders', async (req, res) => {
   try {
-    const payload = await runAdminBulkVoidJob({ mode: 'test' });
+    const parsedLimit = Number(req.body?.limit);
+    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0
+      ? parsedLimit
+      : ADMIN_BULK_VOID_MAX_PER_RUN;
+
+    const payload = await runAdminBulkVoidJob({ mode: 'test', maxOrders: limit });
     res.json(payload);
   } catch (error) {
     console.error('Admin bulk test-order void failed:', error);
