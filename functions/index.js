@@ -3067,13 +3067,17 @@ async function sendBulkVoidSummaryEmail({
     `,
   });
 
-  await transporter.sendMail({
-    from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
-    to: recipient,
-    subject,
-    text: textBody,
-    html: htmlBody,
-  });
+  try {
+    await transporter.sendMail({
+      from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+      to: recipient,
+      subject,
+      text: textBody,
+      html: htmlBody,
+    });
+  } catch (error) {
+    console.error('[Bulk Void Summary] Failed to send admin summary email:', error?.message || error);
+  }
 }
 
 function getMostRecentTrackingRefreshAt(order = {}, mode = 'inbound') {
@@ -6937,14 +6941,18 @@ async function runAdminBulkVoidJob({
     ? `Admin test-order void summary: ${cancelledEntries.length} cancelled`
     : `Admin bulk void summary (${Number(minDays)}+ days): ${cancelledEntries.length} cancelled`;
 
-  await sendBulkVoidSummaryEmail({
-    title,
-    subject,
-    reason: mode === 'test' ? 'test_order_cleanup' : `${Number(minDays)}_day_threshold`,
-    cancelledEntries,
-    skippedEntries,
-    failedEntries,
-  });
+  try {
+    await sendBulkVoidSummaryEmail({
+      title,
+      subject,
+      reason: mode === 'test' ? 'test_order_cleanup' : `${Number(minDays)}_day_threshold`,
+      cancelledEntries,
+      skippedEntries,
+      failedEntries,
+    });
+  } catch (error) {
+    console.error('[Bulk Void] Unexpected summary email error:', error?.message || error);
+  }
 
   return {
     mode,
