@@ -146,12 +146,6 @@ async function loadRepricerRules() {
 
 // ===================== NAME NORMALIZATION + ALIASES =====================
 const MODEL_ALIASES = {
-  "IPHONE 16 SE": "IPHONE SE 3RD GEN (2022)",
-  "IPHONE 16E": "IPHONE SE 3RD GEN (2022)",
-  "IPHONE SE 3": "IPHONE SE 3RD GEN (2022)",
-  "IPHONE SE 2022": "IPHONE SE 3RD GEN (2022)",
-  "IPHONE SE 3RD GEN": "IPHONE SE 3RD GEN (2022)",
-
   "GALAXY S21+": "GALAXY S21 PLUS",
   "GALAXY S22+": "GALAXY S22 PLUS",
   "GALAXY S23+": "GALAXY S23 PLUS",
