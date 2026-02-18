@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const { spawn } = require('child_process');
 const express = require('express');
 const cors = require('cors');
 
@@ -36,6 +37,64 @@ function escapeHtml(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+const repricerScriptPath = path.resolve(__dirname, '..', 'repricer-process', 'run-repricer.js');
+const repricerOutputCsvPath = '/shc33/feed/repricer-output.csv';
+
+function parseCsvLine(line) {
+  const values = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === ',' && !inQuotes) {
+      values.push(current.trim());
+      current = '';
+      continue;
+    }
+
+    current += char;
+  }
+
+  values.push(current.trim());
+  return values;
+}
+
+function parseRepricerCsvPreview(csvText, limit = 200) {
+  const lines = String(csvText || '')
+    .split(/\r?\n/)
+    .filter((line) => line.trim().length > 0);
+
+  if (!lines.length) {
+    return [];
+  }
+
+  const header = parseCsvLine(lines[0]);
+  const rows = [];
+
+  for (let i = 1; i < lines.length && rows.length < limit; i += 1) {
+    const values = parseCsvLine(lines[i]);
+    const row = {};
+    for (let j = 0; j < header.length; j += 1) {
+      row[header[j]] = values[j] ?? '';
+    }
+    rows.push(row);
+  }
+
+  return rows;
 }
 
 function normalizeIssueReason(value) {
@@ -1874,6 +1933,7 @@ const adminExactPaths = new Set([
   '/send-email',
 ]);
 const adminPrefixPaths = [
+  '/repricer',
   '/orders/needs-printing',
   '/merge-print',
   '/labels/print/queue',
@@ -1893,6 +1953,84 @@ apiRouter.use((req, res, next) => {
 
 apiRouter.get('/health', (req, res) => {
   res.json({ ok: true });
+});
+
+apiRouter.get('/repricer/preview', async (req, res, next) => {
+  try {
+    if (!fs.existsSync(repricerOutputCsvPath)) {
+      return res.status(404).json({
+        error: 'repricer_output_missing',
+        message: 'No repricer output file found. Run repricer first.',
+      });
+    }
+
+    const csvText = await fs.promises.readFile(repricerOutputCsvPath, 'utf8');
+    const rows = parseRepricerCsvPreview(csvText, 200);
+
+    return res.json({
+      ok: true,
+      file: repricerOutputCsvPath,
+      rows,
+      rowCount: rows.length,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+apiRouter.post('/repricer/run', async (req, res, next) => {
+  try {
+    if (!fs.existsSync(repricerScriptPath)) {
+      return res.status(500).json({
+        error: 'repricer_script_missing',
+        message: `Repricer script not found at ${repricerScriptPath}`,
+      });
+    }
+
+    const args = [
+      repricerScriptPath,
+      '--dir', '/shc33/feed',
+      '--write-csv',
+      '--no-gca',
+    ];
+
+    const startedAt = Date.now();
+
+    const result = await new Promise((resolve) => {
+      const child = spawn(process.execPath, args, {
+        cwd: path.resolve(__dirname, '..'),
+        env: process.env,
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      child.stdout.on('data', (chunk) => {
+        stdout += chunk.toString();
+      });
+
+      child.stderr.on('data', (chunk) => {
+        stderr += chunk.toString();
+      });
+
+      child.on('close', (code) => {
+        resolve({ code, stdout, stderr });
+      });
+    });
+
+    const durationMs = Date.now() - startedAt;
+
+    return res.status(result.code === 0 ? 200 : 500).json({
+      ok: result.code === 0,
+      exitCode: result.code,
+      durationMs,
+      outputFile: repricerOutputCsvPath,
+      stdout: result.stdout,
+      stderr: result.stderr,
+    });
+  } catch (error) {
+    return next(error);
+  }
 });
 
 apiRouter.use(profileRouter);
