@@ -157,6 +157,16 @@ function getBumpForProfitPct(profitPct, rules) {
   return 0;
 }
 
+function roundRepricerPrice(value) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return amount;
+  const dollars = Math.floor(amount);
+  const cents = Math.round((amount - dollars) * 100);
+  if (cents < 50) return dollars;
+  if (cents === 50) return dollars + 0.5;
+  return dollars + 1;
+}
+
 async function getRepricerRules({ forceRefresh = false } = {}) {
   const now = Date.now();
   if (!forceRefresh && cachedRepricerRules && now - cachedRepricerRulesAt < REPRICER_RULES_CACHE_MS) {
@@ -425,7 +435,7 @@ exports.repriceFeed = functions.https.onRequest(async (req, res) => {
         new_price = total_walkaway / (1 + repricerRules.targetProfitPct);
       }
 
-      new_price = Math.round(new_price * 100) / 100;
+      new_price = roundRepricerPrice(new_price);
 
       const new_profit = total_walkaway - new_price;
       const new_profit_pct = new_profit / new_price;
