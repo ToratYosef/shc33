@@ -825,7 +825,9 @@ function parseDevicePricesXmlForImport(content) {
 
 async function importToFirestoreAlways(updatedXmlText) {
   const db = getFirestoreDb();
+  const admin = require("firebase-admin");
   const { models, warnings } = parseDevicePricesXmlForImport(updatedXmlText);
+  const historyDayId = new Date().toISOString().slice(0, 10);
 
   let success = 0;
   let fail = 0;
@@ -847,6 +849,22 @@ async function importToFirestoreAlways(updatedXmlText) {
       if (leafDiffCount > 0 || !snap.exists) {
         changedDocs++;
         changedPriceLeaves += leafDiffCount;
+      }
+
+      if (snap.exists && leafDiffCount > 0 && Object.keys(beforePrices || {}).length > 0) {
+        await docRef.collection("priceHistory").doc(historyDayId).set(
+          {
+            date: historyDayId,
+            prices: beforePrices,
+            source: "repricer-process",
+            context: {
+              changedLeafCount: leafDiffCount,
+            },
+            capturedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
       }
 
       const payload = { brand: model.brand, slug: model.slug, prices: model.prices };
