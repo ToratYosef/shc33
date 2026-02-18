@@ -7040,7 +7040,7 @@ app.post("/return-phone-action", async (req, res) => {
     await updateOrderBoth(orderId, updatePayload);
 
     const customerHtmlBody = `
-      <p>We have received your request to decline the revised offer and have your device returned. We are now processing your request and will send a return shipping label to your email shortly.</p>
+      <p>We have received your request to decline the revised offer and have your device returned. We are now processing your request and will send return tracking details to your email shortly.</p>
     `;
 
     await transporter.sendMail({
