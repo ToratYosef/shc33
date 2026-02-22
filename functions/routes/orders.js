@@ -1110,8 +1110,21 @@ function createOrdersRouter({
       }
 
       const fullStateName = orderData.shippingInfo.state;
-      if (fullStateName && stateAbbreviations[fullStateName]) {
-        orderData.shippingInfo.state = stateAbbreviations[fullStateName];
+      const normalizedStateName =
+        typeof fullStateName === 'string' ? fullStateName.trim() : '';
+      const titleCasedStateName = normalizedStateName
+        ? normalizedStateName
+            .toLowerCase()
+            .replace(/\b\w/g, (char) => char.toUpperCase())
+        : '';
+      const mappedStateAbbreviation =
+        stateAbbreviations[normalizedStateName] ||
+        stateAbbreviations[titleCasedStateName];
+
+      if (mappedStateAbbreviation) {
+        orderData.shippingInfo.state = mappedStateAbbreviation;
+      } else if (/^[A-Za-z]{2}$/.test(normalizedStateName)) {
+        orderData.shippingInfo.state = normalizedStateName.toUpperCase();
       } else {
         console.warn(
           `Could not find abbreviation for state: ${fullStateName}. Assuming it is already an abbreviation or is invalid.`
