@@ -5318,7 +5318,7 @@ async function sendAdminPushNotification(title, body, data = {}) {
   }
 
   const adminsSnapshot = await adminsCollection.get();
-  const allTokens = [];
+  const tokenEntries = [];
 
   for (const adminDoc of adminsSnapshot.docs) {
     const tokensSnapshot = await adminsCollection
@@ -5327,17 +5327,25 @@ async function sendAdminPushNotification(title, body, data = {}) {
       .get();
 
     tokensSnapshot.forEach((tokenDoc) => {
-      if (tokenDoc.id) {
-        allTokens.push(tokenDoc.id);
+      const tokenData = tokenDoc.data() || {};
+      const token = tokenData.token || tokenDoc.id;
+      if (typeof token === 'string' && token.trim()) {
+        tokenEntries.push({ token, ref: tokenDoc.ref });
       }
     });
   }
 
-  if (!allTokens.length) {
+  if (!tokenEntries.length) {
     return null;
   }
 
-  return sendPushNotification(allTokens, title, body, data);
+  return sendPushNotification(
+    tokenEntries.map((entry) => entry.token),
+    title,
+    body,
+    data,
+    { tokenRefs: tokenEntries.map((entry) => entry.ref) }
+  );
 }
 
 async function addAdminFirestoreNotification(
