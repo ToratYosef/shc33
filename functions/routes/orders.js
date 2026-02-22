@@ -19,7 +19,6 @@ function createOrdersRouter({
   shipEngine,
   createShipEngineLabel,
   transporter,
-  verifyRecaptchaToken,
   deviceHelpers,
 }) {
   const router = express.Router();
@@ -59,8 +58,6 @@ function createOrdersRouter({
   const firestore = admin.firestore();
   const FieldValue = admin.firestore.FieldValue;
   const Timestamp = admin.firestore.Timestamp;
-  const RECAPTCHA_MIN_SCORE = Number(process.env.RECAPTCHA_MIN_SCORE || 0.5);
-
   const SWIFT_BUYBACK_ADDRESS = {
     name: 'SHC Returns',
     company_name: 'SecondHandCell',
@@ -88,65 +85,6 @@ function createOrdersRouter({
     const error = new Error(message);
     error.status = status;
     return error;
-  }
-
-  const BOT_DENIAL_CSV_PATH = path.join(process.cwd(), 'logs', 'denied-bot-orders.csv');
-
-  function csvEscape(value) {
-    const raw = value == null ? '' : String(value);
-    if (/[",\n]/.test(raw)) {
-      return `"${raw.replace(/"/g, '""')}"`;
-    }
-    return raw;
-  }
-
-  async function appendDeniedBotOrderToCsv({ reason, remoteIp, orderData, recaptchaResult, userAgent }) {
-    const shippingInfo = orderData?.shippingInfo || {};
-    const row = [
-      new Date().toISOString(),
-      reason || '',
-      remoteIp || '',
-      recaptchaResult?.score ?? '',
-      Array.isArray(recaptchaResult?.errors) ? recaptchaResult.errors.join('|') : '',
-      userAgent || '',
-      shippingInfo.fullName || '',
-      shippingInfo.email || orderData?.email || '',
-      shippingInfo.phone || orderData?.phone || '',
-      shippingInfo.streetAddress || '',
-      shippingInfo.aptUnit || '',
-      shippingInfo.city || '',
-      shippingInfo.state || '',
-      shippingInfo.zipCode || '',
-      JSON.stringify(orderData || {}),
-    ]
-      .map(csvEscape)
-      .join(',');
-
-    const header = [
-      'timestamp',
-      'reason',
-      'ip',
-      'recaptchaScore',
-      'recaptchaErrors',
-      'userAgent',
-      'fullName',
-      'email',
-      'phone',
-      'streetAddress',
-      'aptUnit',
-      'city',
-      'state',
-      'zipCode',
-      'orderPayload',
-    ].join(',');
-
-    await fs.promises.mkdir(path.dirname(BOT_DENIAL_CSV_PATH), { recursive: true });
-    try {
-      await fs.promises.access(BOT_DENIAL_CSV_PATH, fs.constants.F_OK);
-    } catch (fileMissingError) {
-      await fs.promises.writeFile(BOT_DENIAL_CSV_PATH, `${header}\n`, 'utf8');
-    }
-    await fs.promises.appendFile(BOT_DENIAL_CSV_PATH, `${row}\n`, 'utf8');
   }
 
   async function autoGenerateEmailLabel(orderId, orderData) {
@@ -1050,57 +988,6 @@ function createOrdersRouter({
   router.post('/submit-order', async (req, res) => {
     try {
       const orderData = req.body;
-      const recaptchaToken =
-        req.body?.recaptchaToken ||
-        req.headers['x-recaptcha-token'] ||
-        req.headers['x-captcha-token'] ||
-        '';
-
-      if (typeof verifyRecaptchaToken !== 'function') {
-        return res.status(500).json({ error: 'reCAPTCHA verifier is not configured.' });
-      }
-
-      const remoteIp =
-        req.headers['x-forwarded-for']?.toString().split(',')[0].trim() ||
-        req.socket?.remoteAddress ||
-        '';
-
-      const recaptchaResult = await verifyRecaptchaToken(recaptchaToken, remoteIp);
-      if (
-        !recaptchaResult.ok ||
-        (typeof recaptchaResult.score === 'number' && recaptchaResult.score < RECAPTCHA_MIN_SCORE)
-      ) {
-        const botDenialReasons = [];
-        if (!recaptchaToken) botDenialReasons.push('missing_token');
-        if (!recaptchaResult.ok) botDenialReasons.push('recaptcha_failed');
-        if (
-          typeof recaptchaResult.score === 'number' &&
-          recaptchaResult.score < RECAPTCHA_MIN_SCORE
-        ) {
-          botDenialReasons.push(`low_score_${recaptchaResult.score}`);
-        }
-
-        try {
-          await appendDeniedBotOrderToCsv({
-            reason: botDenialReasons.join('|') || 'recaptcha_failed',
-            remoteIp,
-            orderData,
-            recaptchaResult,
-            userAgent: req.headers['user-agent'] || '',
-          });
-        } catch (botLogError) {
-          console.error('Failed to append bot-denied order CSV entry:', botLogError);
-        }
-
-        return res.status(403).json({
-          error: 'reCAPTCHA verification failed. Please try again.',
-          details: recaptchaResult.errors,
-        });
-      }
-
-      if (orderData && typeof orderData === 'object' && 'recaptchaToken' in orderData) {
-        delete orderData.recaptchaToken;
-      }
 
       if (
         !orderData?.shippingInfo ||
