@@ -55,6 +55,52 @@ function isAuthDisabled() {
   return ['1', 'true', 'yes', 'on'].includes(raw);
 }
 
+async function verifyRecaptchaToken(token, remoteIp = '') {
+  const secret =
+    process.env.RECAPTCHA_SECRET_KEY ||
+    process.env.recaptcha_secret_key ||
+    process.env.RECAPTCHA_SECRET ||
+    '';
+
+  if (!secret) {
+    throw new Error('RECAPTCHA_SECRET_KEY is not configured.');
+  }
+
+  if (!token || typeof token !== 'string') {
+    return {
+      ok: false,
+      errors: ['missing-input-response'],
+      score: null,
+      action: null,
+    };
+  }
+
+  const body = new URLSearchParams();
+  body.set('secret', secret);
+  body.set('response', token);
+  if (remoteIp) {
+    body.set('remoteip', remoteIp);
+  }
+
+  const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  });
+
+  if (!response.ok) {
+    throw new Error(`reCAPTCHA verification request failed (${response.status})`);
+  }
+
+  const payload = await response.json();
+  return {
+    ok: Boolean(payload?.success),
+    score: typeof payload?.score === 'number' ? payload.score : null,
+    action: typeof payload?.action === 'string' ? payload.action : null,
+    errors: Array.isArray(payload?.['error-codes']) ? payload['error-codes'] : [],
+  };
+}
+
 function getCallableAuth(context) {
   if (context?.auth) {
     return context.auth;
@@ -5691,6 +5737,7 @@ const ordersRouter = createOrdersRouter({
   },
   createShipEngineLabel,
   transporter,
+  verifyRecaptchaToken,
   deviceHelpers: {
     buildOrderDeviceKey,
     collectOrderDeviceKeys,

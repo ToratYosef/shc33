@@ -17,6 +17,7 @@ function createOrdersRouter({
   shipEngine,
   createShipEngineLabel,
   transporter,
+  verifyRecaptchaToken,
   deviceHelpers,
 }) {
   const router = express.Router();
@@ -56,6 +57,7 @@ function createOrdersRouter({
   const firestore = admin.firestore();
   const FieldValue = admin.firestore.FieldValue;
   const Timestamp = admin.firestore.Timestamp;
+  const RECAPTCHA_MIN_SCORE = Number(process.env.RECAPTCHA_MIN_SCORE || 0.5);
 
   const SWIFT_BUYBACK_ADDRESS = {
     name: 'SHC Returns',
@@ -987,6 +989,36 @@ function createOrdersRouter({
   router.post('/submit-order', async (req, res) => {
     try {
       const orderData = req.body;
+      const recaptchaToken =
+        req.body?.recaptchaToken ||
+        req.headers['x-recaptcha-token'] ||
+        req.headers['x-captcha-token'] ||
+        '';
+
+      if (typeof verifyRecaptchaToken !== 'function') {
+        return res.status(500).json({ error: 'reCAPTCHA verifier is not configured.' });
+      }
+
+      const remoteIp =
+        req.headers['x-forwarded-for']?.toString().split(',')[0].trim() ||
+        req.socket?.remoteAddress ||
+        '';
+
+      const recaptchaResult = await verifyRecaptchaToken(recaptchaToken, remoteIp);
+      if (
+        !recaptchaResult.ok ||
+        (typeof recaptchaResult.score === 'number' && recaptchaResult.score < RECAPTCHA_MIN_SCORE)
+      ) {
+        return res.status(403).json({
+          error: 'reCAPTCHA verification failed. Please try again.',
+          details: recaptchaResult.errors,
+        });
+      }
+
+      if (orderData && typeof orderData === 'object' && 'recaptchaToken' in orderData) {
+        delete orderData.recaptchaToken;
+      }
+
       if (
         !orderData?.shippingInfo ||
         (typeof orderData.estimatedQuote === 'undefined' &&
