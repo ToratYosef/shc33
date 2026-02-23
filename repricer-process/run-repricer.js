@@ -105,6 +105,43 @@ function roundRepricerPrice(value) {
   return dollars + 1;
 }
 
+function enforceConditionPriceHierarchy(rows) {
+  const CONDITION_ORDER = ["flawless", "good", "fair", "broken"];
+  const grouped = new Map();
+
+  for (const row of rows) {
+    const condition = normalizeTemplateCondition(row.condition);
+    if (!CONDITION_ORDER.includes(condition)) continue;
+
+    const model = normalizeModelNameFromCsv(row.name, row.storage);
+    const storage = String(row.storage || "").trim().toUpperCase();
+    const carrier = normalizeCarrierLock(row.lock_status);
+    if (!model || !storage || !carrier) continue;
+
+    const key = `${model}|${storage}|${carrier}`;
+    if (!grouped.has(key)) grouped.set(key, {});
+    grouped.get(key)[condition] = row;
+  }
+
+  for (const conditionRows of grouped.values()) {
+    let previousPrice = null;
+    for (const condition of CONDITION_ORDER) {
+      const row = conditionRows[condition];
+      if (!row || !Number.isFinite(Number(row.new_price))) continue;
+      const currentPrice = Number(row.new_price);
+
+      if (previousPrice != null && currentPrice > previousPrice) {
+        row.new_price = previousPrice;
+        row.new_profit = row.total_walkaway - row.new_price;
+        row.new_profit_pct = row.new_price ? (row.new_profit / row.new_price) : null;
+        row._status = `${row._status || "Repriced"} (capped for condition order)`;
+      }
+
+      previousPrice = Number(row.new_price);
+    }
+  }
+}
+
 function getFirestoreDb() {
   const admin = require("firebase-admin");
   if (admin.apps.length === 0) {
@@ -458,26 +495,44 @@ function buildFeedIndexFromXml(xmlText) {
       const prices = Array.from(section.getElementsByTagName("price"));
       if (!prices.length) continue;
 
-      const competitorPrices = prices
+      const normalizedPrices = prices
         .map(p => {
           const mEl = p.getElementsByTagName("merchant_name")[0];
           const priceEl = p.getElementsByTagName("merchant_price")[0];
           const merchant = String(mEl ? mEl.textContent : "").trim().toLowerCase();
-          if (merchant === "secondhandcell") return null;
           const v = parseMoney(priceEl ? priceEl.textContent : "");
-          return Number.isFinite(v) ? v : null;
+          if (!Number.isFinite(v)) return null;
+          return { merchant, price: v };
         })
         .filter(v => v != null);
 
+      if (!normalizedPrices.length) continue;
+
+      const competitorPrices = normalizedPrices
+        .filter((entry) => entry.merchant !== "secondhandcell")
+        .map((entry) => entry.price);
+
       if (!competitorPrices.length) continue;
-      const top = Math.max(...competitorPrices);
+      const topCompetitorPrice = Math.max(...competitorPrices);
+      const topAllPrice = Math.max(...normalizedPrices.map((entry) => entry.price));
+      const secondhandcellTopPrice = Math.max(
+        ...normalizedPrices
+          .filter((entry) => entry.merchant === "secondhandcell")
+          .map((entry) => entry.price)
+      );
+      const isSecondhandcellHighest = Number.isFinite(secondhandcellTopPrice) && secondhandcellTopPrice >= topAllPrice;
+
+      const nextValue = {
+        price: topCompetitorPrice,
+        isSecondhandcellHighest,
+      };
 
       if (carrierBucket && index[keyBase][carrierBucket]) {
         const bucket = index[keyBase][carrierBucket];
-        if (!bucket[condKey] || top > bucket[condKey]) bucket[condKey] = top;
+        if (!bucket[condKey] || nextValue.price > bucket[condKey].price) bucket[condKey] = nextValue;
       }
       const anyBucket = index[keyBase].any;
-      if (!anyBucket[condKey] || top > anyBucket[condKey]) anyBucket[condKey] = top;
+      if (!anyBucket[condKey] || nextValue.price > anyBucket[condKey].price) anyBucket[condKey] = nextValue;
     }
   }
 
@@ -505,7 +560,7 @@ function repriceRowFromFeed(row, feedIndex, rules) {
     } else if (feedEntry.any && feedEntry.any[condition] != null) {
       bucket = feedEntry.any;
     }
-    if (bucket && bucket[condition] != null) feedPrice = bucket[condition];
+    if (bucket && bucket[condition] != null) feedPrice = bucket[condition].price;
   }
 
   result.original_feed_price = feedPrice != null ? feedPrice : null;
@@ -535,7 +590,15 @@ function repriceRowFromFeed(row, feedIndex, rules) {
   const profit = total_walkaway - original_price;
   const profit_pct = original_price ? profit / original_price : null;
 
-  const bumpAmount = getBumpForProfitPct(profit_pct, rules);
+  const isSecondhandcellHighest = Boolean(
+    feedEntry
+      && (
+        (carrierLock && feedEntry[carrierLock] && feedEntry[carrierLock][condition])
+        || (feedEntry.any && feedEntry.any[condition])
+      )?.isSecondhandcellHighest
+  );
+
+  const bumpAmount = isSecondhandcellHighest ? 0 : getBumpForProfitPct(profit_pct, rules);
   let new_price;
   if (profit_pct != null && profit_pct >= rules.targetProfitPct) {
     new_price = original_price + bumpAmount;
@@ -554,12 +617,15 @@ function repriceRowFromFeed(row, feedIndex, rules) {
   result.profit = profit;
   result.profit_pct = profit_pct;
   result.applied_bump = bumpAmount;
+  result.secondhandcell_highest = isSecondhandcellHighest;
   result.new_price = new_price;
   result.new_profit = total_walkaway - new_price;
   result.new_profit_pct = new_price ? (result.new_profit / new_price) : null;
 
   result._status = (profit_pct != null && profit_pct >= rules.targetProfitPct)
-    ? `Already ≥ ${(rules.targetProfitPct * 100).toFixed(0)}% profit – bumped $${bumpAmount.toFixed(2)}`
+    ? (isSecondhandcellHighest
+      ? `Already ≥ ${(rules.targetProfitPct * 100).toFixed(0)}% profit – no bump (SecondHandCell already highest)`
+      : `Already ≥ ${(rules.targetProfitPct * 100).toFixed(0)}% profit – bumped $${bumpAmount.toFixed(2)}`)
     : `Repriced to hit ${(rules.targetProfitPct * 100).toFixed(0)}% profit`;
   result._statusClass = "status-ok";
 
@@ -952,6 +1018,7 @@ async function main() {
   console.log(`[repricer] csvRows=${rawRecords.length}  newVariants=0  total=${rawRecords.length}`);
 
   const resultRows = rawRecords.map((r) => repriceRowFromFeed(r, feedIndex, repricerRules));
+  enforceConditionPriceHierarchy(resultRows);
 
   const { updatedXml, changedNodes, changedModelsCount, matchedKeys, priceMapSize, normalizedDeeplinks } =
     buildUpdatedXmlFromTemplateWithDiff(templateXmlBefore, resultRows);
