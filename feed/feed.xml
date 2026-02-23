@@ -1679,7 +1679,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s21</imageUrl>
     <name>S21</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s21&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s21&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -1746,7 +1746,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s21fe</imageUrl>
     <name>S21 FE</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s21-fe&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s21-fe&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -1813,7 +1813,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s21p</imageUrl>
     <name>S21+</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s21-plus&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s21-plus&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -1880,7 +1880,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s22</imageUrl>
     <name>S22</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s22&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s22&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -2005,7 +2005,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s22u</imageUrl>
     <name>S22 ULTRA</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s22-ultra&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s22-ultra&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -2072,7 +2072,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s22p</imageUrl>
     <name>S22+</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s22-plus&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s22-plus&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -2168,7 +2168,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s23</imageUrl>
     <name>S23</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s23&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s23&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -2264,7 +2264,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s23u</imageUrl>
     <name>S23 ULTRA</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s23-ultra&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s23-ultra&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -2331,7 +2331,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s23p</imageUrl>
     <name>S23+</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s23-plus&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s23-plus&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -2398,7 +2398,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s23fe</imageUrl>
     <name>S23FE</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s23fe&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s23fe&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -2465,7 +2465,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s24</imageUrl>
     <name>S24</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s24&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s24&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -2532,7 +2532,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s24fe</imageUrl>
     <name>S24 FE</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s24-fe&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s24-fe&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -2628,7 +2628,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s24u</imageUrl>
     <name>S24 ULTRA</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s24-ultra&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s24-ultra&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -2695,7 +2695,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s24p</imageUrl>
     <name>S24+</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s24-plus&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s24-plus&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -2762,7 +2762,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s25</imageUrl>
     <name>S25</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s25&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s25&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -2829,7 +2829,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s25e</imageUrl>
     <name>S25 EDGE</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s25-edge&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s25-edge&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -2954,7 +2954,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s25u</imageUrl>
     <name>S25 Ultra</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s25-ultra&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s25-ultra&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -3021,7 +3021,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/s25p</imageUrl>
     <name>S25+</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s25-plus&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-s25-plus&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -3117,7 +3117,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/zflip4</imageUrl>
     <name>Z FLIP 4</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-z-flip-4&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-z-flip-4&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -3184,7 +3184,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/zflip5</imageUrl>
     <name>Z FLIP 5</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-z-flip-5&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-z-flip-5&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -3251,7 +3251,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/zflip6</imageUrl>
     <name>Z FLIP 6</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-z-flip-6&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-z-flip-6&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -3347,7 +3347,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/zfold4</imageUrl>
     <name>Z FOLD 4</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-z-fold-4&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-z-fold-4&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -3443,7 +3443,7 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/zfold5</imageUrl>
     <name>Z FOLD 5</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-z-fold-5&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-z-fold-5&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
   <model>
     <parentDevice>samsung</parentDevice>
@@ -3539,6 +3539,6 @@
     <imageUrl>https://cdn.secondhandcell.com/images/samsung/assets/zfold6</imageUrl>
     <name>Z FOLD 6</name>
     <brand>samsung</brand>
-    <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-z-fold-6&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
+    <deeplink>https://secondhandcell.com/sell/?device=galaxy-z-fold-6&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
 </models>
