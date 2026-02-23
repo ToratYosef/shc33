@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <models>
-  
-  
   <model>
     <parentDevice>iphone</parentDevice>
     <modelID>13</modelID>
@@ -98,7 +96,6 @@
     <brand>iphone</brand>
     <deeplink>https://secondhandcell.com/sell/?device=iphone-13&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
-  
   <model>
     <parentDevice>iphone</parentDevice>
     <modelID>13-pro</modelID>
@@ -1617,7 +1614,6 @@
     <brand>iphone</brand>
     <deeplink>https://secondhandcell.com/sell/?device=iphone-16-pro-max&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
-  
   <model>
     <parentDevice>samsung</parentDevice>
     <modelID>galaxy-s21</modelID>
@@ -1752,7 +1748,6 @@
     <brand>samsung</brand>
     <deeplink>https://secondhandcell.com/sell/?device=samsung-galaxy-s21-fe&amp;storage={storage}&amp;carrier={carrier}&amp;quality={quality}</deeplink>
   </model>
-  
   <model>
     <parentDevice>samsung</parentDevice>
     <modelID>galaxy-s21-plus</modelID>
