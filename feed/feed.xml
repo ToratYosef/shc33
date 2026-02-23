@@ -2,7 +2,7 @@
 <models>
   <model>
     <parentDevice>iphone</parentDevice>
-    <modelID>13</modelID>
+    <modelID>iphone-13</modelID>
     <prices>
       <storageSize>128GB</storageSize>
       <priceValue>
@@ -90,7 +90,7 @@
         </unlocked>
       </priceValue>
     </prices>
-    <slug>13</slug>
+    <slug>iphone-13</slug>
     <imageUrl>https://cdn.secondhandcell.com/images/iphone/assets/i13</imageUrl>
     <name>IPHONE 13</name>
     <brand>iphone</brand>
@@ -98,7 +98,7 @@
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
-    <modelID>13-pro</modelID>
+    <modelID>iphone-13-pro</modelID>
     <prices>
       <storageSize>1TB</storageSize>
       <priceValue>
@@ -215,7 +215,7 @@
         </unlocked>
       </priceValue>
     </prices>
-    <slug>13-pro</slug>
+    <slug>iphone-13-pro</slug>
     <imageUrl>https://cdn.secondhandcell.com/images/iphone/assets/i13p</imageUrl>
     <name>IPHONE 13 PRO</name>
     <brand>iphone</brand>
@@ -223,7 +223,7 @@
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
-    <modelID>13-pro-max</modelID>
+    <modelID>iphone-13-pro-max</modelID>
     <prices>
       <storageSize>1TB</storageSize>
       <priceValue>
@@ -340,7 +340,7 @@
         </unlocked>
       </priceValue>
     </prices>
-    <slug>13-pro-max</slug>
+    <slug>iphone-13-pro-max</slug>
     <imageUrl>https://cdn.secondhandcell.com/images/iphone/assets/i13pm</imageUrl>
     <name>IPHONE 13 PRO MAX</name>
     <brand>iphone</brand>
@@ -348,7 +348,7 @@
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
-    <modelID>14</modelID>
+    <modelID>iphone-14</modelID>
     <prices>
       <storageSize>128GB</storageSize>
       <priceValue>
@@ -436,7 +436,7 @@
         </unlocked>
       </priceValue>
     </prices>
-    <slug>14</slug>
+    <slug>iphone-14</slug>
     <imageUrl>https://cdn.secondhandcell.com/images/iphone/assets/i14</imageUrl>
     <name>IPHONE 14</name>
     <brand>iphone</brand>
@@ -444,7 +444,7 @@
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
-    <modelID>14-plus</modelID>
+    <modelID>iphone-14-plus</modelID>
     <prices>
       <storageSize>128GB</storageSize>
       <priceValue>
@@ -532,7 +532,7 @@
         </unlocked>
       </priceValue>
     </prices>
-    <slug>14-plus</slug>
+    <slug>iphone-14-plus</slug>
     <imageUrl>https://cdn.secondhandcell.com/images/iphone/assets/i14pl</imageUrl>
     <name>IPHONE 14 PLUS</name>
     <brand>iphone</brand>
@@ -540,7 +540,7 @@
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
-    <modelID>14-pro</modelID>
+    <modelID>iphone-14-pro</modelID>
     <prices>
       <storageSize>1TB</storageSize>
       <priceValue>
@@ -657,7 +657,7 @@
         </unlocked>
       </priceValue>
     </prices>
-    <slug>14-pro</slug>
+    <slug>iphone-14-pro</slug>
     <imageUrl>https://cdn.secondhandcell.com/images/iphone/assets/i14p</imageUrl>
     <name>IPHONE 14 PRO</name>
     <brand>iphone</brand>
@@ -665,7 +665,7 @@
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
-    <modelID>14-pro-max</modelID>
+    <modelID>iphone-14-pro-max</modelID>
     <prices>
       <storageSize>1TB</storageSize>
       <priceValue>
@@ -782,7 +782,7 @@
         </unlocked>
       </priceValue>
     </prices>
-    <slug>14-pro-max</slug>
+    <slug>iphone-14-pro-max</slug>
     <imageUrl>https://cdn.secondhandcell.com/images/iphone/assets/i14pm</imageUrl>
     <name>IPHONE 14 PRO MAX</name>
     <brand>iphone</brand>
@@ -790,7 +790,7 @@
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
-    <modelID>15</modelID>
+    <modelID>iphone-15</modelID>
     <prices>
       <storageSize>128GB</storageSize>
       <priceValue>
@@ -878,7 +878,7 @@
         </unlocked>
       </priceValue>
     </prices>
-    <slug>15</slug>
+    <slug>iphone-15</slug>
     <imageUrl>https://cdn.secondhandcell.com/images/iphone/assets/i15</imageUrl>
     <name>IPHONE 15</name>
     <brand>iphone</brand>
@@ -886,7 +886,7 @@
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
-    <modelID>15-plus</modelID>
+    <modelID>iphone-15-plus</modelID>
     <prices>
       <storageSize>128GB</storageSize>
       <priceValue>
@@ -974,7 +974,7 @@
         </unlocked>
       </priceValue>
     </prices>
-    <slug>15-plus</slug>
+    <slug>iphone-15-plus</slug>
     <imageUrl>https://cdn.secondhandcell.com/images/iphone/assets/i15pl</imageUrl>
     <name>IPHONE 15 PLUS</name>
     <brand>iphone</brand>
@@ -982,7 +982,7 @@
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
-    <modelID>15-pro</modelID>
+    <modelID>iphone-15-pro</modelID>
     <prices>
       <storageSize>1TB</storageSize>
       <priceValue>
@@ -1099,7 +1099,7 @@
         </unlocked>
       </priceValue>
     </prices>
-    <slug>15-pro</slug>
+    <slug>iphone-15-pro</slug>
     <imageUrl>https://cdn.secondhandcell.com/images/iphone/assets/i15p</imageUrl>
     <name>IPHONE 15 PRO</name>
     <brand>iphone</brand>
@@ -1107,7 +1107,7 @@
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
-    <modelID>15-pro-max</modelID>
+    <modelID>iphone-15-pro-max</modelID>
     <prices>
       <storageSize>1TB</storageSize>
       <priceValue>
@@ -1195,7 +1195,7 @@
         </unlocked>
       </priceValue>
     </prices>
-    <slug>15-pro-max</slug>
+    <slug>iphone-15-pro-max</slug>
     <imageUrl>https://cdn.secondhandcell.com/images/iphone/assets/i15pm</imageUrl>
     <name>IPHONE 15 PRO MAX</name>
     <brand>iphone</brand>
@@ -1203,7 +1203,7 @@
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
-    <modelID>16</modelID>
+    <modelID>iphone-16</modelID>
     <prices>
       <storageSize>128GB</storageSize>
       <priceValue>
@@ -1291,7 +1291,7 @@
         </unlocked>
       </priceValue>
     </prices>
-    <slug>16</slug>
+    <slug>iphone-16</slug>
     <imageUrl>https://cdn.secondhandcell.com/images/iphone/assets/i16</imageUrl>
     <name>IPHONE 16</name>
     <brand>iphone</brand>
@@ -1299,7 +1299,7 @@
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
-    <modelID>16-plus</modelID>
+    <modelID>iphone-16-plus</modelID>
     <prices>
       <storageSize>128GB</storageSize>
       <priceValue>
@@ -1387,7 +1387,7 @@
         </unlocked>
       </priceValue>
     </prices>
-    <slug>16-plus</slug>
+    <slug>iphone-16-plus</slug>
     <imageUrl>https://cdn.secondhandcell.com/images/iphone/assets/i16pl</imageUrl>
     <name>IPHONE 16 PLUS</name>
     <brand>iphone</brand>
@@ -1395,7 +1395,7 @@
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
-    <modelID>16-pro</modelID>
+    <modelID>iphone-16-pro</modelID>
     <prices>
       <storageSize>1TB</storageSize>
       <priceValue>
@@ -1512,7 +1512,7 @@
         </unlocked>
       </priceValue>
     </prices>
-    <slug>16-pro</slug>
+    <slug>iphone-16-pro</slug>
     <imageUrl>https://cdn.secondhandcell.com/images/iphone/assets/i16p</imageUrl>
     <name>IPHONE 16 PRO</name>
     <brand>iphone</brand>
@@ -1520,7 +1520,7 @@
   </model>
   <model>
     <parentDevice>iphone</parentDevice>
-    <modelID>16-pro-max</modelID>
+    <modelID>iphone-16-pro-max</modelID>
     <prices>
       <storageSize>1TB</storageSize>
       <priceValue>
@@ -1608,7 +1608,7 @@
         </unlocked>
       </priceValue>
     </prices>
-    <slug>16-pro-max</slug>
+    <slug>iphone-16-pro-max</slug>
     <imageUrl>https://cdn.secondhandcell.com/images/iphone/assets/i16pm</imageUrl>
     <name>IPHONE 16 PRO MAX</name>
     <brand>iphone</brand>
