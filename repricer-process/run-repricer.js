@@ -372,18 +372,37 @@ function getCanonicalDeviceSlug(modelNode) {
   if (deeplinkDevice) {
     const normalized = normalizeSlugSegment(deeplinkDevice);
     if (!normalized) return "";
+    // Samsung devices already have "galaxy" prefix, don't add "samsung-"
+    if (brand === "samsung" && normalized.startsWith("galaxy-")) return normalized;
+    // Strip samsung- prefix if present
+    if (brand === "samsung" && normalized.startsWith("samsung-galaxy-")) {
+      return normalized.replace(/^samsung-/, "");
+    }
     return normalized.startsWith(`${brand}-`) ? normalized : `${brand}-${normalized}`;
   }
 
   const slugRaw = getTextFromNode(modelNode, "slug") || getTextFromNode(modelNode, "modelID");
   if (slugRaw) {
     const normalized = normalizeSlugSegment(slugRaw);
-    if (normalized) return normalized.startsWith(`${brand}-`) ? normalized : `${brand}-${normalized}`;
+    if (!normalized) return "";
+    // Samsung devices already have "galaxy" prefix, don't add "samsung-"
+    if (brand === "samsung" && normalized.startsWith("galaxy-")) return normalized;
+    // Strip samsung- prefix if present
+    if (brand === "samsung" && normalized.startsWith("samsung-galaxy-")) {
+      return normalized.replace(/^samsung-/, "");
+    }
+    return normalized.startsWith(`${brand}-`) ? normalized : `${brand}-${normalized}`;
   }
 
   const nameRaw = getTextFromNode(modelNode, "name");
   const normalizedName = normalizeSlugSegment(nameRaw);
   if (!normalizedName) return "";
+  // Samsung devices already have "galaxy" prefix, don't add "samsung-"
+  if (brand === "samsung" && normalizedName.startsWith("galaxy-")) return normalizedName;
+  // Strip samsung- prefix if present  
+  if (brand === "samsung" && normalizedName.startsWith("samsung-galaxy-")) {
+    return normalizedName.replace(/^samsung-/, "");
+  }
   return normalizedName.startsWith(`${brand}-`) ? normalizedName : `${brand}-${normalizedName}`;
 }
 
@@ -884,13 +903,10 @@ async function importToFirestoreAlways(updatedXmlText) {
       if (model.name) payload.name = model.name;
       if (model.imageUrl) payload.imageUrl = model.imageUrl;
       if (model.deeplink) payload.deeplink = model.deeplink;
+      // Store all slug variants for reference, but only create one document
+      if (allSlugs.length > 0) payload.slugs = allSlugs;
 
       await docRef.set(payload, { merge: true });
-
-      for (const aliasSlug of allSlugs.slice(1)) {
-        const aliasDocRef = db.doc(`${collectionPath}/${aliasSlug}`);
-        await aliasDocRef.set({ ...payload, slug: aliasSlug }, { merge: true });
-      }
 
       success++;
     } catch (e) {
