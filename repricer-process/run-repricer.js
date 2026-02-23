@@ -735,6 +735,16 @@ function normalizeSlugSegment(value) {
     .replace(/^-+|-+$/g, "");
 }
 
+function normalizeImageUrl(url) {
+  if (!url) return url;
+  const urlStr = String(url).trim();
+  // Replace GitHub raw URLs with CDN URLs
+  return urlStr.replace(
+    /^https:\/\/raw\.githubusercontent\.com\/ToratYosef\/BuyBacking\/main\//,
+    "https://cdn.secondhandcell.com/images/"
+  );
+}
+
 function parseDevicePricesXmlForImport(content) {
   const parser = new DOMParser();
   const xmlDocument = parser.parseFromString(content, "application/xml");
@@ -815,7 +825,7 @@ function parseDevicePricesXmlForImport(content) {
       slug: slugs[0],
       slugs,
       name: getText("name"),
-      imageUrl: getText("imageUrl"),
+      imageUrl: normalizeImageUrl(getText("imageUrl")),
       deeplink: getText("deeplink"),
       prices,
     });
