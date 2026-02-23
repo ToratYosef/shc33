@@ -754,10 +754,16 @@ function parseDevicePricesXmlForImport(content) {
     const brandRaw = getText("brand") || getText("parentDevice");
     const slugRaw = getText("slug") || getText("modelID");
 
-    const brand = brandRaw ? brandRaw.trim().toLowerCase() : "";
-    const slug = normalizeSlugSegment(slugRaw);
+    const canonicalBrand = getCanonicalBrandFromModel(modelNode);
+    const canonicalDeviceSlug = getCanonicalDeviceSlug(modelNode);
 
-    if (!brand || !slug) {
+    const legacyBrand = brandRaw ? normalizeSlugSegment(brandRaw.trim().toLowerCase()) : "";
+    const legacySlug = normalizeSlugSegment(slugRaw);
+
+    const brand = canonicalBrand || legacyBrand;
+    const slugs = Array.from(new Set([canonicalDeviceSlug, legacySlug].filter(Boolean)));
+
+    if (!brand || !slugs.length) {
       warnings.push(`Skipped model at position ${index + 1} due to missing brand or slug.`);
       return;
     }
@@ -800,13 +806,14 @@ function parseDevicePricesXmlForImport(content) {
     });
 
     if (!hasPricing) {
-      warnings.push(`No pricing data found for ${brand}/${slug}.`);
+      warnings.push(`No pricing data found for ${brand}/${slugs[0]}.`);
       return;
     }
 
     models.push({
       brand,
-      slug,
+      slug: slugs[0],
+      slugs,
       name: getText("name"),
       imageUrl: getText("imageUrl"),
       deeplink: getText("deeplink"),
@@ -830,7 +837,9 @@ async function importToFirestoreAlways(updatedXmlText) {
 
   for (const model of models) {
     const collectionPath = `devices/${model.brand}/models`;
-    const docRef = db.doc(`${collectionPath}/${model.slug}`);
+    const allSlugs = Array.isArray(model.slugs) && model.slugs.length ? model.slugs : [model.slug];
+    const primarySlug = allSlugs[0];
+    const docRef = db.doc(`${collectionPath}/${primarySlug}`);
 
     try {
       const snap = await docRef.get();
@@ -861,12 +870,18 @@ async function importToFirestoreAlways(updatedXmlText) {
         );
       }
 
-      const payload = { brand: model.brand, slug: model.slug, prices: model.prices };
+      const payload = { brand: model.brand, slug: primarySlug, prices: model.prices };
       if (model.name) payload.name = model.name;
       if (model.imageUrl) payload.imageUrl = model.imageUrl;
       if (model.deeplink) payload.deeplink = model.deeplink;
 
       await docRef.set(payload, { merge: true });
+
+      for (const aliasSlug of allSlugs.slice(1)) {
+        const aliasDocRef = db.doc(`${collectionPath}/${aliasSlug}`);
+        await aliasDocRef.set({ ...payload, slug: aliasSlug }, { merge: true });
+      }
+
       success++;
     } catch (e) {
       fail++;
