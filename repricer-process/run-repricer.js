@@ -42,6 +42,7 @@ const DEFAULT_REPRICER_RULES = {
 // optional outputs
 const WRITE_OUTPUT_CSV = !!getArg("write-csv", false);
 const OUTPUT_CSV_PATH = path.join(cwd, "repricer-output.csv");
+const PRICE_CHANGES_CSV_PATH = path.join(cwd, "repricer-price-changes.csv");
 
 // gca auto-run
 const RUN_GCA = !getArg("no-gca", false);
@@ -687,6 +688,7 @@ function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
   const changedModels = new Set();
   let matchedKeys = 0;
   let normalizedDeeplinks = 0;
+  const priceChanges = [];
 
   const models = doc.getElementsByTagName("model");
   for (let i = 0; i < models.length; i++) {
@@ -727,6 +729,14 @@ function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
             condEl.textContent = nextVal;
             changedNodes++;
             changedModels.add(modelSellcellName);
+            priceChanges.push({
+              model: modelSellcellName,
+              storage: storageVal,
+              carrier: carrierTag,
+              condition: condTag,
+              old_price: prevVal,
+              new_price: nextVal,
+            });
           }
         });
       });
@@ -746,7 +756,32 @@ function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
     matchedKeys,
     priceMapSize: priceMap.size,
     normalizedDeeplinks,
+    priceChanges,
   };
+}
+
+function buildPriceChangesCsv(priceChanges) {
+  const header = ["model", "storage", "carrier", "condition", "old_price", "new_price"];
+  const escapeCsv = (value) => {
+    if (value == null) return "";
+    const str = String(value);
+    if (/[",\n\r]/.test(str)) return "\"" + str.replace(/\"/g, "\"\"") + "\"";
+    return str;
+  };
+
+  const lines = [header.join(",")];
+  for (const change of priceChanges) {
+    lines.push([
+      change.model,
+      change.storage,
+      change.carrier,
+      change.condition,
+      change.old_price,
+      change.new_price,
+    ].map(escapeCsv).join(","));
+  }
+
+  return lines.join("\n");
 }
 
 // ===================== OPTIONAL: BUILD OUTPUT CSV =====================
@@ -1020,14 +1055,18 @@ async function main() {
   const resultRows = rawRecords.map((r) => repriceRowFromFeed(r, feedIndex, repricerRules));
   enforceConditionPriceHierarchy(resultRows);
 
-  const { updatedXml, changedNodes, changedModelsCount, matchedKeys, priceMapSize, normalizedDeeplinks } =
+  const { updatedXml, changedNodes, changedModelsCount, matchedKeys, priceMapSize, normalizedDeeplinks, priceChanges } =
     buildUpdatedXmlFromTemplateWithDiff(templateXmlBefore, resultRows);
 
   fs.writeFileSync(TEMPLATE_XML_PATH, updatedXml, "utf8");
   console.log(`[repricer] updated template written -> ${TEMPLATE_XML_PATH}`);
   console.log(`[repricer] priceMap=${priceMapSize.toLocaleString()}  matchedKeys=${matchedKeys.toLocaleString()}`);
-  console.log(`[repricer] xml price nodes changed=${changedNodes.toLocaleString()}  models touched=${changedModelsCount.toLocaleString()}`);
+  console.log(`[repricer] all device prices refreshed=${matchedKeys.toLocaleString()}  changed=${changedNodes.toLocaleString()}  unchanged=${(matchedKeys - changedNodes).toLocaleString()}  models touched=${changedModelsCount.toLocaleString()}`);
   console.log(`[repricer] deeplinks normalized=${normalizedDeeplinks.toLocaleString()}`);
+
+  const priceChangesCsv = buildPriceChangesCsv(priceChanges);
+  fs.writeFileSync(PRICE_CHANGES_CSV_PATH, priceChangesCsv, "utf8");
+  console.log(`[repricer] price changes csv written -> ${PRICE_CHANGES_CSV_PATH}  rows=${priceChanges.length.toLocaleString()}`);
 
   if (WRITE_OUTPUT_CSV) {
     const outCsv = buildOutputCsv(resultRows);
