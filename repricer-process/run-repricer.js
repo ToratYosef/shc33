@@ -24,7 +24,15 @@ const getArg = (name, def = null) => {
 
 const cwd = path.resolve(getArg("dir", "/shc33/feed")); // default to /shc33/feed
 const CSV_PATH = path.join(cwd, "amz.csv");
-const TEMPLATE_XML_PATH = path.join(cwd, "feed.xml");
+const TEMPLATE_XML_PATH = path.join(cwd, "_sellcell.xml");
+const TEMP_TEMPLATE_XML_PATH = path.join(cwd, "_sellcell.xml.next");
+
+const EXCLUDED_MODEL_NAMES = new Set([
+  "IPHONE 12 PRO",
+  "IPHONE 12 PRO MAX",
+  "IPHONE 13 MINI",
+]);
+const EXCLUDED_MODEL_SLUGS = new Set(["12-pro", "12-pro-max", "13-mini"]);
 
 // repricer tuning
 const CLI_BUMP_VALUE = Number.parseFloat(getArg("bump", ""));
@@ -240,6 +248,11 @@ function normalizeModelNameFromCsv(rawName, storage) {
 
   if (MODEL_ALIASES[upper]) return MODEL_ALIASES[upper];
   return upper;
+}
+
+function isExcludedModelName(rawName) {
+  const normalized = normalizeModelNameForFeed(rawName);
+  return EXCLUDED_MODEL_NAMES.has(normalized);
 }
 
 // ===================== CONDITION NORMALIZATION =====================
@@ -670,6 +683,7 @@ function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
 
   for (const r of rows) {
     const sellcellName = normalizeModelNameFromCsv(r.name, r.storage); // CSV -> SellCell name
+    if (isExcludedModelName(sellcellName)) continue;
     const storage = String(r.storage || "").trim().toUpperCase();
     const lockCarrier = normalizeCarrierLock(r.lock_status);
     if (!lockCarrier) continue;
@@ -698,6 +712,7 @@ function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
 
     // KEY FIX: use deeplink device param to derive SellCell name
     const modelSellcellName = templateModelToSellcellName(model);
+    if (isExcludedModelName(modelSellcellName)) continue;
 
     const pricesBlocks = model.getElementsByTagName("prices");
     for (let j = 0; j < pricesBlocks.length; j++) {
@@ -863,6 +878,11 @@ function parseDevicePricesXmlForImport(content) {
       return;
     }
 
+    if (EXCLUDED_MODEL_SLUGS.has(slug)) {
+      warnings.push(`Skipped excluded model ${brand}/${slug}.`);
+      return;
+    }
+
     const prices = {};
     let hasPricing = false;
 
@@ -1021,7 +1041,7 @@ async function main() {
   );
 
   if (!fs.existsSync(CSV_PATH)) throw new Error(`Missing ${CSV_PATH}. Put your CSV there as amz.csv`);
-  if (!fs.existsSync(TEMPLATE_XML_PATH)) throw new Error(`Missing ${TEMPLATE_XML_PATH}. Put your template device-prices XML there as feed.xml`);
+  if (!fs.existsSync(TEMPLATE_XML_PATH)) throw new Error(`Missing ${TEMPLATE_XML_PATH}. Put your template device-prices XML there as _sellcell.xml`);
 
   const templateXmlBefore = fs.readFileSync(TEMPLATE_XML_PATH, "utf8");
 
@@ -1058,8 +1078,12 @@ async function main() {
   const { updatedXml, changedNodes, changedModelsCount, matchedKeys, priceMapSize, normalizedDeeplinks, priceChanges } =
     buildUpdatedXmlFromTemplateWithDiff(templateXmlBefore, resultRows);
 
-  fs.writeFileSync(TEMPLATE_XML_PATH, updatedXml, "utf8");
-  console.log(`[repricer] updated template written -> ${TEMPLATE_XML_PATH}`);
+  fs.writeFileSync(TEMP_TEMPLATE_XML_PATH, updatedXml, "utf8");
+  if (fs.existsSync(TEMPLATE_XML_PATH)) {
+    fs.unlinkSync(TEMPLATE_XML_PATH);
+  }
+  fs.renameSync(TEMP_TEMPLATE_XML_PATH, TEMPLATE_XML_PATH);
+  console.log(`[repricer] updated template replaced -> ${TEMPLATE_XML_PATH}`);
   console.log(`[repricer] priceMap=${priceMapSize.toLocaleString()}  matchedKeys=${matchedKeys.toLocaleString()}`);
   console.log(`[repricer] all device prices refreshed=${matchedKeys.toLocaleString()}  changed=${changedNodes.toLocaleString()}  unchanged=${(matchedKeys - changedNodes).toLocaleString()}  models touched=${changedModelsCount.toLocaleString()}`);
   console.log(`[repricer] deeplinks normalized=${normalizedDeeplinks.toLocaleString()}`);
