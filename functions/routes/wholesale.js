@@ -16,7 +16,7 @@ const adminsCollection = db.collection('admins');
 
 const STRIPE_API_BASE_URL = 'https://api.stripe.com/v1';
 const SHIPENGINE_API_BASE_URL = 'https://api.shipengine.com/v1';
-const DEFAULT_IMAGE_BASE = 'https://raw.githubusercontent.com/toratyosef/BuyBacking/main/';
+const DEFAULT_IMAGE_BASE = 'https://cdn.secondhandcell.com/images/';
 const DEFAULT_SUCCESS_URL = 'https://secondhandcell.com/buy/order-submitted.html?order={ORDER_ID}';
 const DEFAULT_CANCEL_URL = 'https://secondhandcell.com/buy/checkout.html?offer={OFFER_ID}';
 
