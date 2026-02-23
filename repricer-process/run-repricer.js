@@ -24,15 +24,7 @@ const getArg = (name, def = null) => {
 
 const cwd = path.resolve(getArg("dir", "/shc33/feed")); // default to /shc33/feed
 const CSV_PATH = path.join(cwd, "amz.csv");
-const TEMPLATE_XML_PATH = path.join(cwd, "_sellcell.xml");
-const TEMP_TEMPLATE_XML_PATH = path.join(cwd, "_sellcell.xml.next");
-
-const EXCLUDED_MODEL_NAMES = new Set([
-  "IPHONE 12 PRO",
-  "IPHONE 12 PRO MAX",
-  "IPHONE 13 MINI",
-]);
-const EXCLUDED_MODEL_SLUGS = new Set(["12-pro", "12-pro-max", "13-mini"]);
+const TEMPLATE_XML_PATH = path.join(cwd, "feed.xml");
 
 // repricer tuning
 const CLI_BUMP_VALUE = Number.parseFloat(getArg("bump", ""));
@@ -50,7 +42,6 @@ const DEFAULT_REPRICER_RULES = {
 // optional outputs
 const WRITE_OUTPUT_CSV = !!getArg("write-csv", false);
 const OUTPUT_CSV_PATH = path.join(cwd, "repricer-output.csv");
-const PRICE_CHANGES_CSV_PATH = path.join(cwd, "repricer-price-changes.csv");
 
 // gca auto-run
 const RUN_GCA = !getArg("no-gca", false);
@@ -112,43 +103,6 @@ function roundRepricerPrice(value) {
   if (cents < 50) return dollars;
   if (cents === 50) return dollars + 0.5;
   return dollars + 1;
-}
-
-function enforceConditionPriceHierarchy(rows) {
-  const CONDITION_ORDER = ["flawless", "good", "fair", "broken"];
-  const grouped = new Map();
-
-  for (const row of rows) {
-    const condition = normalizeTemplateCondition(row.condition);
-    if (!CONDITION_ORDER.includes(condition)) continue;
-
-    const model = normalizeModelNameFromCsv(row.name, row.storage);
-    const storage = String(row.storage || "").trim().toUpperCase();
-    const carrier = normalizeCarrierLock(row.lock_status);
-    if (!model || !storage || !carrier) continue;
-
-    const key = `${model}|${storage}|${carrier}`;
-    if (!grouped.has(key)) grouped.set(key, {});
-    grouped.get(key)[condition] = row;
-  }
-
-  for (const conditionRows of grouped.values()) {
-    let previousPrice = null;
-    for (const condition of CONDITION_ORDER) {
-      const row = conditionRows[condition];
-      if (!row || !Number.isFinite(Number(row.new_price))) continue;
-      const currentPrice = Number(row.new_price);
-
-      if (previousPrice != null && currentPrice > previousPrice) {
-        row.new_price = previousPrice;
-        row.new_profit = row.total_walkaway - row.new_price;
-        row.new_profit_pct = row.new_price ? (row.new_profit / row.new_price) : null;
-        row._status = `${row._status || "Repriced"} (capped for condition order)`;
-      }
-
-      previousPrice = Number(row.new_price);
-    }
-  }
 }
 
 function getFirestoreDb() {
@@ -248,11 +202,6 @@ function normalizeModelNameFromCsv(rawName, storage) {
 
   if (MODEL_ALIASES[upper]) return MODEL_ALIASES[upper];
   return upper;
-}
-
-function isExcludedModelName(rawName) {
-  const normalized = normalizeModelNameForFeed(rawName);
-  return EXCLUDED_MODEL_NAMES.has(normalized);
 }
 
 // ===================== CONDITION NORMALIZATION =====================
@@ -509,44 +458,26 @@ function buildFeedIndexFromXml(xmlText) {
       const prices = Array.from(section.getElementsByTagName("price"));
       if (!prices.length) continue;
 
-      const normalizedPrices = prices
+      const competitorPrices = prices
         .map(p => {
           const mEl = p.getElementsByTagName("merchant_name")[0];
           const priceEl = p.getElementsByTagName("merchant_price")[0];
           const merchant = String(mEl ? mEl.textContent : "").trim().toLowerCase();
+          if (merchant === "secondhandcell") return null;
           const v = parseMoney(priceEl ? priceEl.textContent : "");
-          if (!Number.isFinite(v)) return null;
-          return { merchant, price: v };
+          return Number.isFinite(v) ? v : null;
         })
         .filter(v => v != null);
 
-      if (!normalizedPrices.length) continue;
-
-      const competitorPrices = normalizedPrices
-        .filter((entry) => entry.merchant !== "secondhandcell")
-        .map((entry) => entry.price);
-
       if (!competitorPrices.length) continue;
-      const topCompetitorPrice = Math.max(...competitorPrices);
-      const topAllPrice = Math.max(...normalizedPrices.map((entry) => entry.price));
-      const secondhandcellTopPrice = Math.max(
-        ...normalizedPrices
-          .filter((entry) => entry.merchant === "secondhandcell")
-          .map((entry) => entry.price)
-      );
-      const isSecondhandcellHighest = Number.isFinite(secondhandcellTopPrice) && secondhandcellTopPrice >= topAllPrice;
-
-      const nextValue = {
-        price: topCompetitorPrice,
-        isSecondhandcellHighest,
-      };
+      const top = Math.max(...competitorPrices);
 
       if (carrierBucket && index[keyBase][carrierBucket]) {
         const bucket = index[keyBase][carrierBucket];
-        if (!bucket[condKey] || nextValue.price > bucket[condKey].price) bucket[condKey] = nextValue;
+        if (!bucket[condKey] || top > bucket[condKey]) bucket[condKey] = top;
       }
       const anyBucket = index[keyBase].any;
-      if (!anyBucket[condKey] || nextValue.price > anyBucket[condKey].price) anyBucket[condKey] = nextValue;
+      if (!anyBucket[condKey] || top > anyBucket[condKey]) anyBucket[condKey] = top;
     }
   }
 
@@ -574,7 +505,7 @@ function repriceRowFromFeed(row, feedIndex, rules) {
     } else if (feedEntry.any && feedEntry.any[condition] != null) {
       bucket = feedEntry.any;
     }
-    if (bucket && bucket[condition] != null) feedPrice = bucket[condition].price;
+    if (bucket && bucket[condition] != null) feedPrice = bucket[condition];
   }
 
   result.original_feed_price = feedPrice != null ? feedPrice : null;
@@ -604,15 +535,7 @@ function repriceRowFromFeed(row, feedIndex, rules) {
   const profit = total_walkaway - original_price;
   const profit_pct = original_price ? profit / original_price : null;
 
-  const isSecondhandcellHighest = Boolean(
-    feedEntry
-      && (
-        (carrierLock && feedEntry[carrierLock] && feedEntry[carrierLock][condition])
-        || (feedEntry.any && feedEntry.any[condition])
-      )?.isSecondhandcellHighest
-  );
-
-  const bumpAmount = isSecondhandcellHighest ? 0 : getBumpForProfitPct(profit_pct, rules);
+  const bumpAmount = getBumpForProfitPct(profit_pct, rules);
   let new_price;
   if (profit_pct != null && profit_pct >= rules.targetProfitPct) {
     new_price = original_price + bumpAmount;
@@ -631,15 +554,12 @@ function repriceRowFromFeed(row, feedIndex, rules) {
   result.profit = profit;
   result.profit_pct = profit_pct;
   result.applied_bump = bumpAmount;
-  result.secondhandcell_highest = isSecondhandcellHighest;
   result.new_price = new_price;
   result.new_profit = total_walkaway - new_price;
   result.new_profit_pct = new_price ? (result.new_profit / new_price) : null;
 
   result._status = (profit_pct != null && profit_pct >= rules.targetProfitPct)
-    ? (isSecondhandcellHighest
-      ? `Already ≥ ${(rules.targetProfitPct * 100).toFixed(0)}% profit – no bump (SecondHandCell already highest)`
-      : `Already ≥ ${(rules.targetProfitPct * 100).toFixed(0)}% profit – bumped $${bumpAmount.toFixed(2)}`)
+    ? `Already ≥ ${(rules.targetProfitPct * 100).toFixed(0)}% profit – bumped $${bumpAmount.toFixed(2)}`
     : `Repriced to hit ${(rules.targetProfitPct * 100).toFixed(0)}% profit`;
   result._statusClass = "status-ok";
 
@@ -683,7 +603,6 @@ function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
 
   for (const r of rows) {
     const sellcellName = normalizeModelNameFromCsv(r.name, r.storage); // CSV -> SellCell name
-    if (isExcludedModelName(sellcellName)) continue;
     const storage = String(r.storage || "").trim().toUpperCase();
     const lockCarrier = normalizeCarrierLock(r.lock_status);
     if (!lockCarrier) continue;
@@ -702,7 +621,6 @@ function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
   const changedModels = new Set();
   let matchedKeys = 0;
   let normalizedDeeplinks = 0;
-  const priceChanges = [];
 
   const models = doc.getElementsByTagName("model");
   for (let i = 0; i < models.length; i++) {
@@ -712,7 +630,6 @@ function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
 
     // KEY FIX: use deeplink device param to derive SellCell name
     const modelSellcellName = templateModelToSellcellName(model);
-    if (isExcludedModelName(modelSellcellName)) continue;
 
     const pricesBlocks = model.getElementsByTagName("prices");
     for (let j = 0; j < pricesBlocks.length; j++) {
@@ -744,14 +661,6 @@ function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
             condEl.textContent = nextVal;
             changedNodes++;
             changedModels.add(modelSellcellName);
-            priceChanges.push({
-              model: modelSellcellName,
-              storage: storageVal,
-              carrier: carrierTag,
-              condition: condTag,
-              old_price: prevVal,
-              new_price: nextVal,
-            });
           }
         });
       });
@@ -771,32 +680,7 @@ function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
     matchedKeys,
     priceMapSize: priceMap.size,
     normalizedDeeplinks,
-    priceChanges,
   };
-}
-
-function buildPriceChangesCsv(priceChanges) {
-  const header = ["model", "storage", "carrier", "condition", "old_price", "new_price"];
-  const escapeCsv = (value) => {
-    if (value == null) return "";
-    const str = String(value);
-    if (/[",\n\r]/.test(str)) return "\"" + str.replace(/\"/g, "\"\"") + "\"";
-    return str;
-  };
-
-  const lines = [header.join(",")];
-  for (const change of priceChanges) {
-    lines.push([
-      change.model,
-      change.storage,
-      change.carrier,
-      change.condition,
-      change.old_price,
-      change.new_price,
-    ].map(escapeCsv).join(","));
-  }
-
-  return lines.join("\n");
 }
 
 // ===================== OPTIONAL: BUILD OUTPUT CSV =====================
@@ -875,11 +759,6 @@ function parseDevicePricesXmlForImport(content) {
 
     if (!brand || !slug) {
       warnings.push(`Skipped model at position ${index + 1} due to missing brand or slug.`);
-      return;
-    }
-
-    if (EXCLUDED_MODEL_SLUGS.has(slug)) {
-      warnings.push(`Skipped excluded model ${brand}/${slug}.`);
       return;
     }
 
@@ -1041,7 +920,7 @@ async function main() {
   );
 
   if (!fs.existsSync(CSV_PATH)) throw new Error(`Missing ${CSV_PATH}. Put your CSV there as amz.csv`);
-  if (!fs.existsSync(TEMPLATE_XML_PATH)) throw new Error(`Missing ${TEMPLATE_XML_PATH}. Put your template device-prices XML there as _sellcell.xml`);
+  if (!fs.existsSync(TEMPLATE_XML_PATH)) throw new Error(`Missing ${TEMPLATE_XML_PATH}. Put your template device-prices XML there as feed.xml`);
 
   const templateXmlBefore = fs.readFileSync(TEMPLATE_XML_PATH, "utf8");
 
@@ -1073,24 +952,15 @@ async function main() {
   console.log(`[repricer] csvRows=${rawRecords.length}  newVariants=0  total=${rawRecords.length}`);
 
   const resultRows = rawRecords.map((r) => repriceRowFromFeed(r, feedIndex, repricerRules));
-  enforceConditionPriceHierarchy(resultRows);
 
-  const { updatedXml, changedNodes, changedModelsCount, matchedKeys, priceMapSize, normalizedDeeplinks, priceChanges } =
+  const { updatedXml, changedNodes, changedModelsCount, matchedKeys, priceMapSize, normalizedDeeplinks } =
     buildUpdatedXmlFromTemplateWithDiff(templateXmlBefore, resultRows);
 
-  fs.writeFileSync(TEMP_TEMPLATE_XML_PATH, updatedXml, "utf8");
-  if (fs.existsSync(TEMPLATE_XML_PATH)) {
-    fs.unlinkSync(TEMPLATE_XML_PATH);
-  }
-  fs.renameSync(TEMP_TEMPLATE_XML_PATH, TEMPLATE_XML_PATH);
-  console.log(`[repricer] updated template replaced -> ${TEMPLATE_XML_PATH}`);
+  fs.writeFileSync(TEMPLATE_XML_PATH, updatedXml, "utf8");
+  console.log(`[repricer] updated template written -> ${TEMPLATE_XML_PATH}`);
   console.log(`[repricer] priceMap=${priceMapSize.toLocaleString()}  matchedKeys=${matchedKeys.toLocaleString()}`);
-  console.log(`[repricer] all device prices refreshed=${matchedKeys.toLocaleString()}  changed=${changedNodes.toLocaleString()}  unchanged=${(matchedKeys - changedNodes).toLocaleString()}  models touched=${changedModelsCount.toLocaleString()}`);
+  console.log(`[repricer] xml price nodes changed=${changedNodes.toLocaleString()}  models touched=${changedModelsCount.toLocaleString()}`);
   console.log(`[repricer] deeplinks normalized=${normalizedDeeplinks.toLocaleString()}`);
-
-  const priceChangesCsv = buildPriceChangesCsv(priceChanges);
-  fs.writeFileSync(PRICE_CHANGES_CSV_PATH, priceChangesCsv, "utf8");
-  console.log(`[repricer] price changes csv written -> ${PRICE_CHANGES_CSV_PATH}  rows=${priceChanges.length.toLocaleString()}`);
 
   if (WRITE_OUTPUT_CSV) {
     const outCsv = buildOutputCsv(resultRows);
