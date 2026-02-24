@@ -1,16 +1,16 @@
 const express = require('express');
-const { db } = require('../services/firestore');
+const { getWithId } = require('../services/db');
 
 const router = express.Router();
 
 router.get('/profile', async (req, res, next) => {
   try {
     const { uid } = req.user;
-    const snapshot = await db.collection('users').doc(uid).get();
-    if (!snapshot.exists) {
+    const profile = await getWithId('users', uid);
+    if (!profile) {
       return res.status(404).json({ ok: false, error: 'Profile not found.' });
     }
-    return res.json({ ok: true, data: { id: snapshot.id, ...snapshot.data() } });
+    return res.json({ ok: true, data: profile });
   } catch (error) {
     return next(error);
   }

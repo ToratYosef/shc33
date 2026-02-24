@@ -1,4 +1,4 @@
-const { admin, db } = require('../services/firestore');
+const { existsById } = require('../services/db');
 
 function isAuthDisabled() {
   const raw = String(process.env.DISABLE_AUTH || '').trim().toLowerCase();
@@ -25,8 +25,80 @@ function parseBearerToken(req) {
   return token.trim();
 }
 
+const crypto = require('crypto');
+
+let certCache = { expiresAt: 0, certs: {} };
+
+function parseBearerPayload(token) {
+  const parts = String(token || '').split('.');
+  if (parts.length !== 3) {
+    throw new Error('Malformed token.');
+  }
+  const [headerB64, payloadB64] = parts;
+  const header = JSON.parse(Buffer.from(headerB64, 'base64url').toString('utf8'));
+  const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+  return { header, payload };
+}
+
+async function getFirebaseCerts() {
+  const now = Date.now();
+  if (certCache.expiresAt > now && certCache.certs && Object.keys(certCache.certs).length) {
+    return certCache.certs;
+  }
+
+  const res = await fetch('https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com');
+  if (!res.ok) {
+    throw new Error(`Failed to fetch Firebase certs: ${res.status}`);
+  }
+
+  const cacheControl = res.headers.get('cache-control') || '';
+  const maxAgeMatch = cacheControl.match(/max-age=(\d+)/i);
+  const maxAgeMs = maxAgeMatch ? Number(maxAgeMatch[1]) * 1000 : 60 * 60 * 1000;
+  const certs = await res.json();
+
+  certCache = {
+    certs,
+    expiresAt: now + maxAgeMs,
+  };
+
+  return certs;
+}
+
+function verifyTokenSignature(token, certPem) {
+  const [headerB64, payloadB64, signatureB64] = token.split('.');
+  const verifier = crypto.createVerify('RSA-SHA256');
+  verifier.update(`${headerB64}.${payloadB64}`);
+  verifier.end();
+  return verifier.verify(certPem, Buffer.from(signatureB64, 'base64url'));
+}
+
 async function verifyFirebaseToken(token) {
-  return admin.auth().verifyIdToken(token);
+  const { header, payload } = parseBearerPayload(token);
+  if (header.alg !== 'RS256' || !header.kid) {
+    throw new Error('Invalid token header.');
+  }
+
+  const certs = await getFirebaseCerts();
+  const certPem = certs[header.kid];
+  if (!certPem) {
+    throw new Error('Signing certificate not found for token.');
+  }
+
+  if (!verifyTokenSignature(token, certPem)) {
+    throw new Error('Token signature verification failed.');
+  }
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (payload.exp && nowSec >= payload.exp) {
+    throw new Error('Token expired.');
+  }
+
+  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT;
+  if (projectId && payload.aud !== projectId) {
+    throw new Error('Invalid token audience.');
+  }
+
+  return payload;
 }
 
 async function resolveUser(req) {
@@ -113,8 +185,8 @@ async function requireAdmin(req, res, next) {
       return next();
     }
 
-    const adminDoc = await db.collection('admins').doc(user.uid).get();
-    if (!adminDoc.exists) {
+    const adminExists = await existsById('admins', user.uid);
+    if (!adminExists) {
       return res.status(403).json({
         ok: false,
         error: 'Admin privileges required for this action.',
