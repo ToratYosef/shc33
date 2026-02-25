@@ -31,12 +31,6 @@ const createEmailsRouter = require('./routes/emails');
 const createOrdersRouter = require('./routes/orders');
 
 initFirebaseAdmin();
-const {
-  reserveFakeProfiles,
-  buildFakeOrderPayload,
-  getFakeOrderDayContext,
-  MS_PER_DAY,
-} = require('./helpers/fake-order-generator');
 const db = admin.firestore();
 const ordersCollection = db.collection("orders");
 const usersCollection = db.collection("users");
@@ -65,9 +59,6 @@ function getCallableAuth(context) {
   return null;
 }
 
-const FAKE_ORDER_TARGET_PER_DAY = Number(process.env.FAKE_ORDER_TARGET_PER_DAY || 20);
-const FAKE_ORDER_MAX_PER_RUN = Number(process.env.FAKE_ORDER_MAX_PER_RUN || 3);
-const FAKE_ORDER_TZ_OFFSET_MINUTES = Number(process.env.FAKE_ORDER_TZ_OFFSET_MINUTES ?? -300);
 // ---- ONLY ONCE AT TOP OF FILE (if not already required) ----
 // const functions = require("firebase-functions");
 const { XMLParser } = require("fast-xml-parser");
@@ -724,66 +715,6 @@ function resolveOrderIdFromDevice(device = {}) {
   }
 
   return null;
-}
-
-async function seedFakeOrdersForDay(now = new Date()) {
-  if (!Number.isFinite(FAKE_ORDER_TARGET_PER_DAY) || FAKE_ORDER_TARGET_PER_DAY <= 0) {
-    return { created: 0 };
-  }
-
-  const { dayKey, startOfDay } = getFakeOrderDayContext(now, FAKE_ORDER_TZ_OFFSET_MINUTES);
-  const existingSnapshot = await ordersCollection.where('fakeOrderDateKey', '==', dayKey).get();
-  const createdToday = existingSnapshot.size;
-
-  if (createdToday >= FAKE_ORDER_TARGET_PER_DAY) {
-    return { created: 0, dayKey };
-  }
-
-  const elapsedMs = Math.max(0, now.getTime() - startOfDay.getTime());
-  const clampedElapsed = Math.min(elapsedMs, MS_PER_DAY);
-  const progress = clampedElapsed / MS_PER_DAY;
-  const expectedCount = Math.min(
-    FAKE_ORDER_TARGET_PER_DAY,
-    Math.ceil(progress * FAKE_ORDER_TARGET_PER_DAY)
-  );
-  const remainingCapacity = FAKE_ORDER_TARGET_PER_DAY - createdToday;
-  const shortfall = expectedCount - createdToday;
-  let toCreate = Math.min(remainingCapacity, Math.max(shortfall, 0));
-
-  if (toCreate <= 0 && progress >= 1 && remainingCapacity > 0) {
-    toCreate = remainingCapacity;
-  }
-
-  toCreate = Math.min(FAKE_ORDER_MAX_PER_RUN, toCreate);
-
-  if (toCreate <= 0) {
-    return { created: 0, dayKey };
-  }
-
-  const reservedProfiles = await reserveFakeProfiles(toCreate);
-  let createdCount = 0;
-
-  for (let index = 0; index < toCreate; index += 1) {
-    const profileEntry = reservedProfiles[index];
-    if (!profileEntry) {
-      continue;
-    }
-    const orderId = await generateNextOrderNumber();
-    const createdAt = new Date(now.getTime() - index * 60000);
-    const payload = buildFakeOrderPayload({
-      orderId,
-      profile: profileEntry.profile,
-      profileIndex: profileEntry.profileIndex,
-      dayKey,
-      sequence: createdToday + index + 1,
-      createdAt,
-    });
-
-    await ordersCollection.doc(orderId).set(payload);
-    createdCount += 1;
-  }
-
-  return { created: createdCount, dayKey };
 }
 
 const app = express();
@@ -7619,21 +7550,6 @@ async function runAutomaticInboundTrackingRefresh() {
     automaticInboundTrackingRefreshInProgress = false;
   }
 }
-
-exports.generateSimulatedOrders = functions.pubsub
-  .schedule('every 15 minutes')
-  .timeZone('Etc/UTC')
-  .onRun(async () => {
-    try {
-      const result = await seedFakeOrdersForDay(new Date());
-      if (result.created) {
-        console.log(`Simulated ${result.created} fake orders for ${result.dayKey}`);
-      }
-    } catch (error) {
-      console.error('Failed to inject simulated orders:', error);
-    }
-    return null;
-  });
 
 exports.autoVoidExpiredLabels = functions.pubsub
   .schedule("every 60 minutes")
