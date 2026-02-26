@@ -7,7 +7,8 @@
   "scripts": {
     "build": "echo \"No build step required\"",
     "dev": "NODE_PATH=./node_modules node src/server.js",
-    "start": "NODE_PATH=./node_modules node src/server.js"
+    "start": "NODE_PATH=./node_modules node src/server.js",
+    "price": "node scripts/price.js"
   },
   "dependencies": {
     "axios": "^1.7.9",
@@ -22,5 +23,8 @@
     "nodemailer": "^6.9.16",
     "pdf-lib": "^1.17.1",
     "pg": "^8.18.0"
+  },
+  "bin": {
+    "price": "scripts/price.js"
   }
 }
