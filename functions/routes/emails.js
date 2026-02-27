@@ -67,6 +67,15 @@ module.exports = function createEmailsRouter({
         stack: error.stack,
         to,
       });
+
+      if (error && error.code === 'EAUTH') {
+        return res.status(502).json({
+          error: 'Email authentication failed',
+          details: 'Gmail rejected login. Use a valid Gmail app password for EMAIL_PASS and confirm account security settings.',
+          code: error.code,
+        });
+      }
+
       res.status(500).json({
         error: 'Failed to send email',
         details: error.message || 'Unknown error',
