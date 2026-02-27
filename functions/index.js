@@ -2915,12 +2915,38 @@ app.post("/checkImei", async (req, res) => {
   return res.json({ ok: true, result: normalized });
 });
 
-const transporter = nodemailer.createTransport({
+
+// Create email transporter with validation
+const transporterConfig = {
   service: "gmail",
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+};
+
+// Log transporter initialization status
+if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+  console.error(
+    '⛔ EMAIL_USER and/or EMAIL_PASS environment variables are not set. ' +
+    'Email sending will fail until these are configured.'
+  );
+}
+
+const transporter = nodemailer.createTransport(transporterConfig);
+
+// Verify transporter connection (this will help catch auth errors early)
+transporter.verify(function(error, success) {
+  if (error) {
+    console.error('⛔ Email transporter verification failed:', error.message);
+    console.error('  Possible causes:');
+    console.error('  1. Invalid EMAIL_USER or EMAIL_PASS');
+    console.error('  2. Gmail account has 2-factor authentication enabled (use an app password)');
+    console.error('  3. Google Account security settings block less secure apps');
+    console.error('  4. The account may be locked or restricted');
+  } else {
+    console.log('✓ Email transporter verified and ready');
+  }
 });
 
 const EMAIL_LOGO_URL =

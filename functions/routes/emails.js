@@ -14,8 +14,19 @@ module.exports = function createEmailsRouter({
   collectOrderDeviceKeys,
   deriveOrderStatusFromDevices,
 }) {
+
   if (!transporter) {
     throw new Error('Email transporter must be provided to create the emails router.');
+  }
+
+  // Validate email configuration
+  const missingEnvVars = [];
+  if (!process.env.EMAIL_USER) missingEnvVars.push('EMAIL_USER');
+  if (!process.env.EMAIL_PASS) missingEnvVars.push('EMAIL_PASS');
+  if (!process.env.EMAIL_NAME) missingEnvVars.push('EMAIL_NAME');
+
+  if (missingEnvVars.length > 0) {
+    console.warn(`⚠️  Email transporter created but missing environment variables: ${missingEnvVars.join(', ')}`);
   }
 
   const router = express.Router();
@@ -38,11 +49,30 @@ module.exports = function createEmailsRouter({
         bcc: Array.isArray(bcc) ? bcc : bcc ? [bcc] : [],
       };
 
+      // Validate environment variables before attempting send
+      if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        console.error('Missing email environment variables: EMAIL_USER or EMAIL_PASS not configured');
+        return res.status(500).json({
+          error: 'Email service not configured',
+          details: 'EMAIL_USER or EMAIL_PASS environment variables are missing'
+        });
+      }
+
       await transporter.sendMail(mailOptions);
       res.status(200).json({ message: 'Email sent successfully.' });
     } catch (error) {
-      console.error('Error sending email:', error);
-      res.status(500).json({ error: 'Failed to send email.' });
+      console.error('Error sending email:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack,
+        to: mailOptions.to
+      });
+      res.status(500).json({
+        error: 'Failed to send email',
+        details: error.message || 'Unknown error',
+        code: error.code
+      });
+    }
     }
   });
 
