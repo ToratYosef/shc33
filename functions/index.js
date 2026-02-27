@@ -2999,6 +2999,44 @@ const LABEL_REMINDER_STATUSES = new Set(["label_generated", "emailed"]);
 const LABEL_REMINDER_FIRST_DELAY_MS = 5 * 24 * 60 * 60 * 1000;
 const LABEL_REMINDER_SECOND_DELAY_MS = 10 * 24 * 60 * 60 * 1000;
 const LABEL_REMINDER_MIN_GAP_MS = 24 * 60 * 60 * 1000;
+const ABANDONED_CHECKOUT_COLLECTION = "sellOrderProgress";
+const ABANDONED_CHECKOUT_SWEEP_MIN_GAP_MS = 6 * 60 * 60 * 1000;
+const ABANDONED_CHECKOUT_STAGES = [
+  {
+    key: "after12h",
+    delayMs: 12 * 60 * 60 * 1000,
+    subject: "Your Payout is Ready",
+    heading: "Your payout is ready",
+  },
+  {
+    key: "after24h",
+    delayMs: 24 * 60 * 60 * 1000,
+    subject: "Where did you go?",
+    heading: "Still thinking it over?",
+  },
+  {
+    key: "after3d",
+    delayMs: 3 * 24 * 60 * 60 * 1000,
+    subject: "You are quite the negotiator...",
+    heading: "You drove a hard bargain",
+    bonusCode: "HigherPayout",
+    bonusAmount: 10,
+  },
+  {
+    key: "after5d",
+    delayMs: 5 * 24 * 60 * 60 * 1000,
+    subject: "Your Offer is Expiring",
+    heading: "Your offer window is closing",
+  },
+  {
+    key: "after7d",
+    delayMs: 7 * 24 * 60 * 60 * 1000,
+    subject: "Last Call: lock in your payout",
+    heading: "Final reminder",
+    bonusCode: "HigherPayout",
+    bonusAmount: 10,
+  },
+];
 
 const RETURN_REMINDER_DELAY_MS = 13 * 24 * 60 * 60 * 1000;
 const RETURN_AUTO_VOID_DELAY_MS = 15 * 24 * 60 * 60 * 1000;
@@ -7800,6 +7838,314 @@ async function runAutomaticLabelReminderSweep() {
 
   console.log(`Automatic label reminder sweep sent ${sentCount} reminders.`);
 }
+
+function getIsoMillis(value) {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  if (typeof value.toDate === 'function') {
+    const date = value.toDate();
+    return date instanceof Date && !Number.isNaN(date.getTime()) ? date.getTime() : null;
+  }
+  if (typeof value.seconds === 'number') {
+    return value.seconds * 1000;
+  }
+  if (typeof value._seconds === 'number') {
+    return value._seconds * 1000;
+  }
+  const fallback = new Date(value);
+  return Number.isNaN(fallback.getTime()) ? null : fallback.getTime();
+}
+
+function getAbandonedCheckoutName(email = '') {
+  const safeEmail = String(email || '').trim();
+  const localPart = safeEmail.split('@')[0] || 'there';
+  const cleaned = localPart.replace(/[._-]+/g, ' ').trim();
+  return cleaned ? formatDisplayText(cleaned) : 'there';
+}
+
+function buildAbandonedCheckoutUrl(email = '') {
+  const url = new URL('https://secondhandcell.com/sell/checkout.html');
+  if (email) {
+    url.searchParams.set('email', String(email).trim().toLowerCase());
+  }
+  return url.toString();
+}
+
+async function hydrateProgressDeviceImageUrls(progress = {}) {
+  if (!Array.isArray(progress.devices) || !progress.devices.length) {
+    return progress;
+  }
+
+  const nextDevices = [];
+  let changed = false;
+
+  for (const rawDevice of progress.devices) {
+    const device = rawDevice && typeof rawDevice === 'object' ? { ...rawDevice } : rawDevice;
+    if (!device || typeof device !== 'object') {
+      nextDevices.push(device);
+      continue;
+    }
+
+    if (!device.imageUrl && device.brand && device.model) {
+      try {
+        const modelSnap = await db.collection('devices').doc(String(device.brand)).collection('models').doc(String(device.model)).get();
+        if (modelSnap.exists) {
+          const modelData = modelSnap.data() || {};
+          if (modelData.imageUrl) {
+            device.imageUrl = String(modelData.imageUrl);
+            changed = true;
+          }
+        }
+      } catch (error) {
+        console.warn(`Could not hydrate imageUrl for ${device.brand}/${device.model}:`, error.message);
+      }
+    }
+
+    nextDevices.push(device);
+  }
+
+  return changed ? { ...progress, devices: nextDevices } : progress;
+}
+
+function getAbandonedCheckoutDevices(progress = {}) {
+  if (!Array.isArray(progress.devices)) {
+    return [];
+  }
+
+  return progress.devices
+    .map((device) => {
+      if (!device || typeof device !== 'object') return null;
+      const qty = Math.max(1, Number(device.qty) || 1);
+      const unitPrice = Number(device.unitPrice || 0);
+      return {
+        modelName: device.modelName || formatDisplayText(device.model) || 'Device',
+        storage: device.storage || '',
+        lock: formatDisplayText(device.lock || ''),
+        condition: formatDisplayText(device.condition || ''),
+        imageUrl: device.imageUrl || '',
+        qty,
+        unitPrice,
+        lineTotal: qty * unitPrice,
+      };
+    })
+    .filter(Boolean);
+}
+
+function buildAbandonedCheckoutDevicesHtml(devices = []) {
+  if (!devices.length) {
+    return '<tr><td colspan="3" style="padding:16px 14px; color:#475569; font-size:14px;">Your saved device details are ready in checkout.</td></tr>';
+  }
+
+  return devices.map((device) => {
+    const titleBits = [device.modelName, device.storage].filter(Boolean).join(' • ');
+    const metaBits = [device.lock, device.condition, `Qty ${device.qty}`].filter(Boolean).join(' • ');
+    const imageBlock = device.imageUrl
+      ? `<img src="${escapeHtml(device.imageUrl)}" alt="${escapeHtml(device.modelName)}" style="width:70px; height:70px; border-radius:10px; object-fit:cover; border:1px solid #dbeafe;"/>`
+      : '<div style="width:70px;height:70px;border-radius:10px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:12px;">Device</div>';
+
+    return `
+      <tr>
+        <td style="padding:14px 12px; border-bottom:1px solid #e2e8f0; background:#ffffff;">${imageBlock}</td>
+        <td style="padding:14px 12px; border-bottom:1px solid #e2e8f0; color:#0f172a; background:#ffffff;">
+          <div style="font-weight:700; font-size:15px;">${escapeHtml(titleBits || device.modelName)}</div>
+          <div style="font-size:13px; color:#475569; margin-top:4px;">${escapeHtml(metaBits)}</div>
+        </td>
+        <td style="padding:14px 12px; border-bottom:1px solid #e2e8f0; text-align:right; color:#0f172a; font-weight:700; white-space:nowrap; background:#ffffff;">${formatUsd(device.lineTotal)}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function buildAbandonedCheckoutEmail(progress, stage) {
+  const email = String(progress.email || '').trim().toLowerCase();
+  const firstName = getAbandonedCheckoutName(email);
+  const devices = getAbandonedCheckoutDevices(progress);
+  const subtotal = devices.reduce((sum, device) => sum + (Number(device.lineTotal) || 0), 0);
+  const checkoutUrl = buildAbandonedCheckoutUrl(email);
+  const slogan = 'Fast payouts. Fair offers. Zero hassle.';
+  const logoDarkUrl = 'https://secondhandcell.com/assets/logo.webp';
+  const promoHeroImageUrl = 'https://secondhandcell.com/assets/sellcell.webp';
+  const promoGifByStage = {
+    after12h: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaXZza2JnM2Nkd2x1Y3puMzY5eDljN2x3N3hqYjN3N2M3M2Y0eWw3aiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/3o7btPCcdNniyf0ArS/giphy.gif',
+    after24h: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExeWt4ajM4Nmo2MjE2aXNhcnl2cDBxNGlud2RlZmY4bm1hdXd4NW1uaiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/l0MYt5jPR6QX5pnqM/giphy.gif',
+    after3d: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNnNnNW9jNjNuMzM0d2d0djR0dW9oMmJqd2N6eDk1b2JzaWh6enN4eSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/YTbZzCkRQCEJa/giphy.gif',
+    after5d: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExb2V3NnFhMzQ2bnJwZjN3dXBsN3B6d2xvMmlrM3Y4a2w0emNwY3lmYyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/jpVuGo0JkAXJiuNNK7/giphy.gif',
+    after7d: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExc2thYnVvazduYWZhYTU2cnB4N3l0Yzh1ZHA1Yzgxd2w5YjVvODI3NyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/26u4lOMA8JKSnL9Uk/giphy.gif',
+  };
+  const promoGifUrl = promoGifByStage[stage.key] || promoGifByStage.after12h;
+  const hasBonus = Number.isFinite(Number(stage.bonusAmount)) && stage.bonusAmount > 0 && stage.bonusCode;
+
+  const introByStage = {
+    after12h: `You started your checkout but didn't hit submit. Your quote is still active, and your total payout is currently <strong>${formatUsd(subtotal)}</strong>.`,
+    after24h: `Quick nudge: your devices are still saved and ready. Lock in your offer now so your payout stays protected.`,
+    after3d: `You held out, so we'll sweeten the deal. Finish checkout and use <strong>${escapeHtml(stage.bonusCode)}</strong> for an extra <strong>${formatUsd(stage.bonusAmount)}</strong>.`,
+    after5d: `Your offer window is getting tighter. Completing checkout now helps preserve your best payout before market values shift.`,
+    after7d: `Final reminder: your saved checkout is waiting, and this is the best time to secure your payout before values move again.`,
+  };
+
+  const reasonPoints = [
+    'Shipping is always 100% free with a prepaid label.',
+    'Your quote is protected for 14 days after checkout.',
+    'Need a box or help? Reply and our team handles it fast.',
+  ];
+
+  const bonusBlock = hasBonus
+    ? `
+      <div style="margin:18px 0; padding:14px; border-radius:12px; border:1px solid #f59e0b; background:#fffbeb; color:#92400e;">
+        <strong>Bonus unlocked:</strong> Add code <strong>${escapeHtml(stage.bonusCode)}</strong> at checkout for <strong>${formatUsd(stage.bonusAmount)}</strong> extra payout.
+      </div>
+    `
+    : '';
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${escapeHtml(stage.subject)}</title>
+</head>
+<body style="margin:0; padding:0; background:#e0f2fe; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; color:#0f172a;">
+  <div style="padding:24px 12px;">
+    <div style="max-width:640px; margin:0 auto; background:#ffffff; border-radius:24px; overflow:hidden; border:1px solid #bae6fd; box-shadow:0 18px 42px rgba(14,116,144,0.22);">
+      <div style="background:linear-gradient(135deg,#0ea5e9,#0f766e 55%,#14b8a6); color:#ffffff; padding:26px 24px 30px; text-align:center;">
+        <img src="${escapeHtml(logoDarkUrl)}" alt="SecondHandCell" style="display:block; margin:0 auto 12px; height:44px; width:auto;" />
+        <div style="font-size:15px; font-weight:700; letter-spacing:0.02em;">${escapeHtml(slogan)}</div>
+        <h1 style="margin:14px 0 0; font-size:31px; line-height:1.2;">${escapeHtml(stage.heading)}</h1>
+      </div>
+      <div style="padding:20px 24px 26px; background:linear-gradient(180deg,#ecfeff 0%,#ffffff 30%);">
+        <img src="${escapeHtml(promoHeroImageUrl)}" alt="Sell your devices" style="display:block; width:100%; max-width:592px; height:auto; border-radius:16px; border:1px solid #bae6fd;" />
+        <img src="${escapeHtml(promoGifUrl)}" alt="Promotion" style="display:block; margin:14px auto 4px; width:100%; max-width:440px; height:auto; border-radius:14px;" />
+
+        <p style="margin:0 0 16px; font-size:16px;">Hi ${escapeHtml(firstName)},</p>
+        <p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#334155;">${introByStage[stage.key] || 'Your saved checkout is ready when you are.'}</p>
+
+        ${bonusBlock}
+
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #bae6fd; border-radius:14px; overflow:hidden; margin:16px 0; background:#f8fafc;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:12px 14px; font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:#0e7490; border-bottom:1px solid #bae6fd;" colspan="2">Saved devices</th>
+              <th style="text-align:right; padding:12px 14px; font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:#0e7490; border-bottom:1px solid #bae6fd;">Payout</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${buildAbandonedCheckoutDevicesHtml(devices)}
+            <tr>
+              <td colspan="2" style="padding:16px 12px; text-align:right; font-size:14px; color:#334155; font-weight:700; background:#ecfeff;">Total checkout</td>
+              <td style="padding:16px 12px; text-align:right; font-size:19px; color:#0f172a; font-weight:800; white-space:nowrap; background:#ecfeff;">${formatUsd(subtotal)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <ul style="padding-left:18px; margin:0 0 22px; color:#334155; line-height:1.6;">
+          ${reasonPoints.map((point) => `<li style="margin-bottom:8px;">${escapeHtml(point)}</li>`).join('')}
+        </ul>
+
+        <div style="text-align:center; margin:8px 0 22px;">
+          <a href="${escapeHtml(checkoutUrl)}" style="display:inline-block; background:linear-gradient(135deg,#0ea5e9,#0f766e); color:#ffffff; text-decoration:none; font-weight:800; border-radius:999px; padding:14px 30px; letter-spacing:0.01em; box-shadow:0 8px 18px rgba(14,116,144,0.35);">Checkout Now</a>
+        </div>
+
+        <div style="border-top:1px solid #e2e8f0; padding-top:16px; margin-top:10px;">
+          <p style="margin:0 0 8px; font-size:14px; color:#64748b;">Questions or need a shipping box? Reply to this email and our team will help right away.</p>
+          <p style="margin:0; font-size:13px; color:#0f766e; font-weight:700;">Trusted by thousands of sellers with fast, fair payouts.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  return {
+    subject: stage.subject,
+    html,
+    total: subtotal,
+    checkoutUrl,
+  };
+}
+
+async function runAbandonedCheckoutReminderSweep() {
+  const snapshot = await db.collection(ABANDONED_CHECKOUT_COLLECTION)
+    .where('didComplete', '==', false)
+    .get();
+
+  const now = Date.now();
+  let sentCount = 0;
+
+  for (const doc of snapshot.docs) {
+    let progress = { id: doc.id, ...doc.data() };
+    progress = await hydrateProgressDeviceImageUrls(progress);
+    const email = String(progress.email || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      continue;
+    }
+
+    const createdAtMs = getIsoMillis(progress.createdAt) || getIsoMillis(progress.updatedAt);
+    if (!createdAtMs) {
+      continue;
+    }
+
+    const sequence = progress.abandonedEmailSequence && typeof progress.abandonedEmailSequence === 'object'
+      ? progress.abandonedEmailSequence
+      : {};
+
+    const lastSentAtMs = getIsoMillis(progress.abandonedLastSentAt);
+    if (lastSentAtMs && now - lastSentAtMs < ABANDONED_CHECKOUT_SWEEP_MIN_GAP_MS) {
+      continue;
+    }
+
+    const elapsedMs = now - createdAtMs;
+    const nextStage = ABANDONED_CHECKOUT_STAGES.find((stage) => elapsedMs >= stage.delayMs && !sequence[stage.key]?.sentAt);
+    if (!nextStage) {
+      continue;
+    }
+
+    const built = buildAbandonedCheckoutEmail(progress, nextStage);
+
+    try {
+      await transporter.sendMail({
+        from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: built.subject,
+        html: built.html,
+      });
+
+      const sentAtIso = new Date().toISOString();
+      await db.collection(ABANDONED_CHECKOUT_COLLECTION).doc(doc.id).set({
+        devices: Array.isArray(progress.devices) ? progress.devices : [],
+        abandonedLastSentAt: sentAtIso,
+        abandonedEmailSequence: {
+          [nextStage.key]: {
+            sentAt: sentAtIso,
+            subject: built.subject,
+            total: built.total,
+            checkoutUrl: built.checkoutUrl,
+          },
+        },
+        updatedAt: sentAtIso,
+      }, { merge: true });
+
+      sentCount += 1;
+    } catch (error) {
+      console.error(`Failed abandoned checkout email (${nextStage.key}) for ${email}:`, error);
+    }
+  }
+
+  console.log(`Automatic abandoned checkout sweep sent ${sentCount} reminders.`);
+}
+
+exports.autoSendAbandonedCheckoutEmails = functions.pubsub
+  .schedule('every 60 minutes')
+  .onRun(async () => {
+    try {
+      await runAbandonedCheckoutReminderSweep();
+    } catch (error) {
+      console.error('Automatic abandoned checkout reminder sweep failed:', error);
+    }
+    return null;
+  });
 
 exports.autoSendLabelReminderEmails = functions.pubsub
   .schedule("every 24 hours")
