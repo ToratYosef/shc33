@@ -2938,17 +2938,27 @@ app.post("/checkImei", async (req, res) => {
 });
 
 
+function cleanEnvValue(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  return value.trim().replace(/^['\"]|['\"]$/g, '');
+}
+
+const normalizedEmailUser = cleanEnvValue(process.env.EMAIL_USER).toLowerCase();
+const normalizedEmailPass = cleanEnvValue(process.env.EMAIL_PASS).replace(/\s+/g, '');
+
 // Create email transporter with validation
 const transporterConfig = {
   service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: normalizedEmailUser,
+    pass: normalizedEmailPass,
   },
 };
 
 // Log transporter initialization status
-if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+if (!normalizedEmailUser || !normalizedEmailPass) {
   console.error(
     '⛔ EMAIL_USER and/or EMAIL_PASS environment variables are not set. ' +
     'Email sending will fail until these are configured.'
