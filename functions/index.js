@@ -752,9 +752,32 @@ const allowedOrigins = [
   "https://cautious-pancake-69p475gq54q4f5qp4-3001.app.github.dev",
 ];
 
+function normalizeOrigin(origin) {
+  return String(origin || '').trim().toLowerCase().replace(/\/$/, '');
+}
+
 const isAllowedOrigin = (origin) => {
-  if (!origin) return true;
-  if (allowedOrigins.includes(origin)) return true;
+  if (!origin) {
+    return true;
+  }
+
+  const normalizedOrigin = normalizeOrigin(origin);
+  if (allowedOrigins.map(normalizeOrigin).includes(normalizedOrigin)) {
+    return true;
+  }
+
+  try {
+    const parsed = new URL(normalizedOrigin);
+    if (parsed.protocol === 'https:' && parsed.hostname === 'secondhandcell.com') {
+      return true;
+    }
+    if (parsed.protocol === 'https:' && parsed.hostname.endsWith('.secondhandcell.com')) {
+      return true;
+    }
+  } catch (error) {
+    return false;
+  }
+
   return false;
 };
 
@@ -1243,7 +1266,6 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Issue Resolution - SecondHandCell</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
       :root {
         --site-indigo: #4f46e5;

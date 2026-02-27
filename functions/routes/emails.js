@@ -32,9 +32,9 @@ module.exports = function createEmailsRouter({
   const router = express.Router();
 
   router.post('/send-email', async (req, res) => {
-    try {
-      const { to, bcc, subject, html } = req.body || {};
+    const { to, bcc, subject, html } = req.body || {};
 
+    try {
       if (!to || !subject || !html) {
         return res
           .status(400)
@@ -65,14 +65,13 @@ module.exports = function createEmailsRouter({
         message: error.message,
         code: error.code,
         stack: error.stack,
-        to: mailOptions.to
+        to,
       });
       res.status(500).json({
         error: 'Failed to send email',
         details: error.message || 'Unknown error',
-        code: error.code
+        code: error.code,
       });
-    }
     }
   });
 

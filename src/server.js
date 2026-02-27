@@ -345,17 +345,43 @@ const corsOrigins = (process.env.CORS_ORIGIN || '')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+function normalizeOrigin(value) {
+  return String(value || '').trim().toLowerCase().replace(/\/$/, '');
+}
+
 const allowedCorsOrigins = new Set([
-  ...defaultCorsOrigins,
-  ...corsOrigins,
+  ...defaultCorsOrigins.map(normalizeOrigin),
+  ...corsOrigins.map(normalizeOrigin),
 ]);
+
+function isAllowedCorsOrigin(origin) {
+  if (!origin) {
+    return true;
+  }
+
+  const normalizedOrigin = normalizeOrigin(origin);
+  if (allowedCorsOrigins.has(normalizedOrigin)) {
+    return true;
+  }
+
+  try {
+    const parsed = new URL(normalizedOrigin);
+    if (parsed.protocol === 'https:' && parsed.hostname === 'secondhandcell.com') {
+      return true;
+    }
+    if (parsed.protocol === 'https:' && parsed.hostname.endsWith('.secondhandcell.com')) {
+      return true;
+    }
+  } catch (error) {
+    return false;
+  }
+
+  return false;
+}
 
 const corsOptions = {
   origin(origin, callback) {
-    if (!origin) {
-      return callback(null, true);
-    }
-    if (allowedCorsOrigins.has(origin)) {
+    if (isAllowedCorsOrigin(origin)) {
       return callback(null, true);
     }
     return callback(new Error('Not allowed by CORS'));
@@ -365,8 +391,21 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (isAllowedCorsOrigin(origin)) {
+    if (origin) {
+      res.header('Access-Control-Allow-Origin', origin);
+    }
+    res.header('Vary', 'Origin');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With');
+  }
+
   if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
+    return isAllowedCorsOrigin(origin)
+      ? res.sendStatus(204)
+      : res.status(403).json({ error: 'Not allowed by CORS' });
   }
   return next();
 });
@@ -617,7 +656,6 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Issue Resolution - SecondHandCell</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
       :root {
         --site-indigo: #4f46e5;
