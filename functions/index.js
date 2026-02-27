@@ -5481,6 +5481,57 @@ function formatShippingAddressForLog(shippingInfo = {}) {
   return parts.length ? parts.join(", ") : "N/A";
 }
 
+function buildReofferEmailHtml({
+  orderId,
+  customerName,
+  originalQuote,
+  newPrice,
+  reasonString,
+  reviewUrl,
+}) {
+  const safeReason = escapeHtml(reasonString || '').replace(/\n/g, "<br>");
+  const originalQuoteValue = Number(originalQuote || 0).toFixed(2);
+  const newOfferValue = Number(newPrice || 0).toFixed(2);
+
+  return buildEmailLayout({
+    title: "Updated offer available",
+    accentColor: "#6366f1",
+    includeTrustpilot: false,
+    bodyHtml: `
+        <p>Hi ${escapeHtml(customerName || 'there')},</p>
+        <p>Thanks for sending in your device. After inspecting order <strong>#${escapeHtml(orderId)}</strong>, we have a revised offer for you.</p>
+        <div style="background:#eef2ff; border:1px solid #c7d2fe; border-radius:18px; padding:20px 24px; margin:28px 0;">
+          <p style="margin:0 0 12px; color:#312e81;"><strong>Original Quote:</strong> $${originalQuoteValue}</p>
+          <p style="margin:0; color:#1e1b4b; font-size:20px; font-weight:700;">New Offer: $${newOfferValue}</p>
+        </div>
+        <p style="margin-bottom:12px;">Reason for the change:</p>
+        <p style="background:#fef3c7; border-radius:14px; border:1px solid #fde68a; color:#92400e; padding:14px 18px; margin:0 0 28px;">${safeReason}</p>
+        <p style="margin-bottom:20px;">Review the updated offer and choose how you'd like to proceed:</p>
+        <div style="text-align:center; margin-bottom:20px;">
+          <a href="${reviewUrl}" class="button-link" style="background-color:#16a34a;">Review offer & choose</a>
+        </div>
+        <p>Questions or feedback? Reply to this email—we're here to help.</p>
+    `,
+  });
+}
+
+function buildOfferAcceptedEmailHtml({ orderId }) {
+  return `
+    <p>Thank you for accepting the revised offer for Order <strong>#${escapeHtml(orderId)}</strong>.</p>
+    <p>We've received your confirmation, and payment processing will now begin.</p>
+  `;
+}
+
+function buildReturnLabelEmailHtml({ customerName, orderId, returnTrackingNumber }) {
+  return `
+    <p>Hello ${escapeHtml(customerName || 'there')},</p>
+    <p>As requested, here is your return shipping label for your device (Order ID: ${escapeHtml(orderId)}):</p>
+    <p>Return Tracking Number: <strong>${escapeHtml(returnTrackingNumber || "N/A")}</strong></p>
+    <p>Thank you,</p>
+    <p>The SecondHandCell Team</p>
+  `;
+}
+
 // Renamed from sendTestEmail to avoid conflict
 async function sendMultipleTestEmails(email, emailTypes) {
   const mockOrderData = {
@@ -5580,46 +5631,28 @@ async function sendMultipleTestEmails(email, emailTypes) {
         subject = `[TEST] Re-offer for Order #${orderToUse.id}`;
         let reasonString = orderToUse.reOffer.reasons.join(", ");
         if (orderToUse.reOffer.comments) reasonString += `; ${orderToUse.reOffer.comments}`;
-        htmlBody = buildEmailLayout({
-          title: "Updated offer available",
-          accentColor: "#6366f1",
-          bodyHtml: `
-              <p>Hi ${escapeHtml(orderToUse.shippingInfo.fullName)},</p>
-              <p>Thanks for sending in your device. After inspection of order <strong>#${escapeHtml(orderToUse.id)}</strong>, we have an updated offer for you.</p>
-              <div style="background:#eef2ff; border:1px solid #c7d2fe; border-radius:18px; padding:20px 24px; margin:28px 0;">
-                <p style="margin:0 0 12px; color:#312e81;"><strong>Original Quote:</strong> $${orderToUse.estimatedQuote.toFixed(2)}</p>
-                <p style="margin:0; color:#1e1b4b; font-size:20px; font-weight:700;">New Offer: $${orderToUse.reOffer.newPrice.toFixed(2)}</p>
-              </div>
-              <p style="margin-bottom:12px;">Reason for the change:</p>
-              <p style="background:#fef3c7; border-radius:14px; border:1px solid #fde68a; color:#92400e; padding:14px 18px; margin:0 0 28px;">${escapeHtml(reasonString).replace(/\n/g, "<br>")}</p>
-              <p style="margin-bottom:20px;">Review the updated offer and choose how you'd like to proceed:</p>
-              <div style="text-align:center; margin-bottom:20px;">
-                <a href="https://secondhandcell.com/track-order.html?orderId=${encodeURIComponent(orderToUse.id)}&fromEmailLink=1&fromReofferLink=1&scrollToReoffer=1" class="button-link" style="background-color:#16a34a;">Review offer & choose</a>
-              </div>
-              <p>Questions or feedback? Reply to this email—we're here to help.</p>
-          `,
+        htmlBody = buildReofferEmailHtml({
+          orderId: orderToUse.id,
+          customerName: orderToUse.shippingInfo.fullName,
+          originalQuote: orderToUse.estimatedQuote,
+          newPrice: orderToUse.reOffer.newPrice,
+          reasonString,
+          reviewUrl: `https://secondhandcell.com/track-order.html?orderId=${encodeURIComponent(orderToUse.id)}&fromEmailLink=1&fromReofferLink=1&scrollToReoffer=1`,
         });
         break;
       case "final-offer-accepted":
         orderToUse = mockOrderData;
         subject = `[TEST] Offer Accepted for Order #${orderToUse.id}`;
-        htmlBody = `
-          <p>Hello ${orderToUse.shippingInfo.fullName},</p>
-          <p>Great news! Your order <strong>#${orderToUse.id}</strong> has been completed and payment has been processed.</p>
-          <p>If you have any questions about your payment, please let us know.</p>
-          <p>Thank you for choosing SecondHandCell!</p>
-        `;
+        htmlBody = buildOfferAcceptedEmailHtml({ orderId: orderToUse.id });
         break;
       case "return-label":
         orderToUse = mockOrderData;
         subject = `[TEST] Your SecondHandCell Return Label`;
-        htmlBody = `
-          <p>Hello ${orderToUse.shippingInfo.fullName},</p>
-          <p>As requested, here is your return shipping label for your device (Order ID: ${orderToUse.id}):</p>
-          <p>Return Tracking Number: <strong>${orderToUse.returnTrackingNumber}</strong></p>
-          <p>Thank you,</p>
-          <p>The SecondHandCell Team</p>
-        `;
+        htmlBody = buildReturnLabelEmailHtml({
+          customerName: orderToUse.shippingInfo.fullName,
+          orderId: orderToUse.id,
+          returnTrackingNumber: orderToUse.returnTrackingNumber,
+        });
         break;
       case "blacklisted":
         orderToUse = mockOrderData;
@@ -6735,32 +6768,17 @@ app.post("/orders/:id/re-offer", async (req, res) => {
     let reasonString = reasons.join(", ");
     if (comments) reasonString += `; ${comments}`;
 
-    const safeReason = escapeHtml(reasonString).replace(/\n/g, "<br>");
-    const originalQuoteValue = Number(order.estimatedQuote || order.originalQuote || 0).toFixed(2);
-    const newOfferValue = Number(newPrice).toFixed(2);
     const customerName = order.shippingInfo.fullName || "there";
     const encodedDeviceKey = encodeURIComponent(resolvedDeviceKey);
     const reviewUrl = `https://secondhandcell.com/track-order.html?orderId=${orderId}&deviceKey=${encodedDeviceKey}&fromEmailLink=1&fromReofferLink=1&scrollToReoffer=1`;
 
-    const customerEmailHtml = buildEmailLayout({
-      title: "Updated offer available",
-      accentColor: "#6366f1",
-      includeTrustpilot: false,
-      bodyHtml: `
-          <p>Hi ${escapeHtml(customerName)},</p>
-          <p>Thanks for sending in your device. After inspecting order <strong>#${escapeHtml(order.id)}</strong>, we have a revised offer for you.</p>
-          <div style="background:#eef2ff; border:1px solid #c7d2fe; border-radius:18px; padding:20px 24px; margin:28px 0;">
-            <p style="margin:0 0 12px; color:#312e81;"><strong>Original Quote:</strong> $${originalQuoteValue}</p>
-            <p style="margin:0; color:#1e1b4b; font-size:20px; font-weight:700;">New Offer: $${newOfferValue}</p>
-          </div>
-          <p style="margin-bottom:12px;">Reason for the change:</p>
-          <p style="background:#fef3c7; border-radius:14px; border:1px solid #fde68a; color:#92400e; padding:14px 18px; margin:0 0 28px;">${safeReason}</p>
-          <p style="margin-bottom:20px;">Review the updated offer and choose how you'd like to proceed:</p>
-          <div style="text-align:center; margin-bottom:20px;">
-            <a href="${reviewUrl}" class="button-link" style="background-color:#16a34a;">Review offer & choose</a>
-          </div>
-          <p>Questions or feedback? Reply to this email—we're here to help.</p>
-      `,
+    const customerEmailHtml = buildReofferEmailHtml({
+      orderId: order.id,
+      customerName,
+      originalQuote: Number(order.estimatedQuote || order.originalQuote || 0),
+      newPrice: Number(newPrice),
+      reasonString,
+      reviewUrl,
     });
 
     await transporter.sendMail({
@@ -6872,13 +6890,11 @@ app.post("/orders/:id/return-label", async (req, res) => {
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
       to: order.shippingInfo.email,
       subject: "Your SecondHandCell Return Label",
-      html: `
-        <p>Hello ${order.shippingInfo.fullName},</p>
-        <p>As requested, here is your return shipping label for your device (Order ID: ${order.id}):</p>
-        <p>Return Tracking Number: <strong>${returnTrackingNumber || "N/A"}</strong></p>
-        <p>Thank you,</p>
-        <p>The SecondHandCell Team</p>
-      `,
+      html: buildReturnLabelEmailHtml({
+        customerName: order.shippingInfo.fullName,
+        orderId: order.id,
+        returnTrackingNumber,
+      }),
     };
 
     await transporter.sendMail(customerMailOptions);
@@ -7006,10 +7022,7 @@ app.post("/accept-offer-action", async (req, res) => {
 
     await updateOrderBoth(orderId, updatePayload);
 
-    const customerHtmlBody = `
-      <p>Thank you for accepting the revised offer for Order <strong>#${orderData.id}</strong>.</p>
-      <p>We've received your confirmation, and payment processing will now begin.</p>
-    `;
+    const customerHtmlBody = buildOfferAcceptedEmailHtml({ orderId: orderData.id });
 
     await transporter.sendMail({
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
