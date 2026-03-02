@@ -1,14 +1,17 @@
 version: "3.9"
 
 services:
+  # Optional local Postgres on the same VPS (no external DB link).
+  # Disabled by default via profile; enable with: docker compose --profile postgres up -d
   postgres:
     image: postgres:16
     container_name: chat-postgres
     restart: unless-stopped
+    profiles: ["postgres"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-synapse}
       POSTGRES_USER: ${POSTGRES_USER:-synapse}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_local_only}
     volumes:
       - ./synapse/postgres:/var/lib/postgresql/data
     healthcheck:
@@ -17,20 +20,17 @@ services:
       timeout: 5s
       retries: 5
 
+  # Default Synapse mode: SQLite DB file on VPS disk in ./synapse/data
   synapse:
     image: matrixdotorg/synapse:latest
     container_name: chat-synapse
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
       SYNAPSE_CONFIG_PATH: /data/homeserver.yaml
       UID: ${SYNAPSE_UID:-991}
       GID: ${SYNAPSE_GID:-991}
     volumes:
       - ./synapse/data:/data
-      - ./synapse/homeserver.yaml:/data/homeserver.yaml:ro
     ports:
       - "127.0.0.1:8008:8008"
 
@@ -56,4 +56,3 @@ services:
       - ./nginx/snippets:/etc/nginx/snippets:ro
       - ./nginx/certs:/etc/letsencrypt
       - ./nginx/www:/var/www/certbot
-
