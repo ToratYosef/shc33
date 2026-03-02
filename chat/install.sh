@@ -18,13 +18,41 @@ copy_repo_assets() {
   fi
 }
 
+ensure_pipx_path() {
+  if command -v pipx >/dev/null 2>&1; then
+    pipx ensurepath || true
+    export PATH="$HOME/.local/bin:$PATH"
+  fi
+}
+
+install_iamb_compatible() {
+  if ! command -v cargo >/dev/null 2>&1; then
+    echo "cargo not found; skipping iamb install"
+    return
+  fi
+
+  local rust_ver major minor
+  rust_ver="$(rustc --version 2>/dev/null | awk '{print $2}' || true)"
+  major="${rust_ver%%.*}"
+  minor="$(echo "$rust_ver" | cut -d. -f2)"
+
+  # iamb >=0.0.11 needs rustc >=1.88; fallback to 0.0.10 if older toolchain.
+  if [[ -n "$rust_ver" && "$major" -eq 1 && "$minor" -lt 88 ]]; then
+    echo "Detected rustc $rust_ver (<1.88). Installing iamb 0.0.10 compatibility version."
+    cargo install iamb --version 0.0.10 || true
+  else
+    cargo install iamb || true
+  fi
+}
+
 install_linux() {
   if command -v apt-get >/dev/null 2>&1; then
     sudo apt-get update
     sudo apt-get install -y jq curl python3-pip pipx cargo
   fi
-  pipx install matrix-commander || true
-  cargo install iamb || true
+  ensure_pipx_path
+  pipx install matrix-commander || pipx upgrade matrix-commander || true
+  install_iamb_compatible
 }
 
 install_macos() {
@@ -33,15 +61,17 @@ install_macos() {
     exit 1
   }
   brew install jq pipx rust
-  pipx install matrix-commander || true
-  cargo install iamb || true
+  ensure_pipx_path
+  pipx install matrix-commander || pipx upgrade matrix-commander || true
+  install_iamb_compatible
 }
 
 install_termux() {
   pkg update -y
   pkg install -y jq curl python rust
   python -m pip install --user matrix-commander
-  cargo install iamb || true
+  export PATH="$HOME/.local/bin:$PATH"
+  install_iamb_compatible
 }
 
 OS="$(uname -s)"
@@ -62,11 +92,11 @@ copy_repo_assets
 chmod +x "$CHAT_DIR/chat" "$CHAT_DIR/moviecrypt"
 ln -sf "$CHAT_DIR/chat" "$BIN_DIR/chat"
 
-export PATH="$BIN_DIR:$PATH"
+export PATH="$BIN_DIR:$HOME/.local/bin:$PATH"
 
 echo "Homeserver URL (example: https://example.com/chat):"
 read -r HS
 matrix-commander --store "$STORE_DIR/matrix-commander" --homeserver "$HS" --login
 
-echo "Installed. Ensure $BIN_DIR is on PATH, then run: chat contacts"
+echo "Installed. Ensure $BIN_DIR and $HOME/.local/bin are on PATH, then run: chat contacts"
 echo "Safer alternative to curl|bash: download install.sh, inspect it, then run bash install.sh"

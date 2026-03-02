@@ -142,3 +142,7 @@ With E2EE, server cannot read plaintext messages, but can still see metadata (ti
 - If clients fail discovery, add `.well-known/matrix/client`
 - Certbot requires correct DNS before issuing certs
 - Keep same store path (`~/.matrix-store`) when relogging
+- If `pipx` says `~/.local/bin` is not on PATH, run `pipx ensurepath`, then open a new shell.
+- If `iamb` fails with rustc version error (e.g. rustc 1.75), install compatible version:
+  `cargo install iamb --version 0.0.10`
+- Kernel upgrade warning from `needrestart` is normal after apt upgrades; reboot VPS when convenient to load the new kernel.
