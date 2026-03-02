@@ -143,6 +143,8 @@ With E2EE, server cannot read plaintext messages, but can still see metadata (ti
 - Certbot requires correct DNS before issuing certs
 - Keep same store path (`~/.matrix-store`) when relogging
 - If `pipx` says `~/.local/bin` is not on PATH, run `pipx ensurepath`, then open a new shell.
-- If `iamb` fails with rustc version error (e.g. rustc 1.75), install compatible version:
-  `cargo install iamb --version 0.0.10`
+- If `iamb` fails due old Cargo/Rust (e.g. edition2024 error), update toolchain first:
+  `curl https://sh.rustup.rs -sSf | sh -s -- -y && source $HOME/.cargo/env && rustup default stable && rustup update stable`
+  then retry: `cargo install iamb`
+- If `iamb` still fails, `chat` non-interactive send/listen still works via `matrix-commander`.
 - Kernel upgrade warning from `needrestart` is normal after apt upgrades; reboot VPS when convenient to load the new kernel.

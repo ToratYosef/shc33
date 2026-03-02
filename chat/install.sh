@@ -25,24 +25,50 @@ ensure_pipx_path() {
   fi
 }
 
+ensure_modern_rust() {
+  # Cargo edition2024 support is stabilized in modern toolchains.
+  # Older distro cargo (e.g. 1.75) will fail on some iamb deps.
+  export PATH="$HOME/.cargo/bin:$PATH"
+
+  if ! command -v rustup >/dev/null 2>&1; then
+    echo "Installing rustup (for up-to-date cargo/rustc)..."
+    curl https://sh.rustup.rs -sSf | sh -s -- -y || {
+      echo "Warning: rustup install failed; iamb install may be skipped."
+      return 0
+    }
+  fi
+
+  echo "Updating Rust stable toolchain..."
+  rustup toolchain install stable >/dev/null 2>&1 || true
+  rustup default stable >/dev/null 2>&1 || true
+  rustup update stable >/dev/null 2>&1 || true
+
+  # re-export PATH for current shell
+  export PATH="$HOME/.cargo/bin:$PATH"
+}
+
 install_iamb_compatible() {
+  ensure_modern_rust
+
   if ! command -v cargo >/dev/null 2>&1; then
-    echo "cargo not found; skipping iamb install"
+    echo "cargo not available; skipping iamb install (chat send/listen still works via matrix-commander)."
     return
   fi
 
-  local rust_ver major minor
-  rust_ver="$(rustc --version 2>/dev/null | awk '{print $2}' || true)"
-  major="${rust_ver%%.*}"
-  minor="$(echo "$rust_ver" | cut -d. -f2)"
-
-  # iamb >=0.0.11 needs rustc >=1.88; fallback to 0.0.10 if older toolchain.
-  if [[ -n "$rust_ver" && "$major" -eq 1 && "$minor" -lt 88 ]]; then
-    echo "Detected rustc $rust_ver (<1.88). Installing iamb 0.0.10 compatibility version."
-    cargo install iamb --version 0.0.10 || true
-  else
-    cargo install iamb || true
+  echo "Attempting iamb install with cargo $(cargo --version 2>/dev/null || echo unknown)..."
+  if cargo install iamb; then
+    echo "iamb installed successfully."
+    return
   fi
+
+  echo "Latest iamb build failed; trying pinned fallback iamb 0.0.10..."
+  if cargo install iamb --version 0.0.10; then
+    echo "iamb 0.0.10 installed successfully."
+    return
+  fi
+
+  echo "Warning: iamb install failed even after rustup update."
+  echo "You can still use non-interactive messaging/listening via matrix-commander."
 }
 
 install_linux() {
@@ -70,7 +96,7 @@ install_termux() {
   pkg update -y
   pkg install -y jq curl python rust
   python -m pip install --user matrix-commander
-  export PATH="$HOME/.local/bin:$PATH"
+  export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
   install_iamb_compatible
 }
 
@@ -92,11 +118,11 @@ copy_repo_assets
 chmod +x "$CHAT_DIR/chat" "$CHAT_DIR/moviecrypt"
 ln -sf "$CHAT_DIR/chat" "$BIN_DIR/chat"
 
-export PATH="$BIN_DIR:$HOME/.local/bin:$PATH"
+export PATH="$BIN_DIR:$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
 echo "Homeserver URL (example: https://example.com/chat):"
 read -r HS
 matrix-commander --store "$STORE_DIR/matrix-commander" --homeserver "$HS" --login
 
-echo "Installed. Ensure $BIN_DIR and $HOME/.local/bin are on PATH, then run: chat contacts"
+echo "Installed. Ensure $BIN_DIR, $HOME/.local/bin and $HOME/.cargo/bin are on PATH, then run: chat contacts"
 echo "Safer alternative to curl|bash: download install.sh, inspect it, then run bash install.sh"
