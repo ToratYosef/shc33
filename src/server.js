@@ -41,6 +41,119 @@ function escapeHtml(value) {
 
 const repricerScriptPath = path.resolve(__dirname, '..', 'repricer-process', 'run-repricer.js');
 const repricerOutputCsvPath = '/shc33/feed/repricer-output.csv';
+const repricerScheduleTimezone = 'America/New_York';
+const repricerScheduleHour = 23;
+const repricerScheduleMinute = 30;
+let repricerRunInFlight = null;
+let lastScheduledRunDateKey = '';
+
+function getZonedDateParts(date, timeZone) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const parts = formatter.formatToParts(date);
+  const get = (type) => parts.find((part) => part.type === type)?.value || '';
+
+  const year = Number(get('year'));
+  const month = Number(get('month'));
+  const day = Number(get('day'));
+  const hour = Number(get('hour'));
+  const minute = Number(get('minute'));
+
+  return {
+    year,
+    month,
+    day,
+    hour,
+    minute,
+    dateKey: `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+  };
+}
+
+async function runRepricerProcess(trigger = 'manual') {
+  if (repricerRunInFlight) {
+    return repricerRunInFlight;
+  }
+
+  const args = [
+    repricerScriptPath,
+    '--dir', '/shc33/feed',
+    '--write-csv',
+    '--no-gca',
+  ];
+
+  repricerRunInFlight = new Promise((resolve) => {
+    const child = spawn(process.execPath, args, {
+      cwd: path.resolve(__dirname, '..'),
+      env: process.env,
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk.toString();
+    });
+
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    child.on('close', (code) => {
+      resolve({ code, stdout, stderr, trigger });
+    });
+  }).finally(() => {
+    repricerRunInFlight = null;
+  });
+
+  return repricerRunInFlight;
+}
+
+function maybeRunScheduledRepricer() {
+  const now = new Date();
+  const nyNow = getZonedDateParts(now, repricerScheduleTimezone);
+  const isScheduledMinute = nyNow.hour === repricerScheduleHour && nyNow.minute === repricerScheduleMinute;
+  if (!isScheduledMinute) {
+    return;
+  }
+
+  if (lastScheduledRunDateKey === nyNow.dateKey) {
+    return;
+  }
+
+  lastScheduledRunDateKey = nyNow.dateKey;
+
+  runRepricerProcess('daily-ny-2330')
+    .then((result) => {
+      const status = result.code === 0 ? 'ok' : 'failed';
+      console.log(`[repricer-schedule] ${status} trigger=${result.trigger} exitCode=${result.code}`);
+      if (result.code !== 0 && result.stderr) {
+        console.error('[repricer-schedule] stderr:', result.stderr);
+      }
+    })
+    .catch((error) => {
+      console.error('[repricer-schedule] unexpected error:', error?.message || error);
+    });
+}
+
+function startRepricerDailyScheduler() {
+  if (isServerless) {
+    return;
+  }
+
+  console.log(
+    `[repricer-schedule] enabled: daily at ${String(repricerScheduleHour).padStart(2, '0')}:${String(repricerScheduleMinute).padStart(2, '0')} ${repricerScheduleTimezone}`
+  );
+
+  maybeRunScheduledRepricer();
+  setInterval(maybeRunScheduledRepricer, 30 * 1000);
+}
 
 function parseCsvLine(line) {
   const values = [];
@@ -2366,36 +2479,8 @@ apiRouter.post('/repricer/run', async (req, res, next) => {
       });
     }
 
-    const args = [
-      repricerScriptPath,
-      '--dir', '/shc33/feed',
-      '--write-csv',
-      '--no-gca',
-    ];
-
     const startedAt = Date.now();
-
-    const result = await new Promise((resolve) => {
-      const child = spawn(process.execPath, args, {
-        cwd: path.resolve(__dirname, '..'),
-        env: process.env,
-      });
-
-      let stdout = '';
-      let stderr = '';
-
-      child.stdout.on('data', (chunk) => {
-        stdout += chunk.toString();
-      });
-
-      child.stderr.on('data', (chunk) => {
-        stderr += chunk.toString();
-      });
-
-      child.on('close', (code) => {
-        resolve({ code, stdout, stderr });
-      });
-    });
+    const result = await runRepricerProcess('manual-api');
 
     const durationMs = Date.now() - startedAt;
 
@@ -2431,6 +2516,7 @@ if (!isServerless && require.main === module) {
   const port = Number(process.env.PORT || 3001);
   app.listen(port, () => {
     console.log(`API server listening on port ${port}`);
+    startRepricerDailyScheduler();
   });
 }
 
