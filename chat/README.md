@@ -19,6 +19,15 @@ This setup is fully self-hosted on your VPS.
 
 ## Fresh Ubuntu VPS deploy (SQLite default, no DB service needed)
 
+## One-command bootstrap (Ubuntu VPS)
+
+```bash
+cd /path/to/repo/chat
+bash start.sh
+```
+
+`start.sh` installs dependencies with sudo, prepares `.env`, generates Synapse state/secrets, creates a self-signed cert for first boot, and starts the full stack with progress output.
+
 ```bash
 sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin certbot ufw fail2ban jq
 sudo systemctl enable --now docker
