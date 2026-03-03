@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { resolveUspsServiceAndWeightByDeviceCount } = require('../../helpers/shipengine');
 
 const cases = [
-  { deviceCount: 1, serviceCode: 'usps_first_class_mail', chosenService: 'First Class', weightOz: 15.9, blocks: null },
+  { deviceCount: 1, serviceCode: 'usps_first_class_mail', chosenService: 'First Class', weightOz: 8, blocks: null },
   { deviceCount: 4, serviceCode: 'usps_first_class_mail', chosenService: 'First Class', weightOz: 15.9, blocks: null },
   { deviceCount: 5, serviceCode: 'usps_priority_mail', chosenService: 'Priority', weightOz: 32, blocks: 2 },
   { deviceCount: 8, serviceCode: 'usps_priority_mail', chosenService: 'Priority', weightOz: 32, blocks: 2 },

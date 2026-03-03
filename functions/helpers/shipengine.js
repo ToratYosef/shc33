@@ -263,15 +263,17 @@ function resolveUspsServiceAndWeightByDeviceCount(deviceCountInput) {
     const normalizedDeviceCount = Math.max(1, Number(deviceCountInput) || 1);
 
     if (normalizedDeviceCount <= 4) {
+        const weightOz = normalizedDeviceCount === 1 ? 8 : 15.9;
+
         return {
             deviceCount: normalizedDeviceCount,
             chosenService: 'First Class',
             serviceCode: USPS_FIRST_CLASS_SERVICE_CODE,
-            weightOz: 15.9,
+            weightOz,
             blocks: null,
             weight: {
                 unit: 'ounce',
-                value: 15.9,
+                value: weightOz,
             },
         };
     }
