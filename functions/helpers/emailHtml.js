@@ -1,7 +1,7 @@
 const { escapeHtml } = require('./stringUtils');
 
 const EMAIL_LOGO_URL =
-  "https://secondhandcell.com/assets/logo.webp";
+  "https://cdn.secondhandcell.com/images/assets/logo.webp";
 const COUNTDOWN_NOTICE_TEXT =
   "If we don't hear back, we may finalize your order at 75% less to keep your order moving.";
 const TRUSTPILOT_REVIEW_LINK = "https://www.trustpilot.com/evaluate/secondhandcell.com";
