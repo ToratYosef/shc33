@@ -1995,7 +1995,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         <div class="logo-container-left">
           <a href="https://secondhandcell.com" class="logo-link" aria-label="SecondHandCell home">
             <img
-              src="https://cdn.secondhandcell.com/images/assets/logo.webp"
+              src="https://cdn.secondhandcell.com/images/assets/logo-white.webp"
               alt="SecondHandCell Logo"
               class="logo-image"
               width="320"
@@ -2982,7 +2982,7 @@ transporter.verify(function(error, success) {
 });
 
 const EMAIL_LOGO_URL =
-  "https://cdn.secondhandcell.com/images/assets/logo.webp";
+  "https://cdn.secondhandcell.com/images/assets/logo-white.webp";
 const COUNTDOWN_NOTICE_TEXT =
   "If we don't hear back, we may finalize your order at 75% less to keep your order moving.";
 const TRUSTPILOT_REVIEW_LINK = "https://www.trustpilot.com/evaluate/secondhandcell.com";
@@ -8037,7 +8037,7 @@ function buildAbandonedCheckoutEmail(progress, stage) {
   const subtotal = devices.reduce((sum, device) => sum + (Number(device.lineTotal) || 0), 0);
   const checkoutUrl = buildAbandonedCheckoutUrl(email);
   const slogan = 'Fast payouts. Fair offers. Zero hassle.';
-  const logoDarkUrl = 'https://cdn.secondhandcell.com/images/assets/logo.webp';
+  const logoDarkUrl = 'https://cdn.secondhandcell.com/images/assets/logo-white.webp';
   const promoHeroImageUrl = 'https://secondhandcell.com/assets/sellcell.webp';
   const promoGifByStage = {
     after12h: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaXZza2JnM2Nkd2x1Y3puMzY5eDljN2x3N3hqYjN3N2M3M2Y0eWw3aiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/3o7btPCcdNniyf0ArS/giphy.gif',
