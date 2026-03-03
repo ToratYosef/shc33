@@ -24,8 +24,13 @@ randhex() {
 log "Step 1/9: Installing required packages (Docker, Compose plugin, Certbot, jq, openssl, firewall tools)."
 if command -v apt-get >/dev/null 2>&1; then
   sudo apt-get update
+
+  # IMPORTANT:
+  # - DO NOT install Ubuntu's docker.io (it pulls Ubuntu 'containerd' which conflicts with Docker's 'containerd.io')
+  # - Use Docker CE packages from Docker's official repo (which you already configured)
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    docker.io docker-compose-plugin certbot jq curl openssl ufw fail2ban
+    docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin \
+    certbot jq curl openssl ufw fail2ban
 else
   log "apt-get not found. Please install Docker + docker compose + openssl + jq manually for this OS."
   exit 1
