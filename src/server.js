@@ -19,6 +19,8 @@ const refreshTrackingRouter = require('./routes/refreshTracking');
 const manualFulfillRouter = require('./routes/manualFulfill');
 const adminUsersRouter = require('./routes/adminUsers');
 const supportRouter = require('./routes/support');
+const analyticsRouter = require('./routes/analytics');
+const analyticsAdminRouter = require('./routes/analyticsAdmin');
 const { notFoundHandler, errorHandler } = require('./utils/errors');
 
 const {
@@ -415,34 +417,7 @@ function buildIssueList(order) {
   return issues;
 }
 
-function normalizeTrustProxy(value) {
-  if (typeof value === 'undefined') {
-    return undefined;
-  }
-  const normalized = String(value).trim().toLowerCase();
-  if (!normalized) {
-    return undefined;
-  }
-  if (['false', '0', 'no', 'off'].includes(normalized)) {
-    return false;
-  }
-  if (['true', '1', 'yes', 'on'].includes(normalized)) {
-    return 1;
-  }
-  if (/^\d+$/.test(normalized)) {
-    return Number(normalized);
-  }
-  return value;
-}
-
-const trustProxy = normalizeTrustProxy(process.env.TRUST_PROXY);
-if (typeof trustProxy !== 'undefined') {
-  app.set('trust proxy', trustProxy);
-} else if (isServerless) {
-  app.set('trust proxy', 1);
-} else {
-  app.set('trust proxy', 1);
-}
+app.set('trust proxy', true);
 
 const defaultCorsOrigins = [
   'https://secondhandcell.com',
@@ -530,6 +505,9 @@ app.get('/', (req, res) => {
 });
 
 app.get('/favicon.ico', (req, res) => res.status(204).end());
+
+app.use('/analytics', analyticsRouter);
+app.use('/analytics/admin', analyticsAdminRouter);
 
 app.get('/api/orders/:orderId/issue-resolved', (req, res) => {
   const orderId = String(req.params.orderId || '').trim();
