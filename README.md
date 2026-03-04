@@ -6,7 +6,7 @@ MovieChat is a real WebSocket chat system with:
 - account auth (register/login/logout/whoami)
 - TLS-ready transport (wss in production)
 - full-screen TUI + simple command mode
-- cinematic “movie-hacker” terminal animations during startup/send/receive
+- cinematic “movie-hacker” terminal animations during startup/send/receive with slower dramatic timing and hacker status boxes
 
 ## Project layout
 
@@ -37,6 +37,31 @@ CHAT_SERVER=ws://127.0.0.1:8080 go run ./cmd/chat open
 ```
 
 ## Commands
+
+
+### Interactive prompt mode (`chat>`)
+
+Run with no args:
+
+```bash
+cd client
+CHAT_SERVER=ws://127.0.0.1:8080 go run ./cmd/chat
+```
+
+Then use prompt format:
+
+```text
+chat> saul -- hello
+```
+
+Prompt commands:
+- `/help`
+- `/users`
+- `/inbox`
+- `/open`
+- `/register`
+- `/login`
+- `/quit`
 
 - `chat register`
 - `chat login`

@@ -23,13 +23,22 @@ func Open(client *api.Client, username string) error {
 	var selected string
 	refreshUsers := func() {
 		env, err := client.Request("USERS_LIST", map[string]any{})
-		if err != nil { status.SetText("[red]users error"); return }
+		if err != nil {
+			status.SetText("[red]users error")
+			return
+		}
 		list, _ := api.DecodePayload[[]api.UserInfo](env)
 		contacts.Clear()
 		for _, u := range list {
-			if u.Username == username { continue }
+			if u.Username == username {
+				continue
+			}
 			label := u.Username
-			if u.Online { label += " [green]●" } else { label += " [gray]○" }
+			if u.Online {
+				label += " [green]●"
+			} else {
+				label += " [gray]○"
+			}
 			user := u.Username
 			contacts.AddItem(label, "", 0, func() {
 				selected = user
@@ -42,11 +51,19 @@ func Open(client *api.Client, username string) error {
 	contacts.SetSelectedFunc(func(i int, main, sec string, r rune) { selected = strings.Fields(main)[0] })
 
 	app.SetInputCapture(func(ev *tcell.EventKey) *tcell.EventKey {
-		if ev.Key() == tcell.KeyCtrlC { app.Stop(); return nil }
+		if ev.Key() == tcell.KeyCtrlC {
+			app.Stop()
+			return nil
+		}
 		if ev.Key() == tcell.KeyCtrlS {
 			msg := input.GetText()
-			if selected == "" || strings.TrimSpace(msg)=="" { return nil }
-			if err := client.Send("MSG_SEND", api.MessagePayload{To:selected, Body:msg}); err != nil { status.SetText("[red]send failed"); return nil }
+			if selected == "" || strings.TrimSpace(msg) == "" {
+				return nil
+			}
+			if err := client.Send("MSG_SEND", api.MessagePayload{To: selected, Body: msg}); err != nil {
+				status.SetText("[red]send failed")
+				return nil
+			}
 			fmt.Fprintf(chat, "[yellow]%s -> %s:[white] %s\n", username, selected, msg)
 			input.SetText("")
 			return nil
@@ -57,12 +74,16 @@ func Open(client *api.Client, username string) error {
 	go func() {
 		for {
 			var env api.Envelope
-			if err := client.Conn.ReadJSON(&env); err != nil { return }
+			if err := client.Conn.ReadJSON(&env); err != nil {
+				return
+			}
 			if env.Type == "MSG_DELIVERED" {
 				m, _ := api.DecodePayload[api.Message](env)
 				app.QueueUpdateDraw(func() { fmt.Fprintf(chat, "[green]%s:[white] %s\n", m.From, m.Body) })
 			}
-			if env.Type == "PRESENCE_UPDATE" { app.QueueUpdateDraw(func(){ status.SetText("presence updated") }) }
+			if env.Type == "PRESENCE_UPDATE" {
+				app.QueueUpdateDraw(func() { status.SetText("presence updated") })
+			}
 		}
 	}()
 
