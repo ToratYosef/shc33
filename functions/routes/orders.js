@@ -2048,7 +2048,11 @@ function createOrdersRouter({
         return res.status(500).json({ error: 'Failed to prepare print bundle' });
       }
 
-      const merged = await mergePdfBuffers(pdfParts);
+      const merged = await mergePdfBuffers([
+        outboundBuffer,
+        inboundBuffer,
+        packingSlipBuffer,
+      ]);
       const mergedBuffer = Buffer.isBuffer(merged) ? merged : Buffer.from(merged);
 
       res.setHeader('Content-Type', 'application/pdf');
