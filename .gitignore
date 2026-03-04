@@ -1,7 +1,13 @@
 node_modules
 .env
 
-# secrets
+# old project secrets
 feed/serviceAccountKey.json
 serviceAccountKey.json
 repricer-process/buyback-a0f05-firebase-adminsdk-fbsvc-c9befd867c.json
+
+# moviechat artifacts
+/dist
+*.db
+*.pem
+client/.moviechat
