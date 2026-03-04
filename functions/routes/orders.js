@@ -2043,12 +2043,43 @@ function createOrdersRouter({
       const inboundBuffer = await fetchPdfBuffer(order.inboundLabelUrl);
       const packingSlipBuffer = await fetchPdfBuffer(packingSlipUrl);
 
+      const missing = [];
+
+      if (!order.outboundLabelUrl) {
+        missing.push('outboundLabelUrl');
+      }
+      if (!order.inboundLabelUrl) {
+        missing.push('inboundLabelUrl');
+      }
+
+      if (missing.length) {
+        return res.status(400).json({
+          error: `Missing required label URL(s): ${missing.join(', ')}`,
+        });
+      }
+
+      async function fetchPdfBuffer(url) {
+        const response = await axios.get(url, { responseType: 'arraybuffer' });
+        return Buffer.from(response.data);
+      }
+
+      const outboundBuffer = await fetchPdfBuffer(order.outboundLabelUrl);
+      const inboundBuffer = await fetchPdfBuffer(order.inboundLabelUrl);
+
+      const host = req.get('host');
+      const protocol = req.protocol || 'https';
+      const packingSlipUrl = `${protocol}://${host}/packing-slip/${encodeURIComponent(order.id)}`;
+      const packingSlipBuffer = await fetchPdfBuffer(packingSlipUrl);
       const pdfParts = [outboundBuffer, inboundBuffer, packingSlipBuffer].filter(Boolean);
       if (!pdfParts.length) {
         return res.status(500).json({ error: 'Failed to prepare print bundle' });
       }
 
-      const merged = await mergePdfBuffers(pdfParts);
+      const merged = await mergePdfBuffers([
+        outboundBuffer,
+        inboundBuffer,
+        packingSlipBuffer,
+      ]);
       const mergedBuffer = Buffer.isBuffer(merged) ? merged : Buffer.from(merged);
 
       res.setHeader('Content-Type', 'application/pdf');
