@@ -2006,43 +2006,68 @@ function createOrdersRouter({
       }
 
       const order = { id: doc.id, ...doc.data() };
-      const labelUrlCandidates = [];
 
-      if (order.shippingPreference === 'Shipping Kit Requested') {
-        labelUrlCandidates.push(order.outboundLabelUrl, order.inboundLabelUrl);
-      } else if (order.uspsLabelUrl) {
-        labelUrlCandidates.push(order.uspsLabelUrl);
-      } else {
-        labelUrlCandidates.push(order.outboundLabelUrl, order.inboundLabelUrl);
+      async function fetchPdfBuffer(url) {
+        if (!url) {
+          return null;
+        }
+
+        try {
+          const response = await axios.get(url, { responseType: 'arraybuffer' });
+          const buffer = Buffer.from(response.data);
+          return buffer.length ? buffer : null;
+        } catch (downloadError) {
+          console.error(
+            `Failed to download print-bundle PDF part from ${url}:`,
+            downloadError.message || downloadError
+          );
+          return null;
+        }
       }
 
-      const uniqueLabelUrls = Array.from(
-        new Set(labelUrlCandidates.filter(Boolean))
-      );
+      function resolveRequestOrigin(request) {
+        const forwardedProtoRaw = String(request.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+        const forwardedHostRaw = String(request.headers['x-forwarded-host'] || '').split(',')[0].trim();
+        const hostRaw = String(request.get('host') || '').trim();
+        const protocol = forwardedProtoRaw || request.protocol || 'https';
+        const host = forwardedHostRaw || hostRaw;
+        return host ? `${protocol}://${host}` : null;
+      }
 
-      const downloadedLabels = await Promise.all(
-        uniqueLabelUrls.map(async (url) => {
-          try {
-            const response = await axios.get(url, { responseType: 'arraybuffer' });
-            return Buffer.from(response.data);
-          } catch (downloadError) {
-            console.error(
-              `Failed to download label from ${url}:`,
-              downloadError.message || downloadError
-            );
-            return null;
-          }
-        })
-      );
+      const origin = resolveRequestOrigin(req);
+      const basePath = String(req.baseUrl || '').replace(/\/$/, '');
+      const packingSlipPath = `${basePath}/packing-slip/${encodeURIComponent(order.id)}`;
+      const packingSlipUrl = origin ? `${origin}${packingSlipPath}` : null;
 
-      const bagLabelData = await generateBagLabelPdf(order);
+      const outboundBuffer = await fetchPdfBuffer(order.outboundLabelUrl);
+      const inboundBuffer = await fetchPdfBuffer(order.inboundLabelUrl);
+      const packingSlipBuffer = await fetchPdfBuffer(packingSlipUrl);
 
-      const pdfParts = [
-        ...downloadedLabels.filter(Boolean),
-        Buffer.isBuffer(bagLabelData) ? bagLabelData : Buffer.from(bagLabelData),
-      ].filter(Boolean);
+      const missing = [];
 
-      const merged = await mergePdfBuffers(pdfParts);
+      if (!order.outboundLabelUrl) {
+        missing.push('outboundLabelUrl');
+      }
+      if (!order.inboundLabelUrl) {
+        missing.push('inboundLabelUrl');
+      }
+
+      if (missing.length) {
+        return res.status(400).json({
+          error: `Missing required label URL(s): ${missing.join(', ')}`,
+        });
+      }
+
+      const pdfParts = [outboundBuffer, inboundBuffer, packingSlipBuffer].filter(Boolean);
+      if (!pdfParts.length) {
+        return res.status(500).json({ error: 'Failed to prepare print bundle' });
+      }
+
+      const merged = await mergePdfBuffers([
+        outboundBuffer,
+        inboundBuffer,
+        packingSlipBuffer,
+      ]);
       const mergedBuffer = Buffer.isBuffer(merged) ? merged : Buffer.from(merged);
 
       res.setHeader('Content-Type', 'application/pdf');

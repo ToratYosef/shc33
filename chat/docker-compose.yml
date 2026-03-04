@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  # Optional local Postgres on the same VPS (no external DB link).
+  # Disabled by default via profile; enable with: docker compose --profile postgres up -d
+  postgres:
+    image: postgres:16
+    container_name: chat-postgres
+    restart: unless-stopped
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-synapse}
+      POSTGRES_USER: ${POSTGRES_USER:-synapse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_local_only}
+    volumes:
+      - ./synapse/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-synapse} -d ${POSTGRES_DB:-synapse}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Default Synapse mode: SQLite DB file on VPS disk in ./synapse/data
+  synapse:
+    image: matrixdotorg/synapse:latest
+    container_name: chat-synapse
+    restart: unless-stopped
+    environment:
+      SYNAPSE_CONFIG_PATH: /data/homeserver.yaml
+      UID: ${SYNAPSE_UID:-991}
+      GID: ${SYNAPSE_GID:-991}
+    volumes:
+      - ./synapse/data:/data
+    ports:
+      - "127.0.0.1:8008:8008"
+
+  element:
+    image: vectorim/element-web:latest
+    container_name: chat-element
+    restart: unless-stopped
+    volumes:
+      - ./element/config.json:/app/config.json:ro
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: chat-nginx
+    restart: unless-stopped
+    depends_on:
+      - synapse
+      - element
+    ports:
+      - "8081:80"
+      - "8444:443"
+    volumes:
+      - ./nginx/chat-subpath.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/snippets:/etc/nginx/snippets:ro
+      - ./nginx/certs:/etc/letsencrypt
+      - ./nginx/www:/var/www/certbot

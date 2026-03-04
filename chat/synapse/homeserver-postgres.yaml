@@ -1,0 +1,71 @@
+# Synapse configuration template (OPTIONAL) using local Postgres on this same VPS.
+# No external database link is needed.
+
+server_name: "example.com"
+pid_file: /data/homeserver.pid
+public_baseurl: "https://example.com/chat/"
+
+listeners:
+  - port: 8008
+    tls: false
+    type: http
+    x_forwarded: true
+    resources:
+      - names: [client, federation]
+        compress: false
+
+log_config: "/data/example.com.log.config"
+media_store_path: /data/media_store
+registration_shared_secret: "CHANGE_ME_REGISTRATION_SECRET"
+macaroon_secret_key: "CHANGE_ME_MACAROON_SECRET"
+form_secret: "CHANGE_ME_FORM_SECRET"
+signing_key_path: "/data/example.com.signing.key"
+trusted_key_servers:
+  - server_name: "matrix.org"
+
+enable_registration: false
+enable_registration_without_verification: false
+
+limit_remote_rooms:
+  enabled: true
+  complexity: 1.0
+  complexity_error: "Room too complex"
+
+rc_message:
+  per_second: 0.2
+  burst_count: 10
+
+rc_registration:
+  per_second: 0.1
+  burst_count: 3
+
+rc_login:
+  address:
+    per_second: 0.003
+    burst_count: 5
+  account:
+    per_second: 0.003
+    burst_count: 5
+  failed_attempts:
+    per_second: 0.003
+    burst_count: 5
+
+federation_rc_concurrent:
+  window_size: 1000
+  sleep_limit: 10
+  sleep_delay: 500
+  reject_limit: 50
+  concurrent: 3
+
+# Local Postgres container on same VPS
+database:
+  name: psycopg2
+  args:
+    user: "synapse"
+    password: "CHANGE_ME_LOCAL_DB_PASSWORD"
+    database: "synapse"
+    host: "postgres"
+    cp_min: 5
+    cp_max: 10
+
+url_preview_enabled: false
