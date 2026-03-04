@@ -7109,31 +7109,103 @@ app.post("/return-phone-action", async (req, res) => {
   }
 });
 
+async function deleteOrderFromCollections(orderId) {
+  const trimmedOrderId = String(orderId || '').trim();
+  if (!trimmedOrderId) {
+    return { ok: false, status: 400, error: 'Order ID is required.' };
+  }
+
+  const orderRef = ordersCollection.doc(trimmedOrderId);
+  const orderDoc = await orderRef.get();
+  if (!orderDoc.exists) {
+    return { ok: false, status: 404, error: 'Order not found.', orderId: trimmedOrderId };
+  }
+
+  const orderData = orderDoc.data() || {};
+  const userId = orderData.userId;
+
+  await orderRef.delete();
+
+  if (userId) {
+    const userOrderRef = usersCollection.doc(userId).collection('orders').doc(trimmedOrderId);
+    await userOrderRef.delete();
+  }
+
+  return { ok: true, orderId: trimmedOrderId, userId: userId || null };
+}
+
+app.post('/orders/bulk-delete', async (req, res) => {
+  try {
+    const incomingIds = Array.isArray(req.body?.orderIds)
+      ? req.body.orderIds
+      : Array.isArray(req.body?.ids)
+        ? req.body.ids
+        : null;
+
+    if (!incomingIds) {
+      return res.status(400).json({
+        error: 'orderIds array is required.',
+      });
+    }
+
+    if (!incomingIds.length) {
+      return res.status(400).json({ error: 'At least one order ID is required.' });
+    }
+
+    if (incomingIds.length > 100) {
+      return res.status(400).json({ error: 'A maximum of 100 order IDs is allowed per request.' });
+    }
+
+    const normalizedOrderIds = [...new Set(incomingIds.map((id) => String(id || '').trim()).filter(Boolean))];
+    const deleted = [];
+    const notFound = [];
+    const failed = [];
+
+    for (const orderId of normalizedOrderIds) {
+      try {
+        const result = await deleteOrderFromCollections(orderId);
+        if (result.ok) {
+          deleted.push(result.orderId);
+        } else if (result.status === 404) {
+          notFound.push(result.orderId || orderId);
+        } else {
+          failed.push({ orderId, error: result.error || 'Failed to delete order.' });
+        }
+      } catch (error) {
+        failed.push({ orderId, error: error?.message || 'Failed to delete order.' });
+      }
+    }
+
+    const statusCode = failed.length ? 207 : 200;
+    return res.status(statusCode).json({
+      message: 'Bulk delete completed.',
+      totalRequested: incomingIds.length,
+      totalUniqueIds: normalizedOrderIds.length,
+      deletedCount: deleted.length,
+      notFoundCount: notFound.length,
+      failedCount: failed.length,
+      deleted,
+      notFound,
+      failed,
+    });
+  } catch (err) {
+    console.error('Error bulk deleting orders:', err);
+    return res.status(500).json({ error: 'Failed to bulk delete orders.' });
+  }
+});
+
 app.delete("/orders/:id", async (req, res) => {
   try {
     const orderId = req.params.id;
-    const orderRef = ordersCollection.doc(orderId);
-    const orderDoc = await orderRef.get();
+    const result = await deleteOrderFromCollections(orderId);
 
-    if (!orderDoc.exists) {
-      return res.status(404).json({ error: "Order not found." });
+    if (!result.ok) {
+      return res.status(result.status || 400).json({ error: result.error || 'Failed to delete order.' });
     }
 
-    const orderData = orderDoc.data();
-    const userId = orderData.userId;
+    console.log(`[Order Action] Deleted order ${result.orderId} userId=${result.userId || 'none'}`);
 
-    // Delete from the main collection
-    await orderRef.delete();
-
-    // If a userId is associated, delete from the user's subcollection as well
-    if (userId) {
-      const userOrderRef = usersCollection.doc(userId).collection("orders").doc(orderId);
-      await userOrderRef.delete();
-    }
-
-    console.log(`[Order Action] Deleted order ${orderId} userId=${userId || 'none'}`);
-
-    res.status(200).json({ message: `Order ${orderId} deleted successfully.` });
+    res.status(200).json({ message: `Order ${result.orderId} deleted successfully.` });
   } catch (err) {
     console.error("Error deleting order:", err);
     res.status(500).json({ error: "Failed to delete order." });
@@ -9012,26 +9084,13 @@ exports.onSupportTicketCreated = functions.firestore
 app.delete("/orders/:id", async (req, res) => {
   try {
     const orderId = req.params.id;
-    const orderRef = ordersCollection.doc(orderId);
-    const orderDoc = await orderRef.get();
+    const result = await deleteOrderFromCollections(orderId);
 
-    if (!orderDoc.exists) {
-      return res.status(404).json({ error: "Order not found." });
+    if (!result.ok) {
+      return res.status(result.status || 400).json({ error: result.error || 'Failed to delete order.' });
     }
 
-    const orderData = orderDoc.data();
-    const userId = orderData.userId;
-
-    // Delete from the main collection
-    await orderRef.delete();
-
-    // If a userId is associated, delete from the user's subcollection as well
-    if (userId) {
-      const userOrderRef = usersCollection.doc(userId).collection("orders").doc(orderId);
-      await userOrderRef.delete();
-    }
-
-    res.status(200).json({ message: `Order ${orderId} deleted successfully.` });
+    res.status(200).json({ message: `Order ${result.orderId} deleted successfully.` });
   } catch (err) {
     console.error("Error deleting order:", err);
     res.status(500).json({ error: "Failed to delete order." });
