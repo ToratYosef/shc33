@@ -7,7 +7,11 @@
     "chat-ma": "./bin/chat.js"
   },
   "scripts": {
-    "serve": "node server/server.js"
+    "serve": "node server/server.js",
+    "pm2:start": "npx pm2 start ecosystem.config.cjs --update-env",
+    "pm2:restart": "npx pm2 restart chat-ma --update-env",
+    "pm2:stop": "npx pm2 stop chat-ma",
+    "pm2:logs": "npx pm2 logs chat-ma"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

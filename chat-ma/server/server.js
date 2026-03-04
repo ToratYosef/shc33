@@ -34,8 +34,28 @@ function getBearer(req) {
   }
 }
 
+function getPathname(reqUrl) {
+  const base = reqUrl.startsWith('http') ? undefined : 'http://localhost';
+  return new URL(reqUrl, base).pathname;
+}
+
+function stripBasePath(pathname) {
+  if (!config.basePath) return pathname;
+  if (pathname === config.basePath) return '/';
+  if (pathname.startsWith(`${config.basePath}/`)) {
+    return pathname.slice(config.basePath.length);
+  }
+  return pathname;
+}
+
 const server = http.createServer(async (req, res) => {
-  if (req.method === 'POST' && req.url === '/register') {
+  const pathname = stripBasePath(getPathname(req.url));
+
+  if (req.method === 'GET' && pathname === '/health') {
+    return json(res, 200, { ok: true, basePath: config.basePath || '/' });
+  }
+
+  if (req.method === 'POST' && pathname === '/register') {
     const limit = authLimiter(`register:${getIp(req)}`);
     if (!limit.allowed) return json(res, 429, { error: 'Too many attempts' });
     try {
@@ -50,7 +70,7 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  if (req.method === 'POST' && req.url === '/login') {
+  if (req.method === 'POST' && pathname === '/login') {
     const limit = authLimiter(`login:${getIp(req)}`);
     if (!limit.allowed) return json(res, 429, { error: 'Too many attempts' });
     try {
@@ -65,7 +85,7 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  if (req.method === 'POST' && req.url === '/send') {
+  if (req.method === 'POST' && pathname === '/send') {
     const auth = getBearer(req);
     if (!auth) return json(res, 401, { error: 'Unauthorized' });
     try {
@@ -83,7 +103,7 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  if (req.method === 'POST' && req.url === '/verify-password') {
+  if (req.method === 'POST' && pathname === '/verify-password') {
     const auth = getBearer(req);
     if (!auth) return json(res, 401, { error: 'Unauthorized' });
 
@@ -102,5 +122,7 @@ const server = http.createServer(async (req, res) => {
 attachWsServer(server);
 
 server.listen(config.port, () => {
-  process.stdout.write(`chat-ma server listening on ${config.port}\n`);
+  process.stdout.write(
+    `chat-ma server listening on ${config.port} (basePath: ${config.basePath || '/'})\n`
+  );
 });

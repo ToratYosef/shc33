@@ -1,4 +1,5 @@
 import { WebSocketServer } from 'ws';
+import { config } from './config.js';
 import { verifyToken } from './auth.js';
 import {
   deleteMessage,
@@ -9,11 +10,20 @@ import {
 
 const sessionsByUser = new Map();
 
+function getPathname(reqUrl) {
+  const base = reqUrl.startsWith('http') ? undefined : 'http://localhost';
+  return new URL(reqUrl, base).pathname;
+}
+
+function wsPath() {
+  return `${config.basePath || ''}/ws`;
+}
+
 export function attachWsServer(httpServer) {
   const wss = new WebSocketServer({ noServer: true });
 
   httpServer.on('upgrade', (req, socket, head) => {
-    if (req.url !== '/ws') {
+    if (getPathname(req.url) !== wsPath()) {
       socket.destroy();
       return;
     }

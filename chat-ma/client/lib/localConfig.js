@@ -5,21 +5,27 @@ import path from 'path';
 const cfgDir = path.join(os.homedir(), '.chat-ma');
 const cfgPath = path.join(cfgDir, 'config.json');
 
+function normalizeServerUrl(url) {
+  if (!url) return url;
+  return url.replace(/\/+$/, '');
+}
+
 export function loadLocalConfig() {
   try {
     return JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
   } catch {
     const envUrl = process.env.CHAT_MA_SERVER;
-    const envPort = process.env.PORT;
-    const defaultPort = envPort ? Number(envPort) : 3000;
+    const defaultHosted = 'https://api.secondhandcell.com/chat-ma';
     return {
-      serverUrl: envUrl || `http://localhost:${defaultPort}`
+      serverUrl: normalizeServerUrl(envUrl || defaultHosted)
     };
   }
 }
 
 export function getServerCandidates(cfg) {
-  const preferred = cfg.serverUrl || process.env.CHAT_MA_SERVER || 'http://localhost:3000';
+  const preferred = normalizeServerUrl(
+    cfg.serverUrl || process.env.CHAT_MA_SERVER || 'https://api.secondhandcell.com/chat-ma'
+  );
   const candidates = [preferred];
 
   if (/localhost:3000\/?$/.test(preferred)) {
@@ -30,12 +36,20 @@ export function getServerCandidates(cfg) {
     candidates.push(preferred.replace('127.0.0.1:3000', '127.0.0.1:3001'));
   }
 
-  return [...new Set(candidates)];
+  if (preferred.endsWith('/chat-ma')) {
+    candidates.push(preferred.replace(/\/chat-ma$/, ''));
+  }
+
+  return [...new Set(candidates.map(normalizeServerUrl).filter(Boolean))];
 }
 
 export function saveLocalConfig(partial) {
   const current = loadLocalConfig();
-  const merged = { ...current, ...partial };
+  const merged = {
+    ...current,
+    ...partial,
+    ...(partial.serverUrl ? { serverUrl: normalizeServerUrl(partial.serverUrl) } : {})
+  };
   fs.mkdirSync(cfgDir, { recursive: true });
   fs.writeFileSync(cfgPath, JSON.stringify(merged, null, 2));
   return merged;
