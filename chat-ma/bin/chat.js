@@ -3,7 +3,12 @@ import blessed from 'blessed';
 import ora from 'ora';
 import cliProgress from 'cli-progress';
 import { askCredentials, askSendPayload } from '../client/lib/prompts.js';
-import { loadLocalConfig, requireAuthConfig, saveLocalConfig } from '../client/lib/localConfig.js';
+import {
+  getServerCandidates,
+  loadLocalConfig,
+  requireAuthConfig,
+  saveLocalConfig
+} from '../client/lib/localConfig.js';
 import { printBanner } from '../client/lib/ui.js';
 import {
   showAuthorizedBox,
@@ -33,15 +38,41 @@ async function postJson(url, payload, token) {
   return data;
 }
 
+function withPath(baseUrl, path) {
+  return `${baseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
+}
+
+async function postJsonWithFallback(cfg, path, payload, token) {
+  const urls = getServerCandidates(cfg);
+  let lastError;
+
+  for (const baseUrl of urls) {
+    try {
+      const data = await postJson(withPath(baseUrl, path), payload, token);
+      return { data, baseUrl };
+    } catch (err) {
+      lastError = err;
+      if (err?.message !== 'fetch failed') {
+        throw err;
+      }
+    }
+  }
+
+  throw new Error(
+    `${lastError?.message || 'Request failed'} (server unreachable: tried ${urls.join(', ')}). ` +
+      'Start server with: npm run serve, or set CHAT_MA_SERVER=http://host:port/chat-ma'
+  );
+}
+
 async function register() {
   printBanner();
   const cfg = loadLocalConfig();
   const { username, password } = await askCredentials('Register');
   const spinner = ora('Provisioning identity...').start();
   try {
-    const data = await postJson(`${cfg.serverUrl}/register`, { username, password });
+    const { data, baseUrl } = await postJsonWithFallback(cfg, '/register', { username, password });
     spinner.succeed('Identity created');
-    saveLocalConfig({ token: data.token, username: data.username, serverUrl: cfg.serverUrl });
+    saveLocalConfig({ token: data.token, username: data.username, serverUrl: baseUrl });
     showAuthorizedBox();
   } catch (err) {
     spinner.fail(err.message);
@@ -55,9 +86,9 @@ async function login() {
   const { username, password } = await askCredentials('Login');
   const spinner = ora('Authenticating...').start();
   try {
-    const data = await postJson(`${cfg.serverUrl}/login`, { username, password });
+    const { data, baseUrl } = await postJsonWithFallback(cfg, '/login', { username, password });
     spinner.succeed('Session established');
-    saveLocalConfig({ token: data.token, username: data.username, serverUrl: cfg.serverUrl });
+    saveLocalConfig({ token: data.token, username: data.username, serverUrl: baseUrl });
     showAuthorizedBox();
   } catch (err) {
     spinner.fail(err.message);
@@ -80,7 +111,8 @@ async function send() {
   bar.update(85);
 
   try {
-    await postJson(`${cfg.serverUrl}/send`, { to, body }, cfg.token);
+    const { baseUrl } = await postJsonWithFallback(cfg, '/send', { to, body }, cfg.token);
+    saveLocalConfig({ serverUrl: baseUrl });
     bar.update(100);
     bar.stop();
     showMessageSentBox();
@@ -237,7 +269,8 @@ async function openInbox() {
       screen.render();
       const password = await askPasswordInScreen(screen);
       try {
-        await postJson(`${cfg.serverUrl}/verify-password`, { password }, cfg.token);
+        const { baseUrl } = await postJsonWithFallback(cfg, '/verify-password', { password }, cfg.token);
+        saveLocalConfig({ serverUrl: baseUrl });
         ws.send(JSON.stringify({ type: 'VIEW_REQUEST', id: currentIncoming.id }));
       } catch {
         modal.setItems(['', ' ACCESS DENIED ', '', ' [ OK ]']);

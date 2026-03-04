@@ -17,13 +17,58 @@ Cinematic Matrix-style one-time terminal messenger distributed as an npm CLI pac
 npm install
 ```
 
-## Run server
+## Server URL used by CLI
+
+Default CLI server URL is:
+
+`https://api.secondhandcell.com/chat-ma`
+
+Override any time with:
+
+```bash
+export CHAT_MA_SERVER=https://api.secondhandcell.com/chat-ma
+```
+
+## Run server directly
 
 ```bash
 npm run serve
 ```
 
-Server default: `http://localhost:3000`
+Server defaults:
+
+- `PORT=3000`
+- `CHAT_MA_BASE_PATH=/chat-ma`
+
+So API endpoints are served under `/chat-ma/*`.
+
+## Run server with PM2 (always on)
+
+```bash
+npm run pm2:start
+npm run pm2:logs
+```
+
+Restart / stop:
+
+```bash
+npm run pm2:restart
+npm run pm2:stop
+```
+
+Persist across host reboot:
+
+```bash
+npx pm2 save
+npx pm2 startup
+```
+
+## Reverse proxy example
+
+Proxy `https://api.secondhandcell.com/chat-ma` (including websocket upgrades) to your Node process on `127.0.0.1:3000`.
+
+- HTTP: `/chat-ma/register`, `/chat-ma/login`, `/chat-ma/send`, `/chat-ma/verify-password`
+- WS: `/chat-ma/ws`
 
 ## Use CLI
 
@@ -44,7 +89,7 @@ Example:
 
 ```json
 {
-  "serverUrl": "http://localhost:3000",
+  "serverUrl": "https://api.secondhandcell.com/chat-ma",
   "token": "...",
   "username": "alice"
 }

@@ -1,7 +1,11 @@
 import WebSocket from 'ws';
 
+function withPath(baseUrl, path) {
+  return `${baseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
+}
+
 export function connectWs(serverHttpUrl, token, handlers) {
-  const wsUrl = serverHttpUrl.replace(/^http/, 'ws') + '/ws';
+  const wsUrl = withPath(serverHttpUrl.replace(/^http/, 'ws'), '/ws');
   const ws = new WebSocket(wsUrl);
 
   ws.on('open', () => {
