@@ -51,6 +51,15 @@ function stripBasePath(pathname) {
 const server = http.createServer(async (req, res) => {
   const pathname = stripBasePath(getPathname(req.url));
 
+  if (req.method === 'GET' && pathname === '/') {
+    return json(res, 200, {
+      ok: true,
+      service: 'chat-ma',
+      basePath: config.basePath || '/',
+      endpoints: ['POST /register', 'POST /login', 'POST /send', 'POST /verify-password', 'GET /health', 'WS /ws']
+    });
+  }
+
   if (req.method === 'GET' && pathname === '/health') {
     return json(res, 200, { ok: true, basePath: config.basePath || '/' });
   }
@@ -116,7 +125,12 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  json(res, 404, { error: 'Not found' });
+  json(res, 404, {
+    ok: false,
+    error: 'Not found',
+    path: getPathname(req.url),
+    expectedBasePath: config.basePath || '/'
+  });
 });
 
 attachWsServer(server);

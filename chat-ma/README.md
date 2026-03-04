@@ -68,6 +68,7 @@ npx pm2 startup
 Proxy `https://api.secondhandcell.com/chat-ma` (including websocket upgrades) to your Node process on `127.0.0.1:3000`.
 
 - HTTP: `/chat-ma/register`, `/chat-ma/login`, `/chat-ma/send`, `/chat-ma/verify-password`
+- Base check: `GET /chat-ma` and `GET /chat-ma/health`
 - WS: `/chat-ma/ws`
 
 ## Use CLI
