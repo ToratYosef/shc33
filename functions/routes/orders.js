@@ -2006,33 +2006,47 @@ function createOrdersRouter({
       }
 
       const order = { id: doc.id, ...doc.data() };
-      const missing = [];
-
-      if (!order.outboundLabelUrl) {
-        missing.push('outboundLabelUrl');
-      }
-      if (!order.inboundLabelUrl) {
-        missing.push('inboundLabelUrl');
-      }
-
-      if (missing.length) {
-        return res.status(400).json({
-          error: `Missing required label URL(s): ${missing.join(', ')}`,
-        });
-      }
 
       async function fetchPdfBuffer(url) {
-        const response = await axios.get(url, { responseType: 'arraybuffer' });
-        return Buffer.from(response.data);
+        if (!url) {
+          return null;
+        }
+
+        try {
+          const response = await axios.get(url, { responseType: 'arraybuffer' });
+          const buffer = Buffer.from(response.data);
+          return buffer.length ? buffer : null;
+        } catch (downloadError) {
+          console.error(
+            `Failed to download print-bundle PDF part from ${url}:`,
+            downloadError.message || downloadError
+          );
+          return null;
+        }
       }
+
+      function resolveRequestOrigin(request) {
+        const forwardedProtoRaw = String(request.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+        const forwardedHostRaw = String(request.headers['x-forwarded-host'] || '').split(',')[0].trim();
+        const hostRaw = String(request.get('host') || '').trim();
+        const protocol = forwardedProtoRaw || request.protocol || 'https';
+        const host = forwardedHostRaw || hostRaw;
+        return host ? `${protocol}://${host}` : null;
+      }
+
+      const origin = resolveRequestOrigin(req);
+      const packingSlipUrl = origin
+        ? `${origin}/packing-slip/${encodeURIComponent(order.id)}`
+        : null;
 
       const outboundBuffer = await fetchPdfBuffer(order.outboundLabelUrl);
       const inboundBuffer = await fetchPdfBuffer(order.inboundLabelUrl);
-
-      const host = req.get('host');
-      const protocol = req.protocol || 'https';
-      const packingSlipUrl = `${protocol}://${host}/packing-slip/${encodeURIComponent(order.id)}`;
       const packingSlipBuffer = await fetchPdfBuffer(packingSlipUrl);
+
+      const pdfParts = [outboundBuffer, inboundBuffer, packingSlipBuffer].filter(Boolean);
+      if (!pdfParts.length) {
+        return res.status(500).json({ error: 'Failed to prepare print bundle' });
+      }
 
       const merged = await mergePdfBuffers([
         outboundBuffer,
