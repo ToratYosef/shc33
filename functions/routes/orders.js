@@ -1031,7 +1031,20 @@ function createOrdersRouter({
       }
 
       const normalizeAmount = (value) => {
-        const numeric = Number(value);
+        if (value === null || typeof value === 'undefined') {
+          return null;
+        }
+
+        if (typeof value === 'number') {
+          return Number.isFinite(value) ? value : null;
+        }
+
+        const cleaned = String(value).replace(/[^0-9.-]/g, '');
+        if (!cleaned || cleaned === '-' || cleaned === '.' || cleaned === '-.') {
+          return null;
+        }
+
+        const numeric = Number(cleaned);
         return Number.isFinite(numeric) ? numeric : null;
       };
 
