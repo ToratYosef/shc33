@@ -2006,43 +2006,39 @@ function createOrdersRouter({
       }
 
       const order = { id: doc.id, ...doc.data() };
-      const labelUrlCandidates = [];
+      const missing = [];
 
-      if (order.shippingPreference === 'Shipping Kit Requested') {
-        labelUrlCandidates.push(order.outboundLabelUrl, order.inboundLabelUrl);
-      } else if (order.uspsLabelUrl) {
-        labelUrlCandidates.push(order.uspsLabelUrl);
-      } else {
-        labelUrlCandidates.push(order.outboundLabelUrl, order.inboundLabelUrl);
+      if (!order.outboundLabelUrl) {
+        missing.push('outboundLabelUrl');
+      }
+      if (!order.inboundLabelUrl) {
+        missing.push('inboundLabelUrl');
       }
 
-      const uniqueLabelUrls = Array.from(
-        new Set(labelUrlCandidates.filter(Boolean))
-      );
+      if (missing.length) {
+        return res.status(400).json({
+          error: `Missing required label URL(s): ${missing.join(', ')}`,
+        });
+      }
 
-      const downloadedLabels = await Promise.all(
-        uniqueLabelUrls.map(async (url) => {
-          try {
-            const response = await axios.get(url, { responseType: 'arraybuffer' });
-            return Buffer.from(response.data);
-          } catch (downloadError) {
-            console.error(
-              `Failed to download label from ${url}:`,
-              downloadError.message || downloadError
-            );
-            return null;
-          }
-        })
-      );
+      async function fetchPdfBuffer(url) {
+        const response = await axios.get(url, { responseType: 'arraybuffer' });
+        return Buffer.from(response.data);
+      }
 
-      const bagLabelData = await generateBagLabelPdf(order);
+      const outboundBuffer = await fetchPdfBuffer(order.outboundLabelUrl);
+      const inboundBuffer = await fetchPdfBuffer(order.inboundLabelUrl);
 
-      const pdfParts = [
-        ...downloadedLabels.filter(Boolean),
-        Buffer.isBuffer(bagLabelData) ? bagLabelData : Buffer.from(bagLabelData),
-      ].filter(Boolean);
+      const host = req.get('host');
+      const protocol = req.protocol || 'https';
+      const packingSlipUrl = `${protocol}://${host}/packing-slip/${encodeURIComponent(order.id)}`;
+      const packingSlipBuffer = await fetchPdfBuffer(packingSlipUrl);
 
-      const merged = await mergePdfBuffers(pdfParts);
+      const merged = await mergePdfBuffers([
+        outboundBuffer,
+        inboundBuffer,
+        packingSlipBuffer,
+      ]);
       const mergedBuffer = Buffer.isBuffer(merged) ? merged : Buffer.from(merged);
 
       res.setHeader('Content-Type', 'application/pdf');
