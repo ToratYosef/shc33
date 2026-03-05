@@ -1221,27 +1221,6 @@ function createOrdersRouter({
         return 'N/A';
       };
 
-      const powerStatus = formatCondition(
-        orderData.condition_power_on || 
-        conditions.power || 
-        conditions.powersOn || 
-        conditions.powerOn
-      );
-      
-      const functionalStatus = formatCondition(
-        orderData.condition_functional || 
-        conditions.functionality || 
-        conditions.fullyFunctional || 
-        conditions.functional
-      );
-      
-      const crackStatus = formatCondition(
-        orderData.condition_cracks || 
-        conditions.quality || 
-        conditions.noCracks || 
-        conditions.cracks
-      );
-      
       const cosmeticGrade = formatCondition(
         orderData.condition_cosmetic || 
         conditions.cosmetic || 
@@ -1284,9 +1263,6 @@ function createOrdersRouter({
         .replace(/\*\*PAYMENT_METHOD\*\*/g, orderData.paymentMethod || 'Not provided')
         .replace(/\*\*PAYMENT_INFO\*\*/g, paymentInfo)
         .replace(/\*\*SHIPPING_ADDRESS\*\*/g, shippingAddress)
-        .replace(/\*\*POWER_STATUS\*\*/g, powerStatus)
-        .replace(/\*\*FUNCTIONAL_STATUS\*\*/g, functionalStatus)
-        .replace(/\*\*CRACK_STATUS\*\*/g, crackStatus)
         .replace(/\*\*COSMETIC_GRADE\*\*/g, cosmeticGrade);
 
       const customerMailOptions = {
