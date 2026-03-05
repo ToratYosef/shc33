@@ -73,6 +73,47 @@ function createOrdersRouter({
     dimensions: { unit: 'inch', height: 2, width: 4, length: 6 },
   };
 
+  const SHIPPING_PREFERENCE = {
+    KIT: 'shipping_kit_requested',
+    EMAIL_LABEL: 'email_label_requested',
+    NO_LABEL: 'no_label_customer_send',
+  };
+
+  function normalizeShippingPreference(preference) {
+    const value = String(preference || '').trim().toLowerCase();
+
+    if (!value) {
+      return SHIPPING_PREFERENCE.EMAIL_LABEL;
+    }
+
+    if (value.includes('kit')) {
+      return SHIPPING_PREFERENCE.KIT;
+    }
+
+    if (
+      value.includes('no label') ||
+      value.includes('without label') ||
+      value.includes('customer send') ||
+      value.includes('self ship')
+    ) {
+      return SHIPPING_PREFERENCE.NO_LABEL;
+    }
+
+    return SHIPPING_PREFERENCE.EMAIL_LABEL;
+  }
+
+  function resolveShippingPreferenceLabel(normalizedPreference) {
+    if (normalizedPreference === SHIPPING_PREFERENCE.KIT) {
+      return 'Shipping Kit Requested';
+    }
+
+    if (normalizedPreference === SHIPPING_PREFERENCE.NO_LABEL) {
+      return 'No Label - Customer Send';
+    }
+
+    return 'Email Label Requested';
+  }
+
   function resolveOrderDeviceCount(order = {}) {
     const items = Array.isArray(order.items) ? order.items : [];
     const itemCount = items.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
@@ -1101,6 +1142,13 @@ function createOrdersRouter({
 
       const orderId = await generateNextOrderNumber();
       const finalPayout = payoutToPersist;
+      const normalizedShippingPreference = normalizeShippingPreference(
+        orderData.shippingPreference || orderData.shipping_preference
+      );
+      orderData.shippingPreference = resolveShippingPreferenceLabel(
+        normalizedShippingPreference
+      );
+      orderData.shippingPreferenceNormalized = normalizedShippingPreference;
       orderData.totalPayout = finalPayout;
       orderData.estimatedQuote =
         Number.isFinite(normalizedEstimated) && normalizedEstimated !== null
@@ -1136,8 +1184,10 @@ function createOrdersRouter({
 
       let shippingInstructions = '';
       let newOrderStatus =
-        orderData.shippingPreference === 'Shipping Kit Requested'
+        normalizedShippingPreference === SHIPPING_PREFERENCE.KIT
           ? 'shipping_kit_requested'
+          : normalizedShippingPreference === SHIPPING_PREFERENCE.NO_LABEL
+            ? 'pending_customer_send'
           : 'order_pending';
       let autoLabelResult = null;
       const trackOrderUrl = `https://secondhandcell.com/track-order.html?orderId=${encodeURIComponent(orderId)}&fromEmailLink=1`;
@@ -1147,7 +1197,7 @@ function createOrdersRouter({
         </div>
       `;
 
-      if (orderData.shippingPreference === 'Email Label Requested') {
+      if (normalizedShippingPreference === SHIPPING_PREFERENCE.EMAIL_LABEL) {
         try {
           autoLabelResult = await autoGenerateEmailLabel(orderId, orderData);
           newOrderStatus = 'label_generated';
@@ -1159,7 +1209,7 @@ function createOrdersRouter({
         }
       }
 
-      if (orderData.shippingPreference === 'Shipping Kit Requested') {
+      if (normalizedShippingPreference === SHIPPING_PREFERENCE.KIT) {
         shippingInstructions = `
         <div style="margin-top: 24px;">
           <h2 style="font-size:18px; color:#0f172a; margin:0 0 10px;">Shipping kit instructions</h2>
@@ -1170,6 +1220,19 @@ function createOrdersRouter({
             <li style="margin-bottom:8px;">Seal the mailer firmly, attach the prepaid label, and drop it at any USPS location.</li>
           </ol>
           <p style="margin:0; color:#475569;">Keep your USPS receipt for tracking. Questions? Just reply to this email.</p>
+          ${trackStatusButtonHtml}
+        </div>
+      `;
+      } else if (normalizedShippingPreference === SHIPPING_PREFERENCE.NO_LABEL) {
+        shippingInstructions = `
+        <div style="margin-top: 24px;">
+          <h2 style="font-size:18px; color:#0f172a; margin:0 0 10px;">Ship on your own</h2>
+          <p style="margin:0 0 12px; color:#475569;">No prepaid label was requested for this order. You can ship your device to us using your own carrier and packaging.</p>
+          <ol style="margin:0 0 12px 18px; padding-left:18px; color:#475569;">
+            <li style="margin-bottom:8px;">Include your order number <strong>#${orderId}</strong> inside the package.</li>
+            <li style="margin-bottom:8px;">Use tracked shipping and keep your carrier receipt until your order is completed.</li>
+            <li style="margin-bottom:8px;">Reply to this email with your tracking number once shipped so we can update your order.</li>
+          </ol>
           ${trackStatusButtonHtml}
         </div>
       `;
@@ -1350,8 +1413,10 @@ function createOrdersRouter({
         responsePayload.autoLabelTrackingNumber =
           autoLabelResult.trackingNumber;
         responsePayload.autoLabelStatus = 'generated';
-      } else if (orderData.shippingPreference === 'Email Label Requested') {
+      } else if (normalizedShippingPreference === SHIPPING_PREFERENCE.EMAIL_LABEL) {
         responsePayload.autoLabelStatus = 'pending';
+      } else if (normalizedShippingPreference === SHIPPING_PREFERENCE.NO_LABEL) {
+        responsePayload.autoLabelStatus = 'skipped_no_label';
       }
 
       res.status(201).json(responsePayload);
@@ -1368,6 +1433,9 @@ function createOrdersRouter({
       if (!doc.exists) return res.status(404).json({ error: 'Order not found' });
 
       const order = { id: doc.id, ...doc.data() };
+      const normalizedShippingPreference = normalizeShippingPreference(
+        order.shippingPreferenceNormalized || order.shippingPreference
+      );
       const deviceCount = resolveOrderDeviceCount(order);
       const buyerShippingInfo = order.shippingInfo;
       const orderIdForLabel = order.id || 'N/A';
@@ -1375,7 +1443,7 @@ function createOrdersRouter({
       const statusTimestamp = nowTimestamp;
       const labelRecords = cloneShipEngineLabelMap(order.shipEngineLabels);
       const generatedStatus =
-        order.shippingPreference === 'Shipping Kit Requested'
+        normalizedShippingPreference === SHIPPING_PREFERENCE.KIT
           ? 'needs_printing'
           : 'label_generated';
 
@@ -1435,7 +1503,7 @@ function createOrdersRouter({
       let customerEmailHtml = '';
       let customerMailOptions;
 
-      if (order.shippingPreference === 'Shipping Kit Requested') {
+      if (normalizedShippingPreference === SHIPPING_PREFERENCE.KIT) {
         const outboundLabelData = await createShipEngineLabel(
           swiftBuyBackAddress,
           buyerAddress,
@@ -1541,7 +1609,7 @@ function createOrdersRouter({
           subject: customerEmailSubject,
           html: customerEmailHtml,
         };
-      } else if (order.shippingPreference === 'Email Label Requested') {
+      } else if (normalizedShippingPreference === SHIPPING_PREFERENCE.EMAIL_LABEL) {
         customerLabelData = await createShipEngineLabel(
           buyerAddress,
           swiftBuyBackAddress,
@@ -1615,6 +1683,11 @@ function createOrdersRouter({
           subject: customerEmailSubject,
           html: customerEmailHtml,
         };
+      } else if (normalizedShippingPreference === SHIPPING_PREFERENCE.NO_LABEL) {
+        throw buildHttpError(
+          'This order is set to No Label - Customer Send. Use manual shipping label if needed.',
+          400
+        );
       } else {
         throw new Error(`Unknown shipping preference: ${order.shippingPreference}`);
       }
