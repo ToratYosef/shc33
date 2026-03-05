@@ -1,5 +1,5 @@
-# Synapse configuration template (OPTIONAL) using local Postgres on this same VPS.
-# No external database link is needed.
+# Synapse configuration template (DEFAULT) using local SQLite on VPS disk.
+# This keeps all persistence local to your VPS under ./chat/synapse/data
 
 server_name: "example.com"
 pid_file: /data/homeserver.pid
@@ -16,9 +16,9 @@ listeners:
 
 log_config: "/data/example.com.log.config"
 media_store_path: /data/media_store
-registration_shared_secret: "CHANGE_ME_REGISTRATION_SECRET"
-macaroon_secret_key: "CHANGE_ME_MACAROON_SECRET"
-form_secret: "CHANGE_ME_FORM_SECRET"
+registration_shared_secret: "72e4ebe633f0a41f511015c63393e505"
+macaroon_secret_key: "64fdff590308367606edbce6f7d446ea"
+form_secret: "917a32c5ff3039c5ec413379f9a9a735"
 signing_key_path: "/data/example.com.signing.key"
 trusted_key_servers:
   - server_name: "matrix.org"
@@ -57,15 +57,19 @@ federation_rc_concurrent:
   reject_limit: 50
   concurrent: 3
 
-# Local Postgres container on same VPS
+# Local DB on VPS disk (no external DB service required)
 database:
-  name: psycopg2
+  name: sqlite3
   args:
-    user: "synapse"
-    password: "CHANGE_ME_LOCAL_DB_PASSWORD"
-    database: "synapse"
-    host: "postgres"
-    cp_min: 5
-    cp_max: 10
+    database: /data/homeserver.db
 
 url_preview_enabled: false
+
+# Notes:
+# 1) To initially generate config in /data:
+#    docker run --rm -it -v ./chat/synapse/data:/data \
+#      -e SYNAPSE_SERVER_NAME=example.com \
+#      -e SYNAPSE_REPORT_STATS=no matrixdotorg/synapse:latest generate
+# 2) Create a local user:
+#    docker exec -it chat-synapse register_new_matrix_user \
+#      -c /data/homeserver.yaml http://localhost:8008

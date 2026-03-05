@@ -1,7 +1,0 @@
-.env
-synapse/data/*
-!synapse/data/.gitkeep
-synapse/postgres/*
-!synapse/postgres/.gitkeep
-nginx/certs/*
-!nginx/certs/.gitkeep
