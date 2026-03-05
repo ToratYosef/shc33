@@ -158,9 +158,6 @@ async function generateCustomLabelPdf(order) {
     drawKeyValue('Estimated Payout', `$${formatCurrency(estimatedPayout)}`);
 
     drawSectionTitle('Conditions');
-    drawKeyValue('Powers On?', formatValue(order.condition_power_on));
-    drawKeyValue('Fully Functional?', formatValue(order.condition_functional));
-    drawKeyValue('Any Cracks?', formatValue(order.condition_cracks));
     drawKeyValue('Cosmetic Condition', formatValue(order.condition_cosmetic));
 
     ensureSpace(4);
@@ -422,8 +419,6 @@ function formatCurrency(value) {
 
 function buildConditionSummary(order = {}) {
     const segments = [
-        order.condition_power_on ? `Powers On: ${formatValue(order.condition_power_on)}` : null,
-        order.condition_functional ? `Functional: ${formatValue(order.condition_functional)}` : null,
         order.condition_cosmetic ? `Cosmetic: ${formatValue(order.condition_cosmetic)}` : null,
     ].filter(Boolean);
 

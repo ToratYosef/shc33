@@ -338,9 +338,6 @@ const ORDER_PLACED_ADMIN_EMAIL_HTML = buildEmailLayout({
         <p style="margin:0 0 10px;"><strong>Shipping Address:</strong><br>**SHIPPING_ADDRESS**</p>
         <div style="margin-top:12px; padding:12px 14px; background:#fff; border:1px solid #fed7aa; border-radius:12px;">
           <p style="margin:0 0 6px;"><strong>Conditions:</strong></p>
-          <p style="margin:0 0 4px;">Powers On: **POWER_STATUS**</p>
-          <p style="margin:0 0 4px;">Fully Functional: **FUNCTIONAL_STATUS**</p>
-          <p style="margin:0 0 4px;">No Cracks: **CRACK_STATUS**</p>
           <p style="margin:0;">Cosmetic: **COSMETIC_GRADE**</p>
         </div>
       </div>
