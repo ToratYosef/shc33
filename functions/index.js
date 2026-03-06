@@ -3053,9 +3053,10 @@ const AUTO_CANCEL_MONITORED_STATUSES = [
 
 const AUTO_CANCELLATION_ENABLED = false;
 
-const LABEL_REMINDER_STATUSES = new Set(["label_generated", "emailed"]);
-const LABEL_REMINDER_FIRST_DELAY_MS = 5 * 24 * 60 * 60 * 1000;
-const LABEL_REMINDER_SECOND_DELAY_MS = 10 * 24 * 60 * 60 * 1000;
+const LABEL_REMINDER_STATUSES = new Set(["label_generated"]);
+const LABEL_REMINDER_FIRST_DELAY_MS = 3 * 24 * 60 * 60 * 1000;
+const LABEL_REMINDER_SECOND_DELAY_MS = 5 * 24 * 60 * 60 * 1000;
+const LABEL_REMINDER_THIRD_DELAY_MS = 7 * 24 * 60 * 60 * 1000;
 const LABEL_REMINDER_MIN_GAP_MS = 24 * 60 * 60 * 1000;
 const ABANDONED_CHECKOUT_COLLECTION = "sellOrderProgress";
 const ABANDONED_CHECKOUT_SWEEP_MIN_GAP_MS = 6 * 60 * 60 * 1000;
@@ -5269,11 +5270,20 @@ async function sendLabelReminderEmail(order, { tier = 1 } = {}) {
   } else if (tier === 2 && !order.labelReminderSecondSentAt) {
     additionalUpdates.labelReminderSecondSentAt =
       admin.firestore.FieldValue.serverTimestamp();
+  } else if (tier === 3 && !order.labelReminderThirdSentAt) {
+    additionalUpdates.labelReminderThirdSentAt =
+      admin.firestore.FieldValue.serverTimestamp();
   }
+
+  const dayMarkerByTier = {
+    1: '3+',
+    2: '5+',
+    3: '7+',
+  };
 
   await recordCustomerEmail(
     order.id,
-    `Automated label reminder (day ${tier === 2 ? "10+" : "5+"}) sent to customer.`,
+    `Automated label reminder (day ${dayMarkerByTier[tier] || '3+'}) sent to customer.`,
     {
       status: order.status,
       auto: true,
@@ -7707,7 +7717,7 @@ async function runAutomaticInboundTrackingRefresh() {
 
   try {
   const snapshot = await ordersCollection
-    .where('status', 'in', ['label_generated', PHONE_TRANSIT_STATUS, 'phone_on_the_way_to_us'])
+    .where('status', 'in', ['label_generated', 'phone_on_the_way'])
     .limit(AUTO_TRACKING_REFRESH_QUERY_LIMIT)
     .get();
 
@@ -7940,10 +7950,7 @@ async function runAutomaticLabelReminderSweep() {
 
   for (const doc of snapshot.docs) {
     const order = { id: doc.id, ...doc.data() };
-    const labelStart =
-      getTimestampMillis(order.labelGeneratedAt) ||
-      getTimestampMillis(order.lastStatusUpdateAt) ||
-      getTimestampMillis(order.createdAt);
+    const labelStart = getTimestampMillis(order.createdAt);
 
     if (!labelStart) {
       continue;
@@ -7956,7 +7963,15 @@ async function runAutomaticLabelReminderSweep() {
     }
 
     let targetTier = null;
-    if (ageMs >= LABEL_REMINDER_SECOND_DELAY_MS && !order.labelReminderSecondSentAt) {
+    if (ageMs >= LABEL_REMINDER_THIRD_DELAY_MS && !order.labelReminderThirdSentAt) {
+      if (!order.labelReminderFirstSentAt) {
+        targetTier = 1;
+      } else if (!order.labelReminderSecondSentAt) {
+        targetTier = 2;
+      } else {
+        targetTier = 3;
+      }
+    } else if (ageMs >= LABEL_REMINDER_SECOND_DELAY_MS && !order.labelReminderSecondSentAt) {
       targetTier = order.labelReminderFirstSentAt ? 2 : 1;
     } else if (ageMs >= LABEL_REMINDER_FIRST_DELAY_MS && !order.labelReminderFirstSentAt) {
       targetTier = 1;
@@ -8288,7 +8303,7 @@ exports.autoSendAbandonedCheckoutEmails = functions.pubsub
   });
 
 exports.autoSendLabelReminderEmails = functions.pubsub
-  .schedule("every 24 hours")
+  .schedule("every 60 minutes")
   .onRun(async () => {
     try {
       await runAutomaticLabelReminderSweep();
@@ -8341,8 +8356,8 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
 
     const order = orderDoc.data();
     
-    // 6. Verify order status is label_generated/emailed
-    if (!['label_generated', 'emailed'].includes(order.status)) {
+    // 6. Verify order status is label_generated
+    if (!['label_generated'].includes(order.status)) {
       throw new functions.https.HttpsError('failed-precondition', 'Can only send reminders for orders with generated labels');
     }
 
