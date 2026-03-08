@@ -1229,6 +1229,9 @@ function createOrdersRouter({
         <div style="margin-top: 24px;">
           <h2 style="font-size:18px; color:#0f172a; margin:0 0 10px;">Ship on your own</h2>
           <p style="margin:0 0 12px; color:#475569;">No prepaid label was requested for this order. You can ship your device to us using your own carrier and packaging.</p>
+          <p style="margin:0 0 14px; font-size:20px; font-weight:800; line-height:1.5; color:#0f172a; background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:12px 14px;">
+            Our office is located at <strong>1602 McDonald Avenue, Brooklyn, New York 11230</strong> — this is where you should send your label and package.
+          </p>
           <ol style="margin:0 0 12px 18px; padding-left:18px; color:#475569;">
             <li style="margin-bottom:8px;">Include your order number <strong>#${orderId}</strong> inside the package.</li>
             <li style="margin-bottom:8px;">Use tracked shipping and keep your carrier receipt until your order is completed.</li>
