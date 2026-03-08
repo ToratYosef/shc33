@@ -73,6 +73,12 @@ function createOrdersRouter({
     dimensions: { unit: 'inch', height: 2, width: 4, length: 6 },
   };
 
+  const UPS_GROUND_HAZMAT_PROFILE = {
+    carrierCode: 'ups',
+    serviceCode: 'ups_ground',
+    carrierId: 'se-4054857',
+  };
+
   const SHIPPING_PREFERENCE = {
     KIT: 'shipping_kit_requested',
     EMAIL_LABEL: 'email_label_requested',
@@ -114,6 +120,21 @@ function createOrdersRouter({
     return 'Email Label Requested';
   }
 
+  function normalizeShippingOption(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  function isFasterUpsGroundHazmatOption(value) {
+    const normalized = normalizeShippingOption(value);
+    if (!normalized) {
+      return false;
+    }
+    if (normalized === 'faster_ups_ground_hazmat' || normalized === 'fast_shipping_ups_ground_hazmat') {
+      return true;
+    }
+    return normalized.includes('ups') && (normalized.includes('faster') || normalized.includes('fast') || normalized.includes('hazmat'));
+  }
+
   function resolveOrderDeviceCount(order = {}) {
     const items = Array.isArray(order.items) ? order.items : [];
     const itemCount = items.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
@@ -152,6 +173,7 @@ function createOrdersRouter({
 
     return {
       name: fullName,
+      company_name: fullName,
       phone: '3475591707',
       address_line1: streetAddress,
       city_locality: city,
@@ -1143,13 +1165,36 @@ function createOrdersRouter({
 
       const orderId = await generateNextOrderNumber();
       const finalPayout = payoutToPersist;
+      const rawShippingPreferenceValue =
+        orderData.shippingPreference || orderData.shipping_preference || null;
       const normalizedShippingPreference = normalizeShippingPreference(
-        orderData.shippingPreference || orderData.shipping_preference
+        rawShippingPreferenceValue
       );
+      const requestedShippingOption =
+        orderData.shippingOption ||
+        orderData.shipping_option ||
+        orderData.fasterShippingOption ||
+        orderData.fastShippingOption ||
+        orderData.labelDeliveryMethod ||
+        rawShippingPreferenceValue ||
+        null;
+      const normalizedShippingOption = normalizeShippingOption(requestedShippingOption);
+      const hasFastUpsBooleanFlag =
+        orderData.fasterShipping === true ||
+        orderData.fastShipping === true ||
+        orderData.useFasterShipping === true ||
+        orderData.isFasterShipping === true;
+      const skipAutoUspsLabel =
+        hasFastUpsBooleanFlag ||
+        isFasterUpsGroundHazmatOption(normalizedShippingOption) ||
+        isFasterUpsGroundHazmatOption(rawShippingPreferenceValue);
+
       orderData.shippingPreference = resolveShippingPreferenceLabel(
         normalizedShippingPreference
       );
       orderData.shippingPreferenceNormalized = normalizedShippingPreference;
+      orderData.shippingOption = normalizedShippingOption || null;
+      orderData.skipAutoUspsLabel = skipAutoUspsLabel;
       orderData.totalPayout = finalPayout;
       orderData.estimatedQuote =
         Number.isFinite(normalizedEstimated) && normalizedEstimated !== null
@@ -1198,7 +1243,7 @@ function createOrdersRouter({
         </div>
       `;
 
-      if (normalizedShippingPreference === SHIPPING_PREFERENCE.EMAIL_LABEL) {
+      if (normalizedShippingPreference === SHIPPING_PREFERENCE.EMAIL_LABEL && !skipAutoUspsLabel) {
         try {
           autoLabelResult = await autoGenerateEmailLabel(orderId, orderData);
           newOrderStatus = 'label_generated';
@@ -1208,6 +1253,11 @@ function createOrdersRouter({
             labelError
           );
         }
+      } else if (normalizedShippingPreference === SHIPPING_PREFERENCE.EMAIL_LABEL && skipAutoUspsLabel) {
+        console.log('[ShipEngine] skipping auto USPS label generation because faster UPS Ground hazmat option was requested', {
+          orderId,
+          shippingOption: normalizedShippingOption,
+        });
       }
 
       if (normalizedShippingPreference === SHIPPING_PREFERENCE.KIT) {
@@ -1732,6 +1782,129 @@ function createOrdersRouter({
       res
         .status(statusCode)
         .json({ error: 'Failed to generate label', details: responseData || err.message });
+    }
+  });
+
+
+  router.post('/orders/:id/faster-shipping-label', async (req, res) => {
+    try {
+      const orderId = req.params.id;
+      const doc = await ordersCollection.doc(orderId).get();
+      if (!doc.exists) {
+        return res.status(404).json({ error: 'Order not found' });
+      }
+
+      const order = { id: doc.id, ...doc.data() };
+      const orderIdForLabel = order.id || orderId;
+      const customerAddress = normalizeCustomerAddress(
+        req.body?.customerAddress || {},
+        order.shippingInfo || {}
+      );
+
+      const shcAddress = {
+        name: 'SHC Returns',
+        company_name: 'SecondHandCell',
+        phone: '3475591707',
+        address_line1: '1602 McDonald Ave Ste Rear',
+        city_locality: 'Brooklyn',
+        state_province: 'NY',
+        postal_code: '11230-6336',
+        country_code: 'US',
+      };
+
+      const labelReference = `${orderIdForLabel}-FAST-UPS-GROUND-HAZMAT`;
+      const packageData = {
+        carrier_code: UPS_GROUND_HAZMAT_PROFILE.carrierCode,
+        carrier_id: UPS_GROUND_HAZMAT_PROFILE.carrierId,
+        service_code: UPS_GROUND_HAZMAT_PROFILE.serviceCode,
+        dimensions: { unit: 'inch', height: 2, width: 4, length: 6 },
+        weight: { value: 16, unit: 'ounce' },
+        hazmatEnabled: true,
+      };
+
+      const labelData = await createShipEngineLabel(
+        customerAddress,
+        shcAddress,
+        labelReference,
+        packageData,
+        {
+          orderId: orderIdForLabel,
+          orderData: order,
+          carrierCode: UPS_GROUND_HAZMAT_PROFILE.carrierCode,
+          carrierId: UPS_GROUND_HAZMAT_PROFILE.carrierId,
+          chosenService: UPS_GROUND_HAZMAT_PROFILE.serviceCode,
+          hazmatEnabled: true,
+          shippingOption: 'faster_ups_ground_hazmat',
+        }
+      );
+
+      const labelDownloadUrl = labelData?.label_download?.pdf || null;
+      const trackingNumber = labelData?.tracking_number || null;
+      const nowTimestamp = Timestamp.now();
+      const labels = cloneShipEngineLabelMap(order.shipEngineLabels);
+      labels.fast_shipping_ups_ground_hazmat = {
+        id:
+          labelData?.label_id ||
+          labelData?.labelId ||
+          labelData?.shipengine_label_id ||
+          null,
+        trackingNumber,
+        downloadUrl: labelDownloadUrl,
+        carrierCode:
+          labelData?.shipment?.carrier_id ||
+          labelData?.carrier_code ||
+          UPS_GROUND_HAZMAT_PROFILE.carrierCode,
+        serviceCode:
+          labelData?.shipment?.service_code ||
+          packageData.service_code,
+        generatedAt: nowTimestamp,
+        createdAt: nowTimestamp,
+        status: 'active',
+        voidStatus: 'active',
+        message: null,
+        displayName: 'Fast Shipping: UPS Ground Hazmat',
+        labelReference,
+        hazmatEnabled: true,
+      };
+
+      const labelIds = buildLabelIdList(labels);
+      const hasActive = Object.values(labels).some((entry) =>
+        entry && entry.id ? !isLabelPendingVoid(entry) : false
+      );
+
+      await updateOrderBoth(orderId, {
+        shipEngineLabels: labels,
+        shipEngineLabelIds: labelIds,
+        shipEngineLabelsLastUpdatedAt: nowTimestamp,
+        hasShipEngineLabel: labelIds.length > 0,
+        hasActiveShipEngineLabel: hasActive,
+        shipEngineLabelId:
+          labels.fast_shipping_ups_ground_hazmat?.id ||
+          labels.inbound?.id ||
+          labels.email?.id ||
+          labelIds[0] ||
+          null,
+        fasterShippingLabelGeneratedAt: nowTimestamp,
+      });
+
+      return res.json({
+        message: 'Fast shipping UPS Ground hazmat label generated successfully.',
+        orderId,
+        shippingOption: 'faster_ups_ground_hazmat',
+        carrierCode: UPS_GROUND_HAZMAT_PROFILE.carrierCode,
+        serviceCode: UPS_GROUND_HAZMAT_PROFILE.serviceCode,
+        hazmatEnabled: true,
+        labelDownloadUrl,
+        trackingNumber,
+      });
+    } catch (error) {
+      const responseData = error.response?.data || error.responseData;
+      const statusCode = error.status || error.response?.status || 500;
+      console.error('Error generating fast shipping UPS Ground hazmat label:', responseData || error.message || error);
+      return res.status(statusCode).json({
+        error: 'Failed to generate fast shipping label',
+        details: responseData || error.message,
+      });
     }
   });
 
