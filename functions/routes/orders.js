@@ -2266,33 +2266,28 @@ function createOrdersRouter({
 
       const outboundBuffer = await fetchPdfBuffer(order.outboundLabelUrl);
       const inboundBuffer = await fetchPdfBuffer(order.inboundLabelUrl);
+      const singleLabelBuffer = await fetchPdfBuffer(order.uspsLabelUrl);
       const packingSlipBuffer = await fetchPdfBuffer(packingSlipUrl);
 
-      const missing = [];
+      const hasKitLabels = Boolean(order.outboundLabelUrl && order.inboundLabelUrl);
+      const hasSingleLabel = Boolean(order.uspsLabelUrl);
 
-      if (!order.outboundLabelUrl) {
-        missing.push('outboundLabelUrl');
-      }
-      if (!order.inboundLabelUrl) {
-        missing.push('inboundLabelUrl');
-      }
-
-      if (missing.length) {
+      if (!hasKitLabels && !hasSingleLabel) {
         return res.status(400).json({
-          error: `Missing required label URL(s): ${missing.join(', ')}`,
+          error: 'Missing required label URL(s): expected outbound+inbound labels or uspsLabelUrl',
         });
       }
 
-      const pdfParts = [outboundBuffer, inboundBuffer, packingSlipBuffer].filter(Boolean);
+      const labelParts = hasKitLabels
+        ? [outboundBuffer, inboundBuffer]
+        : [singleLabelBuffer];
+
+      const pdfParts = [...labelParts, packingSlipBuffer].filter(Boolean);
       if (!pdfParts.length) {
         return res.status(500).json({ error: 'Failed to prepare print bundle' });
       }
 
-      const merged = await mergePdfBuffers([
-        outboundBuffer,
-        inboundBuffer,
-        packingSlipBuffer,
-      ]);
+      const merged = await mergePdfBuffers([...labelParts, packingSlipBuffer]);
       const mergedBuffer = Buffer.isBuffer(merged) ? merged : Buffer.from(merged);
 
       res.setHeader('Content-Type', 'application/pdf');

@@ -10,7 +10,9 @@ Per-order endpoints:
   - `GET /packing-slip/:orderId`
   - Example: `https://api.secondhandcell.com/packing-slip/SHC-12345`
 
-- Print bundle (outbound label + inbound label + packing slip merged in this exact order):
+- Print bundle:
+  - Shipping kit orders: outbound label + inbound label + packing slip (in this exact order)
+  - Non-kit/email-label orders: single return label + packing slip
   - `GET /print-bundle/:orderId`
   - Example: `https://api.secondhandcell.com/print-bundle/SHC-12345`
 
