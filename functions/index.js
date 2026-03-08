@@ -5375,21 +5375,21 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
   const serviceCode = packageData?.service_code || "usps_ground_advantage";
   const weightValue = packageData?.weight?.value ?? packageData?.weight?.ounces;
   const weightUnit = packageData?.weight?.unit || "ounce";
-  const dangerousGoods = [
-    {
-      id_number: "UN3481",
-      shipping_name: "Lithium ion batteries contained in equipment",
-      hazard_class: "9",
-      packing_group: null,
-      quantity: 1,
-      unit: "EA",
-      transport_mean: "ground",
-      regulation: "IATA",
-    },
-  ];
+
+  const isUspsShipment =
+    (typeof serviceCode === "string" && serviceCode.toLowerCase().startsWith("usps_")) ||
+    [context?.carrierCode, packageData?.carrier_code, packageData?.carrierCode]
+      .filter((entry) => typeof entry === "string")
+      .some((entry) => {
+        const normalized = entry.toLowerCase();
+        return normalized.includes("usps") || normalized.includes("stamps");
+      });
+  const isHazmat = isUspsShipment;
+  const resolvedServiceCode = serviceCode;
+
   const payload = {
     shipment: {
-      service_code: serviceCode,
+      service_code: resolvedServiceCode,
       ship_to: toAddress,
       ship_from: fromAddress,
       packages: [
@@ -5401,7 +5401,6 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
             width: packageData.dimensions.width,
             length: packageData.dimensions.length,
           },
-          dangerous_goods: dangerousGoods,
           label_messages: {
             reference1: labelReference,
           },
@@ -5409,6 +5408,11 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
       ],
     },
   };
+  if (isHazmat) {
+    payload.shipment.advanced_options = {
+      dangerous_goods: true,
+    };
+  }
   if (isSandbox) payload.testLabel = true;
 
   const shipEngineApiKey = getShipEngineApiKey();
