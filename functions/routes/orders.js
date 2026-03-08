@@ -205,6 +205,7 @@ function createOrdersRouter({
       packageData,
       {
         orderId,
+        orderData,
         deviceCount,
         chosenService: shippingProfile.chosenService,
         weightOz: shippingProfile.weightOz,
@@ -1511,6 +1512,7 @@ function createOrdersRouter({
           outboundPackageData,
           {
             orderId: orderIdForLabel,
+            orderData: order,
             deviceCount,
             chosenService: shippingProfile.chosenService,
             weightOz: shippingProfile.weightOz,
@@ -1525,6 +1527,7 @@ function createOrdersRouter({
           inboundPackageData,
           {
             orderId: orderIdForLabel,
+            orderData: order,
             deviceCount,
             chosenService: shippingProfile.chosenService,
             weightOz: shippingProfile.weightOz,
@@ -1617,6 +1620,7 @@ function createOrdersRouter({
           inboundPackageData,
           {
             orderId: orderIdForLabel,
+            orderData: order,
             deviceCount,
             chosenService: shippingProfile.chosenService,
             weightOz: shippingProfile.weightOz,
@@ -1782,6 +1786,7 @@ function createOrdersRouter({
         packageData,
         {
           orderId: orderIdForLabel,
+          orderData: order,
           direction,
           deviceCount,
           chosenService: shippingProfile.chosenService,

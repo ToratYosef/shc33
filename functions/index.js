@@ -5375,21 +5375,55 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
   const serviceCode = packageData?.service_code || "usps_ground_advantage";
   const weightValue = packageData?.weight?.value ?? packageData?.weight?.ounces;
   const weightUnit = packageData?.weight?.unit || "ounce";
-  const dangerousGoods = [
-    {
-      id_number: "UN3481",
-      shipping_name: "Lithium ion batteries contained in equipment",
-      hazard_class: "9",
-      packing_group: null,
-      quantity: 1,
-      unit: "EA",
-      transport_mean: "ground",
-      regulation: "IATA",
-    },
-  ];
+  const hazmatKeywordPattern = /(phone|iphone|smartphone|cell\s*phone|lithium|battery|batteries|un3481)/i;
+  const collectHazmatHints = (...values) => {
+    const hints = [];
+    for (const value of values) {
+      if (Array.isArray(value)) {
+        hints.push(...collectHazmatHints(...value));
+        continue;
+      }
+      if (value && typeof value === "object") {
+        hints.push(
+          ...collectHazmatHints(
+            value.category,
+            value.device_category,
+            value.deviceType,
+            value.device,
+            value.deviceName,
+            value.model,
+            value.name,
+            value.type,
+            value.description,
+            value.title,
+            value.label
+          )
+        );
+        continue;
+      }
+      if (typeof value === "string" && value.trim()) {
+        hints.push(value.trim());
+      }
+    }
+    return hints;
+  };
+  const hazmatHints = collectHazmatHints(
+    context?.itemCategory,
+    context?.category,
+    context?.itemCategories,
+    context?.order,
+    context?.orderData,
+    context?.items,
+    packageData?.itemCategory,
+    packageData?.category,
+    packageData?.itemCategories,
+    packageData?.items
+  );
+  const hasHazmatItems = hazmatHints.some((entry) => hazmatKeywordPattern.test(entry));
+  const resolvedServiceCode = hasHazmatItems ? "usps_ground_advantage" : serviceCode;
   const payload = {
     shipment: {
-      service_code: serviceCode,
+      service_code: resolvedServiceCode,
       ship_to: toAddress,
       ship_from: fromAddress,
       packages: [
@@ -5401,7 +5435,6 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
             width: packageData.dimensions.width,
             length: packageData.dimensions.length,
           },
-          dangerous_goods: dangerousGoods,
           label_messages: {
             reference1: labelReference,
           },
@@ -5409,6 +5442,11 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
       ],
     },
   };
+  if (hasHazmatItems) {
+    payload.shipment.advanced_options = {
+      dangerous_goods: true,
+    };
+  }
   if (isSandbox) payload.testLabel = true;
 
   const shipEngineApiKey = getShipEngineApiKey();
@@ -6888,6 +6926,7 @@ app.post("/orders/:id/return-label", async (req, res) => {
       returnPackageData,
       {
         orderId: orderIdForLabel,
+        orderData: order,
         deviceCount,
         chosenService: shippingProfile.chosenService,
         weightOz: shippingProfile.weightOz,
