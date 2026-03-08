@@ -5385,6 +5385,7 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
         return normalized.includes("usps") || normalized.includes("stamps");
       });
   const isHazmat = isUspsShipment;
+  const resolvedServiceCode = serviceCode;
 
   const payload = {
     shipment: {
