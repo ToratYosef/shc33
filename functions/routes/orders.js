@@ -2096,35 +2096,30 @@ function createOrdersRouter({
       const packingSlipPath = `${basePath}/packing-slip/${encodeURIComponent(order.id)}`;
       const packingSlipUrl = origin ? `${origin}${packingSlipPath}` : null;
 
-      const outboundBuffer = await fetchPdfBuffer(order.outboundLabelUrl);
-      const inboundBuffer = await fetchPdfBuffer(order.inboundLabelUrl);
+      const labelUrls = Array.from(collectLabelUrlCandidates(order));
+      const labelBuffers = [];
+
+      for (const labelUrl of labelUrls) {
+        const buffer = await fetchPdfBuffer(labelUrl);
+        if (buffer) {
+          labelBuffers.push(buffer);
+        }
+      }
+
       const packingSlipBuffer = await fetchPdfBuffer(packingSlipUrl);
 
-      const missing = [];
-
-      if (!order.outboundLabelUrl) {
-        missing.push('outboundLabelUrl');
-      }
-      if (!order.inboundLabelUrl) {
-        missing.push('inboundLabelUrl');
-      }
-
-      if (missing.length) {
+      if (!labelUrls.length) {
         return res.status(400).json({
-          error: `Missing required label URL(s): ${missing.join(', ')}`,
+          error: 'Missing required label URL(s): no shipping label URL found on order',
         });
       }
 
-      const pdfParts = [outboundBuffer, inboundBuffer, packingSlipBuffer].filter(Boolean);
+      const pdfParts = [...labelBuffers, packingSlipBuffer].filter(Boolean);
       if (!pdfParts.length) {
         return res.status(500).json({ error: 'Failed to prepare print bundle' });
       }
 
-      const merged = await mergePdfBuffers([
-        outboundBuffer,
-        inboundBuffer,
-        packingSlipBuffer,
-      ]);
+      const merged = await mergePdfBuffers(pdfParts);
       const mergedBuffer = Buffer.isBuffer(merged) ? merged : Buffer.from(merged);
 
       res.setHeader('Content-Type', 'application/pdf');
