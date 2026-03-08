@@ -5375,18 +5375,61 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
   const serviceCode = packageData?.service_code || "usps_ground_advantage";
   const weightValue = packageData?.weight?.value ?? packageData?.weight?.ounces;
   const weightUnit = packageData?.weight?.unit || "ounce";
-  const dangerousGoods = [
-    {
-      id_number: "UN3481",
-      shipping_name: "Lithium ion batteries contained in equipment",
-      hazard_class: "9",
-      packing_group: null,
-      quantity: 1,
-      unit: "EA",
-      transport_mean: "ground",
-      regulation: "IATA",
-    },
-  ];
+
+  const hazmatKeywordPattern = /(phone|iphone|android\s*phone|smartphone|cell\s*phone|lithium|battery|batteries|un3481)/i;
+  const collectHazmatText = (...values) => {
+    const collected = [];
+    for (const value of values) {
+      if (!value) continue;
+      if (Array.isArray(value)) {
+        collected.push(...collectHazmatText(...value));
+        continue;
+      }
+      if (typeof value === "object") {
+        collected.push(
+          ...collectHazmatText(
+            value.category,
+            value.device_category,
+            value.deviceType,
+            value.device,
+            value.deviceName,
+            value.model,
+            value.name,
+            value.type,
+            value.description,
+            value.title
+          )
+        );
+        continue;
+      }
+      if (typeof value === "string" && value.trim()) {
+        collected.push(value.trim());
+      }
+    }
+    return collected;
+  };
+
+  const hazmatText = collectHazmatText(
+    context?.itemCategory,
+    context?.category,
+    context?.itemCategories,
+    context?.items,
+    packageData?.itemCategory,
+    packageData?.category,
+    packageData?.itemCategories,
+    packageData?.items
+  );
+  const containsLithiumDevice = hazmatText.some((entry) => hazmatKeywordPattern.test(entry));
+  const isUspsShipment =
+    (typeof serviceCode === "string" && serviceCode.toLowerCase().startsWith("usps_")) ||
+    [context?.carrierCode, packageData?.carrier_code, packageData?.carrierCode]
+      .filter((entry) => typeof entry === "string")
+      .some((entry) => {
+        const normalized = entry.toLowerCase();
+        return normalized.includes("usps") || normalized.includes("stamps");
+      });
+  const isHazmat = isUspsShipment && containsLithiumDevice;
+
   const payload = {
     shipment: {
       service_code: serviceCode,
@@ -5401,7 +5444,6 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
             width: packageData.dimensions.width,
             length: packageData.dimensions.length,
           },
-          dangerous_goods: dangerousGoods,
           label_messages: {
             reference1: labelReference,
           },
@@ -5409,6 +5451,11 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
       ],
     },
   };
+  if (isHazmat) {
+    payload.shipment.advanced_options = {
+      dangerous_goods: true,
+    };
+  }
   if (isSandbox) payload.testLabel = true;
 
   const shipEngineApiKey = getShipEngineApiKey();
