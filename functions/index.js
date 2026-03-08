@@ -5375,6 +5375,18 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
   const serviceCode = packageData?.service_code || "usps_ground_advantage";
   const weightValue = packageData?.weight?.value ?? packageData?.weight?.ounces;
   const weightUnit = packageData?.weight?.unit || "ounce";
+  const dangerousGoods = [
+    {
+      id_number: "UN3481",
+      shipping_name: "Lithium ion batteries contained in equipment",
+      hazard_class: "9",
+      packing_group: null,
+      quantity: 1,
+      unit: "EA",
+      transport_mean: "ground",
+      regulation: "IATA",
+    },
+  ];
   const payload = {
     shipment: {
       service_code: serviceCode,
@@ -5389,9 +5401,7 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
             width: packageData.dimensions.width,
             length: packageData.dimensions.length,
           },
-          // USPS requires hazmat metadata for lithium batteries and related materials.
-          hazmat: true,
-          hazmat_type: "surface",
+          dangerous_goods: dangerousGoods,
           label_messages: {
             reference1: labelReference,
           },
