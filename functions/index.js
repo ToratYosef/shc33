@@ -5432,7 +5432,7 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
 
   const payload = {
     shipment: {
-      service_code: serviceCode,
+      service_code: resolvedServiceCode,
       ship_to: toAddress,
       ship_from: fromAddress,
       packages: [
@@ -6935,6 +6935,7 @@ app.post("/orders/:id/return-label", async (req, res) => {
       returnPackageData,
       {
         orderId: orderIdForLabel,
+        orderData: order,
         deviceCount,
         chosenService: shippingProfile.chosenService,
         weightOz: shippingProfile.weightOz,
