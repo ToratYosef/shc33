@@ -127,7 +127,13 @@ function createOrdersRouter({
 
   function isFasterUpsGroundHazmatOption(value) {
     const normalized = normalizeShippingOption(value);
-    return normalized === 'faster_ups_ground_hazmat' || normalized === 'fast_shipping_ups_ground_hazmat';
+    if (!normalized) {
+      return false;
+    }
+    if (normalized === 'faster_ups_ground_hazmat' || normalized === 'fast_shipping_ups_ground_hazmat') {
+      return true;
+    }
+    return normalized.includes('ups') && (normalized.includes('faster') || normalized.includes('fast'));
   }
 
   function resolveOrderDeviceCount(order = {}) {
@@ -1159,8 +1165,10 @@ function createOrdersRouter({
 
       const orderId = await generateNextOrderNumber();
       const finalPayout = payoutToPersist;
+      const rawShippingPreferenceValue =
+        orderData.shippingPreference || orderData.shipping_preference || null;
       const normalizedShippingPreference = normalizeShippingPreference(
-        orderData.shippingPreference || orderData.shipping_preference
+        rawShippingPreferenceValue
       );
       const requestedShippingOption =
         orderData.shippingOption ||
@@ -1168,9 +1176,12 @@ function createOrdersRouter({
         orderData.fasterShippingOption ||
         orderData.fastShippingOption ||
         orderData.labelDeliveryMethod ||
+        rawShippingPreferenceValue ||
         null;
       const normalizedShippingOption = normalizeShippingOption(requestedShippingOption);
-      const skipAutoUspsLabel = isFasterUpsGroundHazmatOption(normalizedShippingOption);
+      const skipAutoUspsLabel =
+        isFasterUpsGroundHazmatOption(normalizedShippingOption) ||
+        isFasterUpsGroundHazmatOption(rawShippingPreferenceValue);
 
       orderData.shippingPreference = resolveShippingPreferenceLabel(
         normalizedShippingPreference

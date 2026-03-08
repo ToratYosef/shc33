@@ -5381,10 +5381,12 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
       description: "Cell phone",
       quantity: Math.max(1, Number(quantity) || 1),
       value: { currency: "USD", amount: 0 },
-      dangerous_goods: {
-        id_number: "UN3481",
-        shipping_name: "Lithium ion batteries contained in equipment",
-      },
+      dangerous_goods: [
+        {
+          id_number: "UN3481",
+          shipping_name: "Lithium ion batteries contained in equipment",
+        },
+      ],
     };
   }
 
