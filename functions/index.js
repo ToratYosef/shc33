@@ -6892,6 +6892,7 @@ app.post("/orders/:id/return-label", async (req, res) => {
       returnPackageData,
       {
         orderId: orderIdForLabel,
+        orderData: order,
         deviceCount,
         chosenService: shippingProfile.chosenService,
         weightOz: shippingProfile.weightOz,
