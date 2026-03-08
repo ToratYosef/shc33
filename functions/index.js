@@ -5473,13 +5473,34 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
     }
   }
 
+  function resolveDefaultCarrierIdByCarrierCode(resolvedCarrierCode) {
+    if (!resolvedCarrierCode) {
+      return cleanValue(process.env.SHIPENGINE_CARRIER_ID);
+    }
+
+    if (resolvedCarrierCode === "ups") {
+      return cleanValue(process.env.SHIPENGINE_UPS_CARRIER_ID);
+    }
+
+    if (resolvedCarrierCode === "usps" || resolvedCarrierCode === "stamps_com" || resolvedCarrierCode === "stamps") {
+      return (
+        cleanValue(process.env.SHIPENGINE_USPS_CARRIER_ID) ||
+        cleanValue(process.env.USPS_SHIPENGINE_CARRIER_ID) ||
+        "se-4054857"
+      );
+    }
+
+    return cleanValue(process.env.SHIPENGINE_CARRIER_ID);
+  }
+
   const chosenService = cleanValue(context?.chosenService);
   const fallbackServiceCode = cleanValue(packageData?.service_code) || "usps_ground_advantage";
   const carrierCode =
     normalizeCarrierCode(context?.carrierCode) ||
     normalizeCarrierCode(packageData?.carrier_code) ||
     normalizeCarrierCode(packageData?.carrierCode) ||
-    (fallbackServiceCode.startsWith("ups_") ? "ups" : null);
+    (fallbackServiceCode.startsWith("ups_") ? "ups" : null) ||
+    (fallbackServiceCode.startsWith("usps_") ? "usps" : null);
   const resolvedServiceCode = resolveServiceCode({
     carrierCode,
     chosenService,
@@ -5489,7 +5510,7 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
     cleanValue(context?.carrierId) ||
     cleanValue(packageData?.carrier_id) ||
     cleanValue(packageData?.carrierId) ||
-    (carrierCode === "ups" ? cleanValue(process.env.SHIPENGINE_UPS_CARRIER_ID) : null);
+    resolveDefaultCarrierIdByCarrierCode(carrierCode);
   const weightValue = packageData?.weight?.value ?? packageData?.weight?.ounces;
   const weightUnit = packageData?.weight?.unit || "ounce";
   const isHazmat = context?.hazmatEnabled === true || packageData?.hazmatEnabled === true;
