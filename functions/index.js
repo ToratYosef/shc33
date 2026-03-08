@@ -5384,7 +5384,10 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
         const normalized = entry.toLowerCase();
         return normalized.includes("usps") || normalized.includes("stamps");
       });
-  const isHazmat = isUspsShipment;
+  const isHazmat =
+    context?.hazmatEnabled === true ||
+    packageData?.hazmatEnabled === true ||
+    isUspsShipment;
   const resolvedServiceCode = serviceCode;
 
   const payload = {
