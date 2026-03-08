@@ -5392,21 +5392,48 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
     const normalizedCarrierCode = normalizeCarrierCode(carrierCode);
     const normalizedChosenService = cleanValue(chosenService)?.toLowerCase();
     const normalizedFallbackService = cleanValue(fallbackService)?.toLowerCase();
+    const looksLikeServiceCode = (value) => !!value && value.includes("_");
 
     if (normalizedCarrierCode === "ups") {
-      if (normalizedChosenService === "ups_ground" || normalizedChosenService === "ground") {
+      if (
+        normalizedChosenService === "ups_ground" ||
+        normalizedChosenService === "ground" ||
+        normalizedChosenService === "ups ground"
+      ) {
         return "ups_ground";
       }
-      if (normalizedFallbackService === "ups_ground" || normalizedFallbackService === "ground") {
+      if (
+        normalizedFallbackService === "ups_ground" ||
+        normalizedFallbackService === "ground" ||
+        normalizedFallbackService === "ups ground"
+      ) {
         return "ups_ground";
       }
     }
 
-    if (normalizedChosenService) {
+    if (normalizedCarrierCode === "usps" || normalizedCarrierCode === "stamps" || normalizedCarrierCode === "stamps_com") {
+      if (looksLikeServiceCode(normalizedFallbackService)) {
+        return normalizedFallbackService;
+      }
+      if (normalizedChosenService === "first class") {
+        return "usps_first_class_mail";
+      }
+      if (normalizedChosenService === "priority" || normalizedChosenService === "priority mail") {
+        return "usps_priority_mail";
+      }
+    }
+
+    if (looksLikeServiceCode(normalizedFallbackService)) {
+      return normalizedFallbackService;
+    }
+    if (looksLikeServiceCode(normalizedChosenService)) {
       return normalizedChosenService;
     }
     if (normalizedFallbackService) {
       return normalizedFallbackService;
+    }
+    if (normalizedChosenService) {
+      return normalizedChosenService;
     }
 
     throw new Error("Unable to create label: missing chosen service");
@@ -5474,33 +5501,48 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
   }
 
   function resolveDefaultCarrierIdByCarrierCode(resolvedCarrierCode) {
+    const configCarrierIds = (() => {
+      try {
+        return {
+          generic: cleanValue(functions.config()?.shipengine?.carrier_id),
+          ups: cleanValue(functions.config()?.shipengine?.ups?.carrier_id),
+          usps: cleanValue(functions.config()?.shipengine?.usps?.carrier_id),
+        };
+      } catch (error) {
+        return { generic: null, ups: null, usps: null };
+      }
+    })();
+
     if (!resolvedCarrierCode) {
-      return cleanValue(process.env.SHIPENGINE_CARRIER_ID);
+      return cleanValue(process.env.SHIPENGINE_CARRIER_ID) || configCarrierIds.generic;
     }
 
     if (resolvedCarrierCode === "ups") {
-      return cleanValue(process.env.SHIPENGINE_UPS_CARRIER_ID);
+      return cleanValue(process.env.SHIPENGINE_UPS_CARRIER_ID) || configCarrierIds.ups;
     }
 
     if (resolvedCarrierCode === "usps" || resolvedCarrierCode === "stamps_com" || resolvedCarrierCode === "stamps") {
       return (
         cleanValue(process.env.SHIPENGINE_USPS_CARRIER_ID) ||
         cleanValue(process.env.USPS_SHIPENGINE_CARRIER_ID) ||
+        configCarrierIds.usps ||
         "se-4054857"
       );
     }
 
-    return cleanValue(process.env.SHIPENGINE_CARRIER_ID);
+    return cleanValue(process.env.SHIPENGINE_CARRIER_ID) || configCarrierIds.generic;
   }
 
   const chosenService = cleanValue(context?.chosenService);
   const fallbackServiceCode = cleanValue(packageData?.service_code) || "usps_ground_advantage";
+  const normalizedChosenServiceHint = chosenService ? chosenService.toLowerCase() : null;
   const carrierCode =
     normalizeCarrierCode(context?.carrierCode) ||
     normalizeCarrierCode(packageData?.carrier_code) ||
     normalizeCarrierCode(packageData?.carrierCode) ||
     (fallbackServiceCode.startsWith("ups_") ? "ups" : null) ||
-    (fallbackServiceCode.startsWith("usps_") ? "usps" : null);
+    (fallbackServiceCode.startsWith("usps_") ? "usps" : null) ||
+    (normalizedChosenServiceHint === "first class" || normalizedChosenServiceHint === "priority" || normalizedChosenServiceHint === "priority mail" ? "usps" : null);
   const resolvedServiceCode = resolveServiceCode({
     carrierCode,
     chosenService,
