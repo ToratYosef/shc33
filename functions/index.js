@@ -5375,17 +5375,19 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
   const serviceCode = packageData?.service_code || "usps_ground_advantage";
   const weightValue = packageData?.weight?.value ?? packageData?.weight?.ounces;
   const weightUnit = packageData?.weight?.unit || "ounce";
-  const hazmatKeywordPattern = /(phone|iphone|smartphone|cell\s*phone|lithium|battery|batteries|un3481)/i;
-  const collectHazmatHints = (...values) => {
-    const hints = [];
+
+  const hazmatKeywordPattern = /(phone|iphone|android\s*phone|smartphone|cell\s*phone|lithium|battery|batteries|un3481)/i;
+  const collectHazmatText = (...values) => {
+    const collected = [];
     for (const value of values) {
+      if (!value) continue;
       if (Array.isArray(value)) {
-        hints.push(...collectHazmatHints(...value));
+        collected.push(...collectHazmatText(...value));
         continue;
       }
-      if (value && typeof value === "object") {
-        hints.push(
-          ...collectHazmatHints(
+      if (typeof value === "object") {
+        collected.push(
+          ...collectHazmatText(
             value.category,
             value.device_category,
             value.deviceType,
@@ -5395,32 +5397,39 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
             value.name,
             value.type,
             value.description,
-            value.title,
-            value.label
+            value.title
           )
         );
         continue;
       }
       if (typeof value === "string" && value.trim()) {
-        hints.push(value.trim());
+        collected.push(value.trim());
       }
     }
-    return hints;
+    return collected;
   };
-  const hazmatHints = collectHazmatHints(
+
+  const hazmatText = collectHazmatText(
     context?.itemCategory,
     context?.category,
     context?.itemCategories,
-    context?.order,
-    context?.orderData,
     context?.items,
     packageData?.itemCategory,
     packageData?.category,
     packageData?.itemCategories,
     packageData?.items
   );
-  const hasHazmatItems = hazmatHints.some((entry) => hazmatKeywordPattern.test(entry));
-  const resolvedServiceCode = hasHazmatItems ? "usps_ground_advantage" : serviceCode;
+  const containsLithiumDevice = hazmatText.some((entry) => hazmatKeywordPattern.test(entry));
+  const isUspsShipment =
+    (typeof serviceCode === "string" && serviceCode.toLowerCase().startsWith("usps_")) ||
+    [context?.carrierCode, packageData?.carrier_code, packageData?.carrierCode]
+      .filter((entry) => typeof entry === "string")
+      .some((entry) => {
+        const normalized = entry.toLowerCase();
+        return normalized.includes("usps") || normalized.includes("stamps");
+      });
+  const isHazmat = isUspsShipment && containsLithiumDevice;
+
   const payload = {
     shipment: {
       service_code: resolvedServiceCode,
@@ -5442,7 +5451,7 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
       ],
     },
   };
-  if (hasHazmatItems) {
+  if (isHazmat) {
     payload.shipment.advanced_options = {
       dangerous_goods: true,
     };
