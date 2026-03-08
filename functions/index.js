@@ -5372,25 +5372,208 @@ async function addAdminFirestoreNotification(
 
 async function createShipEngineLabel(fromAddress, toAddress, labelReference, packageData, context = {}) {
   const isSandbox = false;
-  const serviceCode = packageData?.service_code || "usps_ground_advantage";
+  const hasText = (value) => typeof value === "string" && value.trim().length > 0;
+  const cleanValue = (value) => (hasText(value) ? value.trim() : null);
+  const normalizeCarrierCode = (value) => (hasText(value) ? value.trim().toLowerCase() : null);
+
+  function buildDangerousGoodsForPhone({ quantity = 1 } = {}) {
+    return {
+      description: "Cell phone",
+      quantity: Math.max(1, Number(quantity) || 1),
+      value: { currency: "USD", amount: 0 },
+      dangerous_goods: [
+        {
+          id_number: "UN3481",
+          shipping_name: "Lithium ion batteries contained in equipment",
+        },
+      ],
+    };
+  }
+
+  function resolveServiceCode({ carrierCode, chosenService, fallbackService }) {
+    const normalizedCarrierCode = normalizeCarrierCode(carrierCode);
+    const normalizedChosenService = cleanValue(chosenService)?.toLowerCase();
+    const normalizedFallbackService = cleanValue(fallbackService)?.toLowerCase();
+    const looksLikeServiceCode = (value) => !!value && value.includes("_");
+
+    if (normalizedCarrierCode === "ups") {
+      if (
+        normalizedChosenService === "ups_ground" ||
+        normalizedChosenService === "ground" ||
+        normalizedChosenService === "ups ground"
+      ) {
+        return "ups_ground";
+      }
+      if (
+        normalizedFallbackService === "ups_ground" ||
+        normalizedFallbackService === "ground" ||
+        normalizedFallbackService === "ups ground"
+      ) {
+        return "ups_ground";
+      }
+    }
+
+    if (normalizedCarrierCode === "usps" || normalizedCarrierCode === "stamps" || normalizedCarrierCode === "stamps_com") {
+      if (looksLikeServiceCode(normalizedFallbackService)) {
+        return normalizedFallbackService;
+      }
+      if (normalizedChosenService === "first class") {
+        return "usps_first_class_mail";
+      }
+      if (normalizedChosenService === "priority" || normalizedChosenService === "priority mail") {
+        return "usps_priority_mail";
+      }
+    }
+
+    if (looksLikeServiceCode(normalizedFallbackService)) {
+      return normalizedFallbackService;
+    }
+    if (looksLikeServiceCode(normalizedChosenService)) {
+      return normalizedChosenService;
+    }
+    if (normalizedFallbackService) {
+      return normalizedFallbackService;
+    }
+    if (normalizedChosenService) {
+      return normalizedChosenService;
+    }
+
+    throw new Error("Unable to create label: missing chosen service");
+  }
+
+  function assertRequiredAddress(address, typeLabel) {
+    if (!address || typeof address !== "object") {
+      throw new Error(`Unable to create label: missing ${typeLabel} address`);
+    }
+
+    const requiredFields = ["name", "address_line1", "city_locality", "state_province", "postal_code", "country_code"];
+    const missing = requiredFields.filter((field) => !hasText(address[field]));
+    if (missing.length) {
+      throw new Error(`Unable to create label: missing ${typeLabel} required fields (${missing.join(", ")})`);
+    }
+  }
+
+  function getUpsShipperNumber() {
+    const envValues = [
+      process.env.UPS_SHIPPER_NUMBER,
+      process.env.UPS_ACCOUNT_NUMBER,
+      process.env.SHIPENGINE_UPS_SHIPPER_NUMBER,
+      process.env.SHIPENGINE_UPS_ACCOUNT_NUMBER,
+    ];
+
+    for (const candidate of envValues) {
+      if (hasText(candidate)) {
+        return candidate.trim();
+      }
+    }
+
+    try {
+      const upsConfig = functions.config()?.ups || {};
+      const shipengineUpsConfig = functions.config()?.shipengine?.ups || {};
+      const configValues = [
+        upsConfig.shipper_number,
+        upsConfig.account_number,
+        shipengineUpsConfig.shipper_number,
+        shipengineUpsConfig.account_number,
+      ];
+      for (const candidate of configValues) {
+        if (hasText(candidate)) {
+          return candidate.trim();
+        }
+      }
+    } catch (error) {
+      console.warn("Unable to read UPS shipper number from functions.config():", error.message);
+    }
+
+    return null;
+  }
+
+  function assertUpsConfig({ carrierCode, carrierId, shipperNumber }) {
+    if (carrierCode !== "ups") {
+      return;
+    }
+
+    if (!hasText(carrierId)) {
+      throw new Error("UPS label creation failed: missing carrier_id");
+    }
+
+    if (!hasText(shipperNumber)) {
+      throw new Error("UPS label creation failed: missing or invalid UPS shipper number/account configuration");
+    }
+  }
+
+  function resolveDefaultCarrierIdByCarrierCode(resolvedCarrierCode) {
+    const configCarrierIds = (() => {
+      try {
+        return {
+          generic: cleanValue(functions.config()?.shipengine?.carrier_id),
+          ups: cleanValue(functions.config()?.shipengine?.ups?.carrier_id),
+          usps: cleanValue(functions.config()?.shipengine?.usps?.carrier_id),
+        };
+      } catch (error) {
+        return { generic: null, ups: null, usps: null };
+      }
+    })();
+
+    if (!resolvedCarrierCode) {
+      return cleanValue(process.env.SHIPENGINE_CARRIER_ID) || configCarrierIds.generic;
+    }
+
+    if (resolvedCarrierCode === "ups") {
+      return cleanValue(process.env.SHIPENGINE_UPS_CARRIER_ID) || configCarrierIds.ups;
+    }
+
+    if (resolvedCarrierCode === "usps" || resolvedCarrierCode === "stamps_com" || resolvedCarrierCode === "stamps") {
+      return (
+        cleanValue(process.env.SHIPENGINE_USPS_CARRIER_ID) ||
+        cleanValue(process.env.USPS_SHIPENGINE_CARRIER_ID) ||
+        configCarrierIds.usps ||
+        "se-4054857"
+      );
+    }
+
+    return cleanValue(process.env.SHIPENGINE_CARRIER_ID) || configCarrierIds.generic;
+  }
+
+  const chosenService = cleanValue(context?.chosenService);
+  const fallbackServiceCode = cleanValue(packageData?.service_code) || "usps_ground_advantage";
+  const normalizedChosenServiceHint = chosenService ? chosenService.toLowerCase() : null;
+  const carrierCode =
+    normalizeCarrierCode(context?.carrierCode) ||
+    normalizeCarrierCode(packageData?.carrier_code) ||
+    normalizeCarrierCode(packageData?.carrierCode) ||
+    (fallbackServiceCode.startsWith("ups_") ? "ups" : null) ||
+    (fallbackServiceCode.startsWith("usps_") ? "usps" : null) ||
+    (normalizedChosenServiceHint === "first class" || normalizedChosenServiceHint === "priority" || normalizedChosenServiceHint === "priority mail" ? "usps" : null);
+  const resolvedServiceCode = resolveServiceCode({
+    carrierCode,
+    chosenService,
+    fallbackService: fallbackServiceCode,
+  });
+  const resolvedCarrierId =
+    cleanValue(context?.carrierId) ||
+    cleanValue(packageData?.carrier_id) ||
+    cleanValue(packageData?.carrierId) ||
+    resolveDefaultCarrierIdByCarrierCode(carrierCode);
   const weightValue = packageData?.weight?.value ?? packageData?.weight?.ounces;
   const weightUnit = packageData?.weight?.unit || "ounce";
+  const isHazmat = context?.hazmatEnabled === true || packageData?.hazmatEnabled === true;
+  const upsShipperNumber = cleanValue(context?.upsShipperNumber) || getUpsShipperNumber();
 
-  const isUspsShipment =
-    (typeof serviceCode === "string" && serviceCode.toLowerCase().startsWith("usps_")) ||
-    [context?.carrierCode, packageData?.carrier_code, packageData?.carrierCode]
-      .filter((entry) => typeof entry === "string")
-      .some((entry) => {
-        const normalized = entry.toLowerCase();
-        return normalized.includes("usps") || normalized.includes("stamps");
-      });
-  const isHazmat =
-    context?.hazmatEnabled === true ||
-    packageData?.hazmatEnabled === true ||
-    isUspsShipment;
-  const resolvedServiceCode = serviceCode;
+  if (weightValue === undefined || weightValue === null || Number(weightValue) <= 0) {
+    throw new Error("Unable to create label: missing package weight");
+  }
+  assertRequiredAddress(fromAddress, "ship-from");
+  assertRequiredAddress(toAddress, "ship-to");
+  assertUpsConfig({ carrierCode, carrierId: resolvedCarrierId, shipperNumber: upsShipperNumber });
+
+  const products = [];
+  if (isHazmat) {
+    products.push(buildDangerousGoodsForPhone({ quantity: packageData?.quantity || 1 }));
+  }
 
   const payload = {
+    ...(resolvedCarrierId ? { carrier_id: resolvedCarrierId } : {}),
     shipment: {
       service_code: resolvedServiceCode,
       ship_to: toAddress,
@@ -5407,6 +5590,7 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
           label_messages: {
             reference1: labelReference,
           },
+          ...(products.length ? { products } : {}),
         },
       ],
     },
@@ -5417,6 +5601,27 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
     };
   }
   if (isSandbox) payload.testLabel = true;
+
+  console.log("ShipEngine label request summary", {
+    orderId: context?.orderId || null,
+    chosenCarrier: carrierCode || null,
+    carrierIdPresent: !!resolvedCarrierId,
+    resolvedServiceCode,
+    dangerousGoodsEnabled: !!isHazmat,
+    upsShipperNumberPresent: !!upsShipperNumber,
+    weightOz: weightUnit === "ounce" ? Number(weightValue) : null,
+    payloadSummary: {
+      hasCarrierId: !!payload.carrier_id,
+      serviceCode: payload.shipment?.service_code || null,
+      hasShipFrom: !!payload.shipment?.ship_from,
+      hasShipTo: !!payload.shipment?.ship_to,
+      packageCount: Array.isArray(payload.shipment?.packages) ? payload.shipment.packages.length : 0,
+      hasDangerousGoodsOption: payload.shipment?.advanced_options?.dangerous_goods === true,
+      hasDangerousGoodsProducts:
+        Array.isArray(payload.shipment?.packages) &&
+        payload.shipment.packages.some((entry) => Array.isArray(entry?.products) && entry.products.length > 0),
+    },
+  });
 
   const shipEngineApiKey = getShipEngineApiKey();
   if (!shipEngineApiKey) {
@@ -5439,6 +5644,11 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
     const requestId = error?.response?.data?.request_id || null;
     const failureMetadata = {
       orderId: context?.orderId || null,
+      carrierCode: carrierCode || null,
+      carrierIdPresent: !!resolvedCarrierId,
+      resolvedServiceCode,
+      dangerousGoodsEnabled: !!isHazmat,
+      upsShipperNumberPresent: !!upsShipperNumber,
       deviceCount: context?.deviceCount ?? null,
       chosenService: context?.chosenService || null,
       weightOz: context?.weightOz ?? null,
