@@ -328,6 +328,40 @@ function createOrdersRouter({
     };
   }
 
+
+  function findActiveLabelForCarrier(order = {}, preferredKey = null) {
+    const labels = cloneShipEngineLabelMap(order.shipEngineLabels);
+
+    if (preferredKey && labels[preferredKey]?.id && !isLabelPendingVoid(labels[preferredKey])) {
+      return labels[preferredKey];
+    }
+
+    const activeLabel = Object.values(labels).find(
+      (entry) => entry && entry.id && !isLabelPendingVoid(entry)
+    );
+
+    if (activeLabel) {
+      return activeLabel;
+    }
+
+    if (order.shipEngineLabelId && !isLabelPendingVoid(order)) {
+      return {
+        id: order.shipEngineLabelId,
+        trackingNumber: order.trackingNumber || null,
+        downloadUrl:
+          order.uspsLabelUrl ||
+          order.upsLabelUrl ||
+          order.labelUrl ||
+          order.labelDownloadUrl ||
+          null,
+        carrierCode: order.labelCarrierCode || null,
+        serviceCode: order.labelServiceCode || null,
+      };
+    }
+
+    return null;
+  }
+
   function assertLabelGenerationAllowed(order = {}, carrierName = 'shipping') {
     const labels = cloneShipEngineLabelMap(order.shipEngineLabels);
     const activeExistingLabel = Object.values(labels).find(
@@ -1975,6 +2009,22 @@ function createOrdersRouter({
       }
 
       const order = { id: doc.id, ...doc.data() };
+      const existingLabel = findActiveLabelForCarrier(order, 'usps');
+      if (existingLabel) {
+        return res.json({
+          message: 'USPS shipping label already exists for this order.',
+          orderId,
+          labelDownloadUrl: existingLabel.downloadUrl || null,
+          trackingNumber: existingLabel.trackingNumber || null,
+          carrier: 'USPS',
+          carrierCode: existingLabel.carrierCode || order.labelCarrierCode || null,
+          serviceCode: existingLabel.serviceCode || order.labelServiceCode || null,
+          labelId: existingLabel.id || null,
+          warnings: [],
+          alreadyExisted: true,
+        });
+      }
+
       const deviceCount = resolveOrderDeviceCount(order);
       const shippingProfile = resolveUspsServiceAndWeightByDeviceCount(deviceCount);
 
@@ -2035,6 +2085,23 @@ function createOrdersRouter({
       }
 
       const order = { id: doc.id, ...doc.data() };
+      const existingLabel = findActiveLabelForCarrier(order, 'ups');
+      if (existingLabel) {
+        return res.json({
+          message: 'UPS shipping label already exists for this order.',
+          orderId,
+          labelDownloadUrl: existingLabel.downloadUrl || null,
+          trackingNumber: existingLabel.trackingNumber || null,
+          carrier: 'UPS',
+          carrierCode: existingLabel.carrierCode || order.labelCarrierCode || null,
+          serviceCode: existingLabel.serviceCode || order.labelServiceCode || null,
+          labelId: existingLabel.id || null,
+          warnings: [],
+          dangerousGoods: [],
+          alreadyExisted: true,
+        });
+      }
+
       const deviceCount = resolveOrderDeviceCount(order);
       const sku =
         String(order?.modelId || order?.modelName || order?.device || 'PHONE-DEVICE')
