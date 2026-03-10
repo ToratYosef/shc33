@@ -76,7 +76,6 @@ function createOrdersRouter({
   const SHIPPING_PREFERENCE = {
     KIT: 'shipping_kit_requested',
     EMAIL_LABEL: 'email_label_requested',
-    NO_LABEL: 'no_label_customer_send',
   };
 
   function normalizeShippingPreference(preference) {
@@ -96,7 +95,7 @@ function createOrdersRouter({
       value.includes('customer send') ||
       value.includes('self ship')
     ) {
-      return SHIPPING_PREFERENCE.NO_LABEL;
+      return SHIPPING_PREFERENCE.EMAIL_LABEL;
     }
 
     return SHIPPING_PREFERENCE.EMAIL_LABEL;
@@ -105,10 +104,6 @@ function createOrdersRouter({
   function resolveShippingPreferenceLabel(normalizedPreference) {
     if (normalizedPreference === SHIPPING_PREFERENCE.KIT) {
       return 'Shipping Kit Requested';
-    }
-
-    if (normalizedPreference === SHIPPING_PREFERENCE.NO_LABEL) {
-      return 'No Label - Customer Send';
     }
 
     return 'Email Label Requested';
@@ -126,6 +121,303 @@ function createOrdersRouter({
     const error = new Error(message);
     error.status = status;
     return error;
+  }
+
+  function buildShipEngineErrorMessage(error, fallbackMessage) {
+    const responseData = error?.response?.data || error?.responseData || null;
+    const errors = Array.isArray(responseData?.errors) ? responseData.errors : [];
+    const details = errors
+      .map((entry) => entry?.message || entry?.error_source || null)
+      .filter(Boolean);
+    if (details.length) {
+      return details.join('; ');
+    }
+    return responseData?.message || error?.message || fallbackMessage;
+  }
+
+  function extractShipEngineWarnings(error) {
+    const responseData = error?.response?.data || error?.responseData || null;
+    if (Array.isArray(responseData?.errors)) {
+      return responseData.errors
+        .map((entry) => entry?.message || null)
+        .filter(Boolean);
+    }
+    if (Array.isArray(responseData?.warnings)) {
+      return responseData.warnings
+        .map((entry) => entry?.message || null)
+        .filter(Boolean);
+    }
+    return [];
+  }
+
+  function extractLabelDownloadUrl(labelData = {}) {
+    return (
+      labelData?.label_download?.pdf ||
+      labelData?.label_download?.href ||
+      labelData?.label_download?.url ||
+      labelData?.labelDownload?.pdf ||
+      labelData?.labelDownload?.href ||
+      labelData?.labelDownload?.url ||
+      null
+    );
+  }
+
+  function extractLabelCarrierCode(labelData = {}, fallback = null) {
+    return (
+      labelData?.shipment?.carrier_code ||
+      labelData?.shipment?.carrierCode ||
+      labelData?.shipment?.carrier_id ||
+      labelData?.carrier_code ||
+      labelData?.carrierCode ||
+      fallback ||
+      null
+    );
+  }
+
+  function extractLabelServiceCode(labelData = {}, fallback = null) {
+    return (
+      labelData?.shipment?.service_code ||
+      labelData?.shipment?.serviceCode ||
+      labelData?.service_code ||
+      labelData?.serviceCode ||
+      fallback ||
+      null
+    );
+  }
+
+  function buildSingleLabelRecord({
+    labelData,
+    labelKey,
+    displayName,
+    labelReference,
+    serviceCode,
+    carrierCode,
+  }) {
+    const nowTimestamp = Timestamp.now();
+    const downloadUrl = extractLabelDownloadUrl(labelData);
+    const labelId =
+      labelData?.label_id ||
+      labelData?.labelId ||
+      labelData?.shipengine_label_id ||
+      null;
+
+    const labelRecord = {
+      id: labelId,
+      trackingNumber: labelData?.tracking_number || null,
+      downloadUrl,
+      carrierCode: extractLabelCarrierCode(labelData, carrierCode),
+      serviceCode: extractLabelServiceCode(labelData, serviceCode),
+      generatedAt: nowTimestamp,
+      createdAt: nowTimestamp,
+      status: 'active',
+      voidStatus: 'active',
+      message: null,
+      displayName,
+      labelReference,
+    };
+
+    const labelRecords = { [labelKey]: labelRecord };
+    const labelIds = buildLabelIdList(labelRecords);
+    const hasActive = Object.values(labelRecords).some((entry) =>
+      entry && entry.id ? !isLabelPendingVoid(entry) : false
+    );
+
+    return {
+      nowTimestamp,
+      downloadUrl,
+      labelId,
+      labelRecord,
+      labelRecords,
+      labelIds,
+      hasActive,
+    };
+  }
+
+  function assertLabelGenerationAllowed(order = {}, carrierName = 'shipping') {
+    const labels = cloneShipEngineLabelMap(order.shipEngineLabels);
+    const activeExistingLabel = Object.values(labels).find(
+      (entry) => entry && entry.id && !isLabelPendingVoid(entry)
+    );
+
+    if (activeExistingLabel) {
+      throw buildHttpError(
+        `A shipping label already exists for this order. Void the current label before generating a new ${carrierName} label.`,
+        409
+      );
+    }
+
+    const voidedStatus = String(order?.labelVoidStatus || '').toLowerCase();
+    if (
+      (order?.trackingNumber || order?.uspsLabelUrl || order?.upsLabelUrl) &&
+      !['voided', 'void_denied'].includes(voidedStatus)
+    ) {
+      throw buildHttpError(
+        `A shipping label already exists for this order. Void the current label before generating a new ${carrierName} label.`,
+        409
+      );
+    }
+  }
+
+  function buildShippingLabelEmail(order, { carrierName, labelDownloadUrl, trackingNumber }) {
+    const shippingInfo = order?.shippingInfo || {};
+    const trackStatusLink = `https://secondhandcell.com/track-order.html?orderId=${encodeURIComponent(order.id)}&fromEmailLink=1`;
+
+    return {
+      from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+      to: shippingInfo.email,
+      subject: `Your ${carrierName} SecondHandCell Shipping Label for Order #${order.id}`,
+      html: SHIPPING_LABEL_EMAIL_HTML
+        .replace(/\*\*CUSTOMER_NAME\*\*/g, shippingInfo.fullName || 'Customer')
+        .replace(/\*\*ORDER_ID\*\*/g, order.id)
+        .replace(/\*\*TRACKING_NUMBER\*\*/g, trackingNumber || 'N/A')
+        .replace(/\*\*LABEL_DOWNLOAD_LINK\*\*/g, labelDownloadUrl)
+        .replace(/\*\*TRACK_STATUS_LINK\*\*/g, trackStatusLink)
+        .replace(/\*\*CARRIER_NAME\*\*/g, carrierName),
+    };
+  }
+
+  async function createSingleInboundLabelForOrder(order, {
+    carrierName,
+    carrierCode = null,
+    serviceCode,
+    weight,
+    dimensions = EMAIL_LABEL_PACKAGE_DATA.dimensions,
+    packageProducts = null,
+    advancedOptions = null,
+    labelKey,
+    labelReferenceSuffix,
+    displayName,
+    labelDeliveryMethod,
+    labelGeneratedSource,
+    urlField,
+  }) {
+    if (!order?.id) {
+      throw buildHttpError('Order not found.', 404);
+    }
+
+    const shippingInfo = order.shippingInfo;
+    if (!shippingInfo) {
+      throw buildHttpError('Shipping information is required to generate a label.', 400);
+    }
+
+    if (!shippingInfo.email) {
+      throw buildHttpError('Customer email is required to send the generated label.', 400);
+    }
+
+    assertLabelGenerationAllowed(order, carrierName);
+
+    const buyerAddress = normalizeCustomerAddress(shippingInfo);
+    const labelReference = `${order.id}-${labelReferenceSuffix}`;
+
+    const packageData = {
+      dimensions,
+      service_code: serviceCode,
+      carrier_code: carrierCode || undefined,
+      weight,
+      products: packageProducts || undefined,
+      advanced_options: advancedOptions || undefined,
+    };
+
+    let labelData;
+    try {
+      labelData = await createShipEngineLabel(
+        buyerAddress,
+        SWIFT_BUYBACK_ADDRESS,
+        labelReference,
+        packageData,
+        {
+          orderId: order.id,
+          orderData: order,
+          carrierCode,
+          carrierName,
+          serviceCode,
+          labelType: labelKey,
+        }
+      );
+    } catch (error) {
+      const message = buildShipEngineErrorMessage(
+        error,
+        `Failed to generate ${carrierName} shipping label.`
+      );
+      const wrapped = buildHttpError(message, error.status || error.response?.status || 502);
+      wrapped.responseData = error.response?.data || error.responseData || null;
+      wrapped.warnings = extractShipEngineWarnings(error);
+      throw wrapped;
+    }
+
+    const singleLabel = buildSingleLabelRecord({
+      labelData,
+      labelKey,
+      displayName,
+      labelReference,
+      serviceCode,
+      carrierCode,
+    });
+
+    if (!singleLabel.downloadUrl) {
+      throw buildHttpError('Label PDF link not available from ShipEngine.', 502);
+    }
+
+    const labelTimestamp = FieldValue.serverTimestamp();
+    const orderUpdates = {
+      status: 'label_generated',
+      labelGeneratedAt: labelTimestamp,
+      lastStatusUpdateAt: labelTimestamp,
+      trackingNumber: singleLabel.labelRecord.trackingNumber,
+      shipEngineLabels: singleLabel.labelRecords,
+      shipEngineLabelIds: singleLabel.labelIds,
+      shipEngineLabelsLastUpdatedAt: singleLabel.nowTimestamp,
+      hasShipEngineLabel: singleLabel.labelIds.length > 0,
+      hasActiveShipEngineLabel: singleLabel.hasActive,
+      shipEngineLabelId: singleLabel.labelId || singleLabel.labelIds[0] || null,
+      labelDeliveryMethod,
+      labelGeneratedSource,
+      labelVoidStatus: 'active',
+      labelVoidMessage: null,
+      labelCarrierCode: singleLabel.labelRecord.carrierCode,
+      labelServiceCode: singleLabel.labelRecord.serviceCode,
+      labelCarrierName: carrierName,
+      labelTrackingCarrierCode: singleLabel.labelRecord.carrierCode,
+      labelTrackingStatus:
+        labelData?.status_code || labelData?.statusCode || 'LABEL_CREATED',
+      labelTrackingStatusDescription:
+        labelData?.status_description || labelData?.statusDescription || 'Label created',
+      labelTrackingCarrierStatusCode:
+        labelData?.carrier_status_code || labelData?.carrierStatusCode || null,
+      labelTrackingCarrierStatusDescription:
+        labelData?.carrier_status_description || labelData?.carrierStatusDescription || null,
+      labelTrackingLastSyncedAt: labelTimestamp,
+      shipEngineShipmentId:
+        labelData?.shipment_id || labelData?.shipmentId || labelData?.shipment?.shipment_id || null,
+      [urlField]: singleLabel.downloadUrl,
+    };
+
+    const emailOptions = buildShippingLabelEmail(order, {
+      carrierName,
+      labelDownloadUrl: singleLabel.downloadUrl,
+      trackingNumber: singleLabel.labelRecord.trackingNumber,
+    });
+
+    await updateOrderBoth(order.id, orderUpdates);
+
+    let emailWarning = null;
+    try {
+      await transporter.sendMail(emailOptions);
+    } catch (emailError) {
+      emailWarning = `Label was generated, but the confirmation email failed to send: ${emailError?.message || 'unknown error'}`;
+      console.error(`[Shipping Label Email] Order ${order.id}:`, emailError);
+    }
+
+    return {
+      orderUpdates,
+      labelData,
+      labelDownloadUrl: singleLabel.downloadUrl,
+      trackingNumber: singleLabel.labelRecord.trackingNumber,
+      carrierCode: singleLabel.labelRecord.carrierCode,
+      serviceCode: singleLabel.labelRecord.serviceCode,
+      labelId: singleLabel.labelId,
+      warnings: emailWarning ? [emailWarning] : [],
+    };
   }
 
   function normalizeCustomerAddress(raw = {}, fallback = {}) {
@@ -161,135 +453,6 @@ function createOrdersRouter({
     };
   }
 
-  async function autoGenerateEmailLabel(orderId, orderData) {
-    const shippingInfo = orderData?.shippingInfo;
-    if (!shippingInfo) {
-      throw buildHttpError(
-        'Shipping information is required to generate a label.',
-        400
-      );
-    }
-
-    const buyerAddress = {
-      name: shippingInfo.fullName,
-      phone: '3475591707',
-      address_line1: shippingInfo.streetAddress,
-      city_locality: shippingInfo.city,
-      state_province: shippingInfo.state,
-      postal_code: shippingInfo.zipCode,
-      country_code: 'US',
-    };
-
-    const deviceCount = resolveOrderDeviceCount(orderData);
-    const shippingProfile = resolveUspsServiceAndWeightByDeviceCount(deviceCount);
-    const packageData = {
-      ...EMAIL_LABEL_PACKAGE_DATA,
-      service_code: shippingProfile.serviceCode,
-      weight: { value: shippingProfile.weightOz, unit: 'ounce' },
-    };
-    const labelReference = `${orderId}-INBOUND-DEVICE`;
-
-    console.log('[ShipEngine] label profile selected', {
-      orderId,
-      deviceCount,
-      chosenService: shippingProfile.chosenService,
-      weightOz: shippingProfile.weightOz,
-      blocks: shippingProfile.blocks,
-      labelReference,
-    });
-
-    const labelData = await createShipEngineLabel(
-      buyerAddress,
-      SWIFT_BUYBACK_ADDRESS,
-      labelReference,
-      packageData,
-      {
-        orderId,
-        orderData,
-        deviceCount,
-        chosenService: shippingProfile.chosenService,
-        weightOz: shippingProfile.weightOz,
-        blocks: shippingProfile.blocks,
-      }
-    );
-
-    const labelDownloadLink = labelData.label_download?.pdf;
-    if (!labelDownloadLink) {
-      throw buildHttpError('Label PDF link not available from ShipEngine.', 502);
-    }
-
-    const nowTimestamp = Timestamp.now();
-    const labelId =
-      labelData.label_id ||
-      labelData.labelId ||
-      labelData.shipengine_label_id ||
-      null;
-    const labelRecord = {
-      id: labelId,
-      trackingNumber: labelData.tracking_number || null,
-      downloadUrl: labelDownloadLink,
-      carrierCode:
-        labelData.shipment?.carrier_id || labelData.carrier_code || null,
-      serviceCode:
-        labelData.shipment?.service_code ||
-        packageData.service_code ||
-        null,
-      generatedAt: nowTimestamp,
-      createdAt: nowTimestamp,
-      status: 'active',
-      voidStatus: 'active',
-      message: null,
-      displayName: 'Email Shipping Label',
-      labelReference,
-    };
-
-    const labelRecords = { email: labelRecord };
-    const labelIds = buildLabelIdList(labelRecords);
-    const hasActive = Object.values(labelRecords).some((entry) =>
-      entry && entry.id ? !isLabelPendingVoid(entry) : false
-    );
-
-    const labelTimestamp = FieldValue.serverTimestamp();
-
-    const customerEmailSubject = `Your SecondHandCell Shipping Label for Order #${orderId}`;
-    const trackStatusLink = `https://secondhandcell.com/track-order.html?orderId=${encodeURIComponent(orderId)}&fromEmailLink=1`;
-    const customerEmailHtml = SHIPPING_LABEL_EMAIL_HTML
-      .replace(/\*\*CUSTOMER_NAME\*\*/g, shippingInfo.fullName)
-      .replace(/\*\*ORDER_ID\*\*/g, orderId)
-      .replace(/\*\*TRACKING_NUMBER\*\*/g, labelData.tracking_number || 'N/A')
-      .replace(/\*\*LABEL_DOWNLOAD_LINK\*\*/g, labelDownloadLink)
-      .replace(/\*\*TRACK_STATUS_LINK\*\*/g, trackStatusLink);
-
-    const customerMailOptions = {
-      from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
-      to: shippingInfo.email,
-      subject: customerEmailSubject,
-      html: customerEmailHtml,
-    };
-
-    return {
-      labelDownloadLink,
-      trackingNumber: labelData.tracking_number || null,
-      customerMailOptions,
-      orderUpdates: {
-        status: 'label_generated',
-        labelGeneratedAt: labelTimestamp,
-        lastStatusUpdateAt: labelTimestamp,
-        uspsLabelUrl: labelDownloadLink,
-        trackingNumber: labelData.tracking_number || null,
-        shipEngineLabels: labelRecords,
-        shipEngineLabelIds: labelIds,
-        shipEngineLabelsLastUpdatedAt: nowTimestamp,
-        hasShipEngineLabel: labelIds.length > 0,
-        hasActiveShipEngineLabel: hasActive,
-        shipEngineLabelId: labelId || labelIds[0] || null,
-        labelDeliveryMethod: 'email',
-        labelGeneratedSource: 'auto_submit',
-        labelVoidStatus: 'active',
-        labelVoidMessage: null,
-      },
-    };
-  }
   const resolvedStorageBucketName = [
     process.env.FIREBASE_STORAGE_BUCKET,
     process.env.STORAGE_BUCKET,
@@ -1187,28 +1350,13 @@ function createOrdersRouter({
       let newOrderStatus =
         normalizedShippingPreference === SHIPPING_PREFERENCE.KIT
           ? 'shipping_kit_requested'
-          : normalizedShippingPreference === SHIPPING_PREFERENCE.NO_LABEL
-            ? 'pending_customer_send'
           : 'order_pending';
-      let autoLabelResult = null;
       const trackOrderUrl = `https://secondhandcell.com/track-order.html?orderId=${encodeURIComponent(orderId)}&fromEmailLink=1`;
       const trackStatusButtonHtml = `
         <div style="text-align:center; margin-top:18px;">
           <a href="${trackOrderUrl}" class="button-link" style="background-color:#2563eb;">Track your status here</a>
         </div>
       `;
-
-      if (normalizedShippingPreference === SHIPPING_PREFERENCE.EMAIL_LABEL) {
-        try {
-          autoLabelResult = await autoGenerateEmailLabel(orderId, orderData);
-          newOrderStatus = 'label_generated';
-        } catch (labelError) {
-          console.error(
-            `Auto label generation failed for order ${orderId}:`,
-            labelError
-          );
-        }
-      }
 
       if (normalizedShippingPreference === SHIPPING_PREFERENCE.KIT) {
         shippingInstructions = `
@@ -1224,49 +1372,15 @@ function createOrdersRouter({
           ${trackStatusButtonHtml}
         </div>
       `;
-      } else if (normalizedShippingPreference === SHIPPING_PREFERENCE.NO_LABEL) {
-        shippingInstructions = `
-        <div style="margin-top: 24px;">
-          <h2 style="font-size:18px; color:#0f172a; margin:0 0 10px;">Ship on your own</h2>
-          <p style="margin:0 0 12px; color:#475569;">No prepaid label was requested for this order. You can ship your device to us using your own carrier and packaging.</p>
-          <p style="margin:0 0 14px; font-size:20px; font-weight:800; line-height:1.5; color:#0f172a; background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:12px 14px;">
-            Our office is located at <strong>1602 McDonald Avenue, Brooklyn, New York 11230</strong> — this is where you should send your label and package.
-          </p>
-          <ol style="margin:0 0 12px 18px; padding-left:18px; color:#475569;">
-            <li style="margin-bottom:8px;">Include your order number <strong>#${orderId}</strong> inside the package.</li>
-            <li style="margin-bottom:8px;">Use tracked shipping and keep your carrier receipt until your order is completed.</li>
-            <li style="margin-bottom:8px;">Reply to this email with your tracking number once shipped so we can update your order.</li>
-          </ol>
-          ${trackStatusButtonHtml}
-        </div>
-      `;
-      } else if (autoLabelResult) {
-        shippingInstructions = `
-        <div style="margin-top: 24px;">
-          <h2 style="font-size:18px; color:#0f172a; margin:0 0 10px;">Email label instructions</h2>
-          <p style="margin:0 0 12px; color:#475569;">Your prepaid USPS label is ready! Download it from the confirmation page or the button below.</p>
-          <div style="text-align:center; margin:18px 0 14px;">
-            <a href="${autoLabelResult.labelDownloadLink}" class="button-link" style="background-color:#16a34a;">Download shipping label</a>
-          </div>
-          <p style="margin:0 0 12px; color:#475569;"><strong>Tracking Number:</strong> ${autoLabelResult.trackingNumber || 'N/A'}</p>
-          <ol style="margin:0 0 12px 18px; padding-left:18px; color:#475569;">
-            <li style="margin-bottom:8px;">Print the label and grab a sturdy box with bubble wrap or a soft cloth.</li>
-            <li style="margin-bottom:8px;">Power off the device, remove SIM/eSIM, sign out of accounts, and add a note with your order number.</li>
-            <li style="margin-bottom:8px;">Seal every edge with tape, place the label flat on the box, and drop it off at USPS. Keep the receipt for your records.</li>
-          </ol>
-          <p style="margin:0; color:#475569;">Need help? Reply to this email and we'll guide you.</p>
-          ${trackStatusButtonHtml}
-        </div>
-      `;
       } else {
         shippingInstructions = `
         <div style="margin-top: 24px;">
-          <h2 style="font-size:18px; color:#0f172a; margin:0 0 10px;">Email label instructions</h2>
-          <p style="margin:0 0 12px; color:#475569;">We're generating your prepaid USPS label now and will email it shortly. You can start prepping your device in the meantime.</p>
+          <h2 style="font-size:18px; color:#0f172a; margin:0 0 10px;">Shipping label instructions</h2>
+          <p style="margin:0 0 12px; color:#475569;">Your order is saved. On the next step, choose your prepaid USPS or UPS label and we’ll email the download link immediately.</p>
           <ol style="margin:0 0 12px 18px; padding-left:18px; color:#475569;">
             <li style="margin-bottom:8px;">Back up data, remove SIM/eSIM, and sign out of Apple/Google/Samsung accounts.</li>
             <li style="margin-bottom:8px;">Factory reset the device, then wrap it in padding and place it in a sturdy box.</li>
-            <li style="margin-bottom:8px;">Once your label arrives, print it, seal the box, attach the label, and drop it at USPS with a receipt.</li>
+            <li style="margin-bottom:8px;">Once you pick USPS or UPS, print the label, seal the box, attach it securely, and keep your carrier receipt.</li>
           </ol>
           <p style="margin:0; color:#475569;">Questions? Reply to this email.</p>
           ${trackStatusButtonHtml}
@@ -1335,9 +1449,7 @@ function createOrdersRouter({
       const customerMailOptions = {
         from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
         to: orderData.shippingInfo.email,
-        subject: autoLabelResult
-          ? `Your SecondHandCell Order #${orderId} Has Been Received + Label Ready`
-          : `Your SecondHandCell Order #${orderId} Has Been Received!`,
+        subject: `Your SecondHandCell Order #${orderId} Has Been Received!`,
         html: customerEmailHtml,
       };
 
@@ -1397,37 +1509,168 @@ function createOrdersRouter({
       const toSave = {
         ...orderData,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        status: autoLabelResult?.orderUpdates?.status || newOrderStatus,
+        status: newOrderStatus,
         id: orderId,
       };
-
-      if (autoLabelResult?.orderUpdates) {
-        Object.assign(toSave, autoLabelResult.orderUpdates);
-      }
       await writeOrderBoth(orderId, toSave);
 
       const responsePayload = {
         message: 'Order submitted',
         orderId,
+        autoLabelStatus: 'not_generated',
       };
-
-      if (autoLabelResult) {
-        responsePayload.autoLabelDownloadUrl =
-          autoLabelResult.labelDownloadLink;
-        responsePayload.autoLabelTrackingNumber =
-          autoLabelResult.trackingNumber;
-        responsePayload.autoLabelStatus = 'generated';
-      } else if (normalizedShippingPreference === SHIPPING_PREFERENCE.EMAIL_LABEL) {
-        responsePayload.autoLabelStatus = 'pending';
-      } else if (normalizedShippingPreference === SHIPPING_PREFERENCE.NO_LABEL) {
-        responsePayload.autoLabelStatus = 'skipped_no_label';
-      }
 
       res.status(201).json(responsePayload);
     } catch (err) {
       console.error('Error submitting order:', err);
       const statusCode = err.status || 500;
       res.status(statusCode).json({ error: err.message || 'Failed to submit order' });
+    }
+  });
+
+  router.post('/api/shipping/generate-usps-label', async (req, res) => {
+    try {
+      const orderId = String(req.body?.orderId || '').trim();
+      if (!orderId) {
+        return res.status(400).json({ error: 'orderId is required.' });
+      }
+
+      const doc = await ordersCollection.doc(orderId).get();
+      if (!doc.exists) {
+        return res.status(404).json({ error: 'Order not found' });
+      }
+
+      const order = { id: doc.id, ...doc.data() };
+      const deviceCount = resolveOrderDeviceCount(order);
+      const shippingProfile = resolveUspsServiceAndWeightByDeviceCount(deviceCount);
+
+      console.log('[ShipEngine] USPS label profile selected', {
+        orderId,
+        deviceCount,
+        chosenService: shippingProfile.chosenService,
+        weightOz: shippingProfile.weightOz,
+        blocks: shippingProfile.blocks,
+      });
+
+      const result = await createSingleInboundLabelForOrder(order, {
+        carrierName: 'USPS',
+        carrierCode: 'stamps_com',
+        serviceCode: shippingProfile.serviceCode,
+        weight: { value: shippingProfile.weightOz, unit: 'ounce' },
+        labelKey: 'usps',
+        labelReferenceSuffix: 'USPS-INBOUND-DEVICE',
+        displayName: 'USPS Shipping Label',
+        labelDeliveryMethod: 'usps',
+        labelGeneratedSource: 'shipping_endpoint_usps',
+        urlField: 'uspsLabelUrl',
+      });
+
+      return res.json({
+        message: 'USPS shipping label generated successfully.',
+        orderId,
+        labelDownloadUrl: result.labelDownloadUrl,
+        trackingNumber: result.trackingNumber,
+        carrier: 'USPS',
+        carrierCode: result.carrierCode,
+        serviceCode: result.serviceCode,
+        labelId: result.labelId,
+        warnings: result.warnings || [],
+      });
+    } catch (error) {
+      const statusCode = error.status || error.response?.status || 500;
+      const responseData = error.responseData || error.response?.data || null;
+      console.error('Error generating USPS shipping label:', responseData || error.message || error);
+      return res.status(statusCode).json({
+        error: error.message || 'Failed to generate USPS shipping label.',
+        details: responseData,
+        warnings: error.warnings || extractShipEngineWarnings(error),
+      });
+    }
+  });
+
+  router.post('/api/shipping/generate-ups-label', async (req, res) => {
+    try {
+      const orderId = String(req.body?.orderId || '').trim();
+      if (!orderId) {
+        return res.status(400).json({ error: 'orderId is required.' });
+      }
+
+      const doc = await ordersCollection.doc(orderId).get();
+      if (!doc.exists) {
+        return res.status(404).json({ error: 'Order not found' });
+      }
+
+      const order = { id: doc.id, ...doc.data() };
+      const deviceCount = resolveOrderDeviceCount(order);
+      const sku =
+        String(order?.modelId || order?.modelName || order?.device || 'PHONE-DEVICE')
+          .trim()
+          .replace(/[^A-Za-z0-9_-]+/g, '-')
+          .toUpperCase();
+      const upsCarrierCode = String(
+        process.env.SHIPENGINE_UPS_CARRIER_CODE || process.env.UPS_SHIPENGINE_CARRIER_CODE || 'ups'
+      ).trim();
+      const requestedWeight = Number(req.body?.packageWeightLb);
+      const packageWeightLb = Number.isFinite(requestedWeight) && requestedWeight > 0
+        ? requestedWeight
+        : Math.max(1.5, Number((deviceCount * 1.5).toFixed(2)));
+
+      if (!upsCarrierCode) {
+        throw buildHttpError('SHIPENGINE_UPS_CARRIER_CODE is required for UPS label generation.', 500);
+      }
+
+      const dangerousGoods = {
+        id_number: 'UN3481',
+        shipping_name: 'Lithium ion batteries contained in equipment',
+        regulation_level: 'excepted_quantity',
+        packaging_instruction_section: 'section_2',
+      };
+
+      const result = await createSingleInboundLabelForOrder(order, {
+        carrierName: 'UPS',
+        carrierCode: upsCarrierCode,
+        serviceCode: 'ups_ground',
+        weight: { value: packageWeightLb, unit: 'pound' },
+        packageProducts: [
+          {
+            sku,
+            description: order?.device || order?.modelName || 'Mobile Phone',
+            quantity: Math.max(1, deviceCount),
+            dangerous_goods: dangerousGoods,
+          },
+        ],
+        advancedOptions: {
+          dangerous_goods: true,
+        },
+        labelKey: 'ups',
+        labelReferenceSuffix: 'UPS-INBOUND-DEVICE',
+        displayName: 'UPS Shipping Label',
+        labelDeliveryMethod: 'ups',
+        labelGeneratedSource: 'shipping_endpoint_ups',
+        urlField: 'upsLabelUrl',
+      });
+
+      return res.json({
+        message: 'UPS shipping label generated successfully.',
+        orderId,
+        labelDownloadUrl: result.labelDownloadUrl,
+        trackingNumber: result.trackingNumber,
+        carrier: 'UPS',
+        carrierCode: result.carrierCode,
+        serviceCode: result.serviceCode,
+        labelId: result.labelId,
+        dangerousGoods,
+        warnings: result.warnings || [],
+      });
+    } catch (error) {
+      const statusCode = error.status || error.response?.status || 500;
+      const responseData = error.responseData || error.response?.data || null;
+      console.error('Error generating UPS shipping label:', responseData || error.message || error);
+      return res.status(statusCode).json({
+        error: error.message || 'Failed to generate UPS shipping label.',
+        details: responseData,
+        warnings: error.warnings || extractShipEngineWarnings(error),
+      });
     }
   });
 
@@ -1494,7 +1737,6 @@ function createOrdersRouter({
         blocks: shippingProfile.blocks,
       });
 
-      let customerLabelData;
       let updateData = {
         status: generatedStatus,
         labelGeneratedAt: statusTimestamp,
@@ -1537,8 +1779,6 @@ function createOrdersRouter({
             blocks: shippingProfile.blocks,
           }
         );
-
-        customerLabelData = outboundLabelData;
 
         labelRecords.outbound = {
           id:
@@ -1606,7 +1846,7 @@ function createOrdersRouter({
           .replace(/\*\*ORDER_ID\*\*/g, order.id)
           .replace(
             /\*\*TRACKING_NUMBER\*\*/g,
-            customerLabelData.tracking_number || 'N/A'
+            outboundLabelData.tracking_number || 'N/A'
           );
 
         customerMailOptions = {
@@ -1615,88 +1855,11 @@ function createOrdersRouter({
           subject: customerEmailSubject,
           html: customerEmailHtml,
         };
-      } else if (normalizedShippingPreference === SHIPPING_PREFERENCE.EMAIL_LABEL) {
-        customerLabelData = await createShipEngineLabel(
-          buyerAddress,
-          swiftBuyBackAddress,
-          `${orderIdForLabel}-INBOUND-DEVICE`,
-          inboundPackageData,
-          {
-            orderId: orderIdForLabel,
-            orderData: order,
-            deviceCount,
-            chosenService: shippingProfile.chosenService,
-            weightOz: shippingProfile.weightOz,
-            blocks: shippingProfile.blocks,
-          }
-        );
-
-        const labelDownloadLink = customerLabelData.label_download?.pdf;
-        if (!labelDownloadLink) {
-          console.error(
-            'ShipEngine did not return a downloadable label PDF for order:',
-            order.id,
-            customerLabelData
-          );
-          throw new Error('Label PDF link not available from ShipEngine.');
-        }
-
-        labelRecords.email = {
-          id:
-            customerLabelData.label_id ||
-            customerLabelData.labelId ||
-            customerLabelData.shipengine_label_id ||
-            null,
-          trackingNumber: customerLabelData.tracking_number || null,
-          downloadUrl: labelDownloadLink,
-          carrierCode:
-            customerLabelData.shipment?.carrier_id ||
-            customerLabelData.carrier_code ||
-            null,
-          serviceCode:
-            customerLabelData.shipment?.service_code ||
-            inboundPackageData.service_code ||
-            null,
-          generatedAt: nowTimestamp,
-          createdAt: nowTimestamp,
-          status: 'active',
-          voidStatus: 'active',
-          message: null,
-          displayName: 'Email Shipping Label',
-          labelReference: `${orderIdForLabel}-INBOUND-DEVICE`,
-        };
-
-        updateData = {
-          ...updateData,
-          uspsLabelUrl: labelDownloadLink,
-          trackingNumber: customerLabelData.tracking_number,
-        };
-
-        customerEmailSubject = `Your SecondHandCell Shipping Label for Order #${order.id}`;
-        const trackStatusLink = `https://secondhandcell.com/track-order.html?orderId=${encodeURIComponent(order.id)}&fromEmailLink=1`;
-        customerEmailHtml = SHIPPING_LABEL_EMAIL_HTML
-          .replace(/\*\*CUSTOMER_NAME\*\*/g, order.shippingInfo.fullName)
-          .replace(/\*\*ORDER_ID\*\*/g, order.id)
-          .replace(
-            /\*\*TRACKING_NUMBER\*\*/g,
-            customerLabelData.tracking_number || 'N/A'
-          )
-          .replace(/\*\*LABEL_DOWNLOAD_LINK\*\*/g, labelDownloadLink)
-          .replace(/\*\*TRACK_STATUS_LINK\*\*/g, trackStatusLink);
-
-        customerMailOptions = {
-          from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
-          to: order.shippingInfo.email,
-          subject: customerEmailSubject,
-          html: customerEmailHtml,
-        };
-      } else if (normalizedShippingPreference === SHIPPING_PREFERENCE.NO_LABEL) {
+      } else {
         throw buildHttpError(
-          'This order is set to No Label - Customer Send. Use manual shipping label if needed.',
+          'Regular customer labels now require the dedicated shipping endpoints: /api/shipping/generate-usps-label or /api/shipping/generate-ups-label.',
           400
         );
-      } else {
-        throw new Error(`Unknown shipping preference: ${order.shippingPreference}`);
       }
 
       const labelIds = buildLabelIdList(labelRecords);
@@ -1732,201 +1895,6 @@ function createOrdersRouter({
       res
         .status(statusCode)
         .json({ error: 'Failed to generate label', details: responseData || err.message });
-    }
-  });
-
-  router.post('/orders/:id/manual-shipping-label', async (req, res) => {
-    try {
-      const orderId = req.params.id;
-      const directionRaw = String(req.body?.direction || '').trim().toLowerCase();
-      const direction = directionRaw || 'customer_to_me';
-      if (!['customer_to_me', 'me_to_customer'].includes(direction)) {
-        return res.status(400).json({
-          error: 'direction must be either customer_to_me or me_to_customer.',
-        });
-      }
-
-      const doc = await ordersCollection.doc(orderId).get();
-      if (!doc.exists) {
-        return res.status(404).json({ error: 'Order not found' });
-      }
-
-      const order = { id: doc.id, ...doc.data() };
-      const orderIdForLabel = order.id || orderId;
-      const customerAddress = normalizeCustomerAddress(
-        req.body?.customerAddress || {},
-        order.shippingInfo || {}
-      );
-
-      const shcAddress = {
-        name: 'SHC Returns',
-        company_name: 'SecondHandCell',
-        phone: '3475591707',
-        address_line1: '1602 McDonald Ave Ste Rear',
-        city_locality: 'Brooklyn',
-        state_province: 'NY',
-        postal_code: '11230-6336',
-        country_code: 'US',
-      };
-
-      const fromAddress = direction === 'customer_to_me' ? customerAddress : shcAddress;
-      const toAddress = direction === 'customer_to_me' ? shcAddress : customerAddress;
-
-      const deviceCount = resolveOrderDeviceCount(order);
-      const shippingProfile = resolveUspsServiceAndWeightByDeviceCount(deviceCount);
-      const packageData = {
-        service_code: shippingProfile.serviceCode,
-        dimensions: { unit: 'inch', height: 2, width: 4, length: 6 },
-        weight: { value: shippingProfile.weightOz, unit: 'ounce' },
-      };
-
-      const suffix = direction === 'customer_to_me' ? 'CUSTOMER-TO-ME' : 'ME-TO-CUSTOMER';
-      const labelReference = `${orderIdForLabel}-MANUAL-${suffix}`;
-      const labelData = await createShipEngineLabel(
-        fromAddress,
-        toAddress,
-        labelReference,
-        packageData,
-        {
-          orderId: orderIdForLabel,
-          orderData: order,
-          direction,
-          deviceCount,
-          chosenService: shippingProfile.chosenService,
-          weightOz: shippingProfile.weightOz,
-          blocks: shippingProfile.blocks,
-        }
-      );
-
-      const labelDownloadUrl = labelData?.label_download?.pdf || null;
-      const trackingNumber = labelData?.tracking_number || null;
-      const nowTimestamp = Timestamp.now();
-      const labels = cloneShipEngineLabelMap(order.shipEngineLabels);
-      const labelKey = direction === 'customer_to_me' ? 'manual_customer_to_me' : 'manual_me_to_customer';
-      labels[labelKey] = {
-        id:
-          labelData?.label_id ||
-          labelData?.labelId ||
-          labelData?.shipengine_label_id ||
-          null,
-        trackingNumber,
-        downloadUrl: labelDownloadUrl,
-        carrierCode:
-          labelData?.shipment?.carrier_id ||
-          labelData?.carrier_code ||
-          null,
-        serviceCode:
-          labelData?.shipment?.service_code ||
-          packageData.service_code ||
-          null,
-        generatedAt: nowTimestamp,
-        createdAt: nowTimestamp,
-        status: 'active',
-        voidStatus: 'active',
-        message: null,
-        displayName:
-          direction === 'customer_to_me'
-            ? 'Manual Label: Customer To Me'
-            : 'Manual Label: Me To Customer',
-        labelReference,
-      };
-
-      const labelIds = buildLabelIdList(labels);
-      const hasActive = Object.values(labels).some((entry) =>
-        entry && entry.id ? !isLabelPendingVoid(entry) : false
-      );
-
-      await updateOrderBoth(orderId, {
-        shipEngineLabels: labels,
-        shipEngineLabelIds: labelIds,
-        shipEngineLabelsLastUpdatedAt: nowTimestamp,
-        hasShipEngineLabel: labelIds.length > 0,
-        hasActiveShipEngineLabel: hasActive,
-        shipEngineLabelId: labels.inbound?.id || labels.email?.id || labels[labelKey]?.id || labelIds[0] || null,
-        lastManualShippingLabelDirection: direction,
-        lastManualShippingLabelGeneratedAt: nowTimestamp,
-      });
-
-      return res.json({
-        message: 'Manual shipping label generated successfully.',
-        orderId,
-        direction,
-        labelDownloadUrl,
-        trackingNumber,
-      });
-    } catch (error) {
-      const responseData = error.response?.data || error.responseData;
-      const statusCode = error.status || error.response?.status || 500;
-      console.error('Error generating manual shipping label:', responseData || error.message || error);
-      return res.status(statusCode).json({
-        error: 'Failed to generate manual shipping label',
-        details: responseData || error.message,
-      });
-    }
-  });
-
-  router.post('/manual-shipping-label', async (req, res) => {
-    try {
-      const directionRaw = String(req.body?.direction || '').trim().toLowerCase();
-      const direction = directionRaw || 'customer_to_me';
-      if (!['customer_to_me', 'me_to_customer'].includes(direction)) {
-        return res.status(400).json({
-          error: 'direction must be either customer_to_me or me_to_customer.',
-        });
-      }
-
-      const customerAddress = normalizeCustomerAddress(req.body?.customerAddress || {}, {});
-      const shcAddress = {
-        name: 'SHC Returns',
-        company_name: 'SecondHandCell',
-        phone: '3475591707',
-        address_line1: '1602 McDonald Ave Ste Rear',
-        city_locality: 'Brooklyn',
-        state_province: 'NY',
-        postal_code: '11230-6336',
-        country_code: 'US',
-      };
-
-      const fromAddress = direction === 'customer_to_me' ? customerAddress : shcAddress;
-      const toAddress = direction === 'customer_to_me' ? shcAddress : customerAddress;
-
-      const deviceCount = Math.max(1, Number(req.body?.deviceCount) || 1);
-      const shippingProfile = resolveUspsServiceAndWeightByDeviceCount(deviceCount);
-      const packageData = {
-        service_code: shippingProfile.serviceCode,
-        dimensions: { unit: 'inch', height: 2, width: 4, length: 6 },
-        weight: { value: shippingProfile.weightOz, unit: 'ounce' },
-      };
-
-      const labelReference = `MANUAL-${Date.now()}-${direction === 'customer_to_me' ? 'CUSTOMER-TO-ME' : 'ME-TO-CUSTOMER'}`;
-      const labelData = await createShipEngineLabel(
-        fromAddress,
-        toAddress,
-        labelReference,
-        packageData,
-        {
-          direction,
-          deviceCount,
-          chosenService: shippingProfile.chosenService,
-          weightOz: shippingProfile.weightOz,
-          blocks: shippingProfile.blocks,
-        }
-      );
-
-      return res.json({
-        message: 'Manual shipping label generated successfully.',
-        direction,
-        labelDownloadUrl: labelData?.label_download?.pdf || null,
-        trackingNumber: labelData?.tracking_number || null,
-      });
-    } catch (error) {
-      const responseData = error.response?.data || error.responseData;
-      const statusCode = error.status || error.response?.status || 500;
-      console.error('Error generating standalone manual shipping label:', responseData || error.message || error);
-      return res.status(statusCode).json({
-        error: 'Failed to generate manual shipping label',
-        details: responseData || error.message,
-      });
     }
   });
 

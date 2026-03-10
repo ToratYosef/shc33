@@ -2378,6 +2378,8 @@ const apiRouter = express.Router();
 const publicExactPaths = new Set([
   '/verify-address',
   '/submit-order',
+  '/api/shipping/generate-usps-label',
+  '/api/shipping/generate-ups-label',
   '/email-support',
   '/submit-chat-feedback',
 ]);

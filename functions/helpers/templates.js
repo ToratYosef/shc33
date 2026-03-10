@@ -8,7 +8,7 @@ const SHIPPING_LABEL_EMAIL_HTML = buildEmailLayout({
   title: 'Your Shipping Label is Ready!',
   bodyHtml: `
     <p style="font-size:18px; margin-bottom:12px;">Hi <strong>**CUSTOMER_NAME**</strong>,</p>
-    <p style="margin-bottom:18px;">Your prepaid shipping label for order <strong style="color:#2563eb;">#**ORDER_ID**</strong> is ready to go.</p>
+    <p style="margin-bottom:18px;">Your prepaid **CARRIER_NAME** shipping label for order <strong style="color:#2563eb;">#**ORDER_ID**</strong> is ready to go.</p>
 
     <div style="text-align:center; margin:32px 0 24px;">
       <a href="**LABEL_DOWNLOAD_LINK**" class="button-link" style="background:linear-gradient(135deg,#16a34a,#22c55e); box-shadow:0 12px 24px rgba(22,163,74,0.25);">Download Shipping Label</a>
@@ -21,7 +21,7 @@ const SHIPPING_LABEL_EMAIL_HTML = buildEmailLayout({
 
     <div style="background:#ecfeff; border:1px solid #bae6fd; border-radius:14px; padding:16px 18px; color:#0f766e;">
       <strong style="display:block; margin-bottom:6px;">Quick reminder</strong>
-      Print the label, attach it to your package, and drop it off at any USPS location.
+      Print the label, attach it to your package, and drop it off with **CARRIER_NAME**.
     </div>
 
     <div style="text-align:center; margin-top:18px;">

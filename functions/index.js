@@ -5375,16 +5375,33 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
   const serviceCode = packageData?.service_code || "usps_ground_advantage";
   const weightValue = packageData?.weight?.value ?? packageData?.weight?.ounces;
   const weightUnit = packageData?.weight?.unit || "ounce";
+  const carrierCode = [
+    context?.carrierCode,
+    packageData?.carrier_code,
+    packageData?.carrierCode,
+  ].find((entry) => typeof entry === "string" && entry.trim()) || null;
+  const advancedOptions =
+    packageData?.advanced_options && typeof packageData.advanced_options === "object"
+      ? { ...packageData.advanced_options }
+      : null;
+  const products = Array.isArray(packageData?.products)
+    ? packageData.products
+        .filter((entry) => entry && typeof entry === "object")
+        .map((entry) => ({ ...entry }))
+    : null;
 
   const isUspsShipment =
     (typeof serviceCode === "string" && serviceCode.toLowerCase().startsWith("usps_")) ||
-    [context?.carrierCode, packageData?.carrier_code, packageData?.carrierCode]
+    [carrierCode]
       .filter((entry) => typeof entry === "string")
       .some((entry) => {
         const normalized = entry.toLowerCase();
         return normalized.includes("usps") || normalized.includes("stamps");
       });
-  const isHazmat = isUspsShipment;
+  const isHazmat =
+    Boolean(advancedOptions?.dangerous_goods) ||
+    Boolean(products?.some((entry) => entry?.dangerous_goods)) ||
+    isUspsShipment;
   const resolvedServiceCode = serviceCode;
 
   const payload = {
@@ -5404,14 +5421,21 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
           label_messages: {
             reference1: labelReference,
           },
+          ...(products ? { products } : {}),
         },
       ],
     },
   };
+  if (carrierCode) {
+    payload.shipment.carrier_code = carrierCode;
+  }
   if (isHazmat) {
     payload.shipment.advanced_options = {
+      ...(advancedOptions || {}),
       dangerous_goods: true,
     };
+  } else if (advancedOptions) {
+    payload.shipment.advanced_options = advancedOptions;
   }
   if (isSandbox) payload.testLabel = true;
 
@@ -5438,8 +5462,10 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
       orderId: context?.orderId || null,
       deviceCount: context?.deviceCount ?? null,
       chosenService: context?.chosenService || null,
+      carrierCode,
       weightOz: context?.weightOz ?? null,
       blocks: context?.blocks ?? null,
+      labelType: context?.labelType || null,
       request_id: requestId,
     };
 
