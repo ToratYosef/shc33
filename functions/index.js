@@ -5371,6 +5371,28 @@ async function addAdminFirestoreNotification(
 }
 
 async function createShipEngineLabel(fromAddress, toAddress, labelReference, packageData, context = {}) {
+  function normalizeDangerousGoods(dg) {
+    if (!dg) return undefined;
+    if (Array.isArray(dg)) return dg;
+    return [dg];
+  }
+
+  function normalizeDangerousGoodItem(item) {
+    if (!item || typeof item !== "object") {
+      return item;
+    }
+
+    if (item.id_number === undefined || item.id_number === null) {
+      return item;
+    }
+
+    return {
+      ...item,
+      id_number:
+        typeof item.id_number === "string" ? item.id_number : String(item.id_number),
+    };
+  }
+
   const isSandbox = false;
   const serviceCode = packageData?.service_code || "usps_ground_advantage";
   const weightValue = packageData?.weight?.value ?? packageData?.weight?.ounces;
@@ -5387,7 +5409,18 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
   const products = Array.isArray(packageData?.products)
     ? packageData.products
         .filter((entry) => entry && typeof entry === "object")
-        .map((entry) => ({ ...entry }))
+        .map((entry) => {
+          const normalizedDangerousGoods = normalizeDangerousGoods(entry.dangerous_goods)?.map(
+            normalizeDangerousGoodItem
+          );
+
+          return {
+            ...entry,
+            ...(normalizedDangerousGoods
+              ? { dangerous_goods: normalizedDangerousGoods }
+              : {}),
+          };
+        })
     : null;
 
   const isUspsShipment =
@@ -5438,6 +5471,11 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
     payload.shipment.advanced_options = advancedOptions;
   }
   if (isSandbox) payload.testLabel = true;
+
+  console.log(
+    "ShipEngine DG payload:",
+    JSON.stringify(payload.shipment.packages?.[0]?.products?.[0]?.dangerous_goods, null, 2)
+  );
 
   const shipEngineApiKey = getShipEngineApiKey();
   if (!shipEngineApiKey) {

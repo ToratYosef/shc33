@@ -1619,12 +1619,14 @@ function createOrdersRouter({
         throw buildHttpError('SHIPENGINE_UPS_CARRIER_CODE is required for UPS label generation.', 500);
       }
 
-      const dangerousGoods = {
-        id_number: 'UN3481',
-        shipping_name: 'Lithium ion batteries contained in equipment',
-        regulation_level: 'excepted_quantity',
-        packaging_instruction_section: 'section_2',
-      };
+      const dangerousGoods = [
+        {
+          id_number: 'UN3481',
+          shipping_name: 'Lithium ion batteries contained in equipment',
+          product_class: '9',
+          transport_mean: 'ground',
+        },
+      ];
 
       const result = await createSingleInboundLabelForOrder(order, {
         carrierName: 'UPS',
