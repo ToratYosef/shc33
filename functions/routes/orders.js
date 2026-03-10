@@ -329,22 +329,37 @@ function createOrdersRouter({
   }
 
 
+  function hasUsableLabelData(entry = {}) {
+    if (!entry || typeof entry !== 'object') return false;
+    const hasIdentifier = Boolean(entry.id);
+    const hasTracking = Boolean(entry.trackingNumber);
+    const hasDownloadUrl = Boolean(entry.downloadUrl);
+    return hasIdentifier || hasTracking || hasDownloadUrl;
+  }
+
   function findActiveLabelForCarrier(order = {}, preferredKey = null) {
     const labels = cloneShipEngineLabelMap(order.shipEngineLabels);
 
-    if (preferredKey && labels[preferredKey]?.id && !isLabelPendingVoid(labels[preferredKey])) {
+    if (
+      preferredKey &&
+      hasUsableLabelData(labels[preferredKey]) &&
+      !isLabelPendingVoid(labels[preferredKey])
+    ) {
       return labels[preferredKey];
     }
 
     const activeLabel = Object.values(labels).find(
-      (entry) => entry && entry.id && !isLabelPendingVoid(entry)
+      (entry) => hasUsableLabelData(entry) && !isLabelPendingVoid(entry)
     );
 
     if (activeLabel) {
       return activeLabel;
     }
 
-    if (order.shipEngineLabelId && !isLabelPendingVoid(order)) {
+    if (
+      (order.shipEngineLabelId || order.trackingNumber || order.uspsLabelUrl || order.upsLabelUrl) &&
+      !isLabelPendingVoid(order)
+    ) {
       return {
         id: order.shipEngineLabelId,
         trackingNumber: order.trackingNumber || null,
@@ -1981,11 +1996,33 @@ function createOrdersRouter({
       };
       await writeOrderBoth(orderId, toSave);
 
+      const responseOrderView = { ...(orderData || {}), ...(autoLabelDraft?.orderFields || {}) };
+      const preferredLabelKey = responseOrderView?.upsLabelUrl
+        ? 'ups'
+        : responseOrderView?.uspsLabelUrl
+          ? 'usps'
+          : null;
+      const generatedLabelForResponse = findActiveLabelForCarrier(
+        responseOrderView,
+        preferredLabelKey
+      );
+
       const responsePayload = {
         message: 'Order submitted',
         orderId,
         autoLabelStatus: autoLabelDraft?.autoLabelStatus || 'not_generated',
         warnings: autoLabelDraft?.autoLabelWarnings || [],
+        labelDownloadUrl: generatedLabelForResponse?.downloadUrl || null,
+        trackingNumber: generatedLabelForResponse?.trackingNumber || null,
+        labelId: generatedLabelForResponse?.id || null,
+        carrierCode:
+          generatedLabelForResponse?.carrierCode ||
+          autoLabelDraft?.orderFields?.labelCarrierCode ||
+          null,
+        serviceCode:
+          generatedLabelForResponse?.serviceCode ||
+          autoLabelDraft?.orderFields?.labelServiceCode ||
+          null,
       };
 
       res.status(201).json(responsePayload);
