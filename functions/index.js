@@ -6885,7 +6885,7 @@ app.post("/orders/:id/re-offer", async (req, res) => {
 
     const customerName = order.shippingInfo.fullName || "there";
     const encodedDeviceKey = encodeURIComponent(resolvedDeviceKey);
-    const reviewUrl = `https://secondhandcell.com/track-order.html?orderId=${orderId}&deviceKey=${encodedDeviceKey}&fromEmailLink=1&fromReofferLink=1&scrollToReoffer=1`;
+    const reviewUrl = `https://secondhandcell.com/reoffer-action.html?orderId=${orderId}&deviceKey=${encodedDeviceKey}&fromEmailLink=1&fromReofferLink=1`;
 
     const customerEmailHtml = buildReofferEmailHtml({
       orderId: order.id,
