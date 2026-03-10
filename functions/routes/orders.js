@@ -82,10 +82,13 @@ function createOrdersRouter({
 
   const UPS_CARRIER_ID = 'se-4054857';
   const UPS_CONNECTION_PAYLOAD = {
-    nickname: 'UPS Account',
-    account_number: '000076979A',
-    account_postal_code: '11230',
-    account_country_code: 'US',
+    nickname: process.env.SHIPENGINE_UPS_NICKNAME || 'UPS Account',
+    account_number:
+      process.env.SHIPENGINE_UPS_ACCOUNT_NUMBER ||
+      process.env.UPS_ACCOUNT_NUMBER ||
+      '000076979A',
+    account_postal_code: process.env.SHIPENGINE_UPS_ACCOUNT_POSTAL_CODE || '11230',
+    account_country_code: process.env.SHIPENGINE_UPS_ACCOUNT_COUNTRY_CODE || 'US',
   };
 
   function normalizeShippingPreference(preference) {
@@ -401,12 +404,21 @@ function createOrdersRouter({
 
       return response.data;
     } catch (error) {
+      const statusCode = Number(error?.response?.status || 0);
       const details = error?.response?.data || error?.message || error;
       console.error(
         '[ShipEngine][UPS] Failed to refresh carrier connection',
-        JSON.stringify({ carrier_id: UPS_CARRIER_ID }),
+        JSON.stringify({ carrier_id: UPS_CARRIER_ID, statusCode }),
         typeof details === 'string' ? details : JSON.stringify(details)
       );
+
+      if (statusCode === 405) {
+        console.warn(
+          '[ShipEngine][UPS] Refresh endpoint returned 405. Proceeding with existing UPS carrier connection.'
+        );
+        return { skipped: true, reason: 'method_not_allowed' };
+      }
+
       throw buildHttpError('Failed to reconnect UPS carrier configuration in ShipEngine.', 502);
     }
   }
