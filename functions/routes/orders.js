@@ -182,12 +182,23 @@ function createOrdersRouter({
       shippingInfo.labelServiceCode,
     ];
 
+    const detectedCarriers = new Set();
     for (const candidate of candidates) {
       const detected = detectLabelCarrierFromValue(candidate);
-      if (detected) return detected;
+      if (detected) {
+        detectedCarriers.add(detected);
+      }
     }
 
-    return 'usps';
+    if (detectedCarriers.size === 1) {
+      return { carrier: Array.from(detectedCarriers)[0], ambiguous: false };
+    }
+
+    if (detectedCarriers.size > 1) {
+      return { carrier: null, ambiguous: true };
+    }
+
+    return { carrier: null, ambiguous: false };
   }
 
   function resolveOrderDeviceCount(order = {}) {
@@ -1503,7 +1514,14 @@ function createOrdersRouter({
         </div>
       `;
       } else {
-        const requestedLabelCarrier = resolveRequestedLabelCarrier(orderData);
+        const requestedLabelResolution = resolveRequestedLabelCarrier(orderData);
+        const requestedLabelCarrier = requestedLabelResolution.carrier;
+
+        console.log('[Submit Order] Requested auto-label carrier resolution', {
+          orderId,
+          carrier: requestedLabelCarrier,
+          ambiguous: requestedLabelResolution.ambiguous,
+        });
 
         const autoLabelWarnings = [];
         let autoLabelMessage =
@@ -1648,7 +1666,7 @@ function createOrdersRouter({
               autoLabelWarnings.push(warning);
               console.error(`[Shipping Label Email] Order ${orderId}:`, emailError);
             }
-          } else {
+          } else if (requestedLabelCarrier === 'usps') {
             const deviceCount = resolveOrderDeviceCount(draftOrder);
             const shippingProfile = resolveUspsServiceAndWeightByDeviceCount(deviceCount);
 
@@ -1746,6 +1764,19 @@ function createOrdersRouter({
               autoLabelWarnings.push(warning);
               console.error(`[Shipping Label Email] Order ${orderId}:`, emailError);
             }
+          } else {
+            const message = requestedLabelResolution.ambiguous
+              ? 'Multiple label carrier values were detected in submit payload. Skipping automatic label generation to avoid choosing the wrong carrier.'
+              : 'No explicit label carrier was provided. Skipping automatic label generation.';
+            autoLabelDraft = {
+              autoLabelStatus: 'not_generated',
+              autoLabelWarnings: [message],
+              orderFields: {},
+            };
+            newOrderStatus = 'order_pending';
+            autoLabelMessage =
+              'Your order was submitted without generating a label yet. Please choose UPS or USPS and generate your label from the next step.';
+            console.warn(`[Submit Order] Order ${orderId}: ${message}`);
           }
         } catch (labelError) {
           const warning =
