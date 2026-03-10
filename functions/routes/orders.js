@@ -82,10 +82,13 @@ function createOrdersRouter({
 
   const UPS_CARRIER_ID = 'se-4054857';
   const UPS_CONNECTION_PAYLOAD = {
-    nickname: 'UPS Account',
-    account_number: '000076979A',
-    account_postal_code: '11230',
-    account_country_code: 'US',
+    nickname: process.env.SHIPENGINE_UPS_NICKNAME || 'UPS Account',
+    account_number:
+      process.env.SHIPENGINE_UPS_ACCOUNT_NUMBER ||
+      process.env.UPS_ACCOUNT_NUMBER ||
+      '000076979A',
+    account_postal_code: process.env.SHIPENGINE_UPS_ACCOUNT_POSTAL_CODE || '11230',
+    account_country_code: process.env.SHIPENGINE_UPS_ACCOUNT_COUNTRY_CODE || 'US',
   };
 
   function normalizeShippingPreference(preference) {
@@ -117,6 +120,88 @@ function createOrdersRouter({
     }
 
     return 'Email Label Requested';
+  }
+
+  function detectLabelCarrierFromValue(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return null;
+
+    if (
+      normalized === 'ups' ||
+      normalized.includes('ups') ||
+      normalized.includes('ups_ground') ||
+      normalized.includes('ground')
+    ) {
+      return 'ups';
+    }
+
+    if (
+      normalized === 'usps' ||
+      normalized.includes('usps') ||
+      normalized.includes('stamps_com') ||
+      normalized.includes('postal') ||
+      normalized.includes('first_class') ||
+      normalized.includes('priority_mail')
+    ) {
+      return 'usps';
+    }
+
+    return null;
+  }
+
+  function resolveRequestedLabelCarrier(orderData = {}) {
+    const shippingInfo = orderData.shippingInfo || {};
+    const candidates = [
+      orderData.labelCarrier,
+      orderData.shippingLabelCarrier,
+      orderData.selectedShippingLabelCarrier,
+      orderData.selectedLabelCarrier,
+      orderData.labelProvider,
+      orderData.shippingLabelProvider,
+      orderData.labelDeliveryMethod,
+      orderData.shippingMethod,
+      orderData.selectedShippingMethod,
+      orderData.selectedShippingOption,
+      orderData.returnLabelCarrier,
+      orderData.preferredLabelCarrier,
+      orderData.preferredShippingCarrier,
+      orderData.requestedLabelCarrier,
+      orderData.shippingCarrier,
+      orderData.shipCarrier,
+      orderData.labelType,
+      orderData.selectedLabelType,
+      orderData.requestedLabelType,
+      orderData.labelServiceCode,
+      orderData.selectedLabelServiceCode,
+      shippingInfo.labelCarrier,
+      shippingInfo.shippingLabelCarrier,
+      shippingInfo.selectedLabelCarrier,
+      shippingInfo.selectedShippingLabelCarrier,
+      shippingInfo.labelDeliveryMethod,
+      shippingInfo.shippingMethod,
+      shippingInfo.selectedShippingMethod,
+      shippingInfo.selectedShippingOption,
+      shippingInfo.requestedLabelCarrier,
+      shippingInfo.labelServiceCode,
+    ];
+
+    const detectedCarriers = new Set();
+    for (const candidate of candidates) {
+      const detected = detectLabelCarrierFromValue(candidate);
+      if (detected) {
+        detectedCarriers.add(detected);
+      }
+    }
+
+    if (detectedCarriers.size === 1) {
+      return { carrier: Array.from(detectedCarriers)[0], ambiguous: false };
+    }
+
+    if (detectedCarriers.size > 1) {
+      return { carrier: null, ambiguous: true };
+    }
+
+    return { carrier: null, ambiguous: false };
   }
 
   function resolveOrderDeviceCount(order = {}) {
@@ -319,12 +404,21 @@ function createOrdersRouter({
 
       return response.data;
     } catch (error) {
+      const statusCode = Number(error?.response?.status || 0);
       const details = error?.response?.data || error?.message || error;
       console.error(
         '[ShipEngine][UPS] Failed to refresh carrier connection',
-        JSON.stringify({ carrier_id: UPS_CARRIER_ID }),
+        JSON.stringify({ carrier_id: UPS_CARRIER_ID, statusCode }),
         typeof details === 'string' ? details : JSON.stringify(details)
       );
+
+      if (statusCode === 405) {
+        console.warn(
+          '[ShipEngine][UPS] Refresh endpoint returned 405. Proceeding with existing UPS carrier connection.'
+        );
+        return { skipped: true, reason: 'method_not_allowed' };
+      }
+
       throw buildHttpError('Failed to reconnect UPS carrier configuration in ShipEngine.', 502);
     }
   }
@@ -1405,6 +1499,7 @@ function createOrdersRouter({
       }
 
       let shippingInstructions = '';
+      let autoLabelDraft = null;
       let newOrderStatus =
         normalizedShippingPreference === SHIPPING_PREFERENCE.KIT
           ? 'shipping_kit_requested'
@@ -1431,14 +1526,293 @@ function createOrdersRouter({
         </div>
       `;
       } else {
+        const requestedLabelResolution = resolveRequestedLabelCarrier(orderData);
+        const requestedLabelCarrier = requestedLabelResolution.carrier;
+
+        console.log('[Submit Order] Requested auto-label carrier resolution', {
+          orderId,
+          carrier: requestedLabelCarrier,
+          ambiguous: requestedLabelResolution.ambiguous,
+        });
+
+        const autoLabelWarnings = [];
+        let autoLabelMessage =
+          'Your order is saved. On the next step, choose your prepaid USPS or UPS label and we’ll email the download link immediately.';
+
+        try {
+          const draftOrder = { id: orderId, ...orderData, shipEngineLabels: null };
+
+          if (requestedLabelCarrier === 'ups') {
+            const deviceCount = resolveOrderDeviceCount(draftOrder);
+            const sku =
+              String(draftOrder?.modelId || draftOrder?.modelName || draftOrder?.device || 'PHONE-DEVICE')
+                .trim()
+                .replace(/[^A-Za-z0-9_-]+/g, '-')
+                .toUpperCase();
+            const upsCarrierCode = String(
+              process.env.SHIPENGINE_UPS_CARRIER_CODE || process.env.UPS_SHIPENGINE_CARRIER_CODE || 'ups'
+            ).trim();
+            if (!upsCarrierCode) {
+              throw buildHttpError('SHIPENGINE_UPS_CARRIER_CODE is required for UPS label generation.', 500);
+            }
+
+            await reconnectUpsCarrierConnection();
+
+            const dangerousGoods = [
+              {
+                id_number: 'UN3481',
+                shipping_name: 'Lithium ion batteries contained in equipment',
+                product_class: '9',
+                transport_mean: 'ground',
+              },
+            ];
+
+            const requestedWeight = Number(orderData.packageWeightLb);
+            const packageWeightLb = Number.isFinite(requestedWeight) && requestedWeight > 0
+              ? requestedWeight
+              : Math.max(1.5, Number((deviceCount * 1.5).toFixed(2)));
+
+            const labelData = await createShipEngineLabel(
+              normalizeCustomerAddress(orderData.shippingInfo),
+              SWIFT_BUYBACK_ADDRESS,
+              `${orderId}-UPS-INBOUND-DEVICE`,
+              {
+                dimensions: EMAIL_LABEL_PACKAGE_DATA.dimensions,
+                service_code: 'ups_ground',
+                carrier_code: upsCarrierCode,
+                carrier_id: UPS_CARRIER_ID,
+                weight: { value: packageWeightLb, unit: 'pound' },
+                products: [
+                  {
+                    sku,
+                    description: draftOrder?.device || draftOrder?.modelName || 'Mobile Phone',
+                    quantity: Math.max(1, deviceCount),
+                    dangerous_goods: dangerousGoods,
+                  },
+                ],
+                advanced_options: { dangerous_goods: true },
+              },
+              {
+                orderId,
+                orderData,
+                carrierCode: upsCarrierCode,
+                carrierId: UPS_CARRIER_ID,
+                carrierName: 'UPS',
+                serviceCode: 'ups_ground',
+                labelType: 'ups',
+                labelSource: 'submit_order_before_write',
+                accountNumberConfigured: Boolean(UPS_CONNECTION_PAYLOAD.account_number),
+              }
+            );
+
+            const singleLabel = buildSingleLabelRecord({
+              labelData,
+              labelKey: 'ups',
+              displayName: 'UPS Shipping Label',
+              labelReference: `${orderId}-UPS-INBOUND-DEVICE`,
+              serviceCode: 'ups_ground',
+              carrierCode: upsCarrierCode,
+            });
+
+            if (!singleLabel.downloadUrl) {
+              throw buildHttpError('Label PDF link not available from ShipEngine.', 502);
+            }
+
+            newOrderStatus = 'label_generated';
+            autoLabelDraft = {
+              autoLabelStatus: 'generated',
+              autoLabelWarnings,
+              orderFields: {
+                status: newOrderStatus,
+                labelGeneratedAt: FieldValue.serverTimestamp(),
+                lastStatusUpdateAt: FieldValue.serverTimestamp(),
+                trackingNumber: singleLabel.labelRecord.trackingNumber,
+                shipEngineLabels: singleLabel.labelRecords,
+                shipEngineLabelIds: singleLabel.labelIds,
+                shipEngineLabelsLastUpdatedAt: singleLabel.nowTimestamp,
+                hasShipEngineLabel: singleLabel.labelIds.length > 0,
+                hasActiveShipEngineLabel: singleLabel.hasActive,
+                shipEngineLabelId: singleLabel.labelId || singleLabel.labelIds[0] || null,
+                labelDeliveryMethod: 'ups',
+                labelGeneratedSource: 'submit_order_auto_ups',
+                labelVoidStatus: 'active',
+                labelVoidMessage: null,
+                labelCarrierCode: singleLabel.labelRecord.carrierCode,
+                labelServiceCode: singleLabel.labelRecord.serviceCode,
+                labelCarrierName: 'UPS',
+                labelTrackingCarrierCode: singleLabel.labelRecord.carrierCode,
+                labelTrackingStatus: labelData?.status_code || labelData?.statusCode || 'LABEL_CREATED',
+                labelTrackingStatusDescription:
+                  labelData?.status_description || labelData?.statusDescription || 'Label created',
+                labelTrackingCarrierStatusCode:
+                  labelData?.carrier_status_code || labelData?.carrierStatusCode || null,
+                labelTrackingCarrierStatusDescription:
+                  labelData?.carrier_status_description || labelData?.carrierStatusDescription || null,
+                labelTrackingLastSyncedAt: FieldValue.serverTimestamp(),
+                shipEngineShipmentId:
+                  labelData?.shipment_id ||
+                  labelData?.shipmentId ||
+                  labelData?.shipment?.shipment_id ||
+                  null,
+                upsLabelUrl: singleLabel.downloadUrl,
+              },
+            };
+
+            autoLabelMessage =
+              'Your prepaid UPS shipping label has been generated and sent to your email, so your order is fully submitted.';
+
+            try {
+              await transporter.sendMail(
+                buildShippingLabelEmail(
+                  { ...orderData, id: orderId },
+                  {
+                    carrierName: 'UPS',
+                    labelDownloadUrl: singleLabel.downloadUrl,
+                    trackingNumber: singleLabel.labelRecord.trackingNumber,
+                  }
+                )
+              );
+            } catch (emailError) {
+              const warning =
+                `Label was generated, but the confirmation email failed to send: ${emailError?.message || 'unknown error'}`;
+              autoLabelWarnings.push(warning);
+              console.error(`[Shipping Label Email] Order ${orderId}:`, emailError);
+            }
+          } else if (requestedLabelCarrier === 'usps') {
+            const deviceCount = resolveOrderDeviceCount(draftOrder);
+            const shippingProfile = resolveUspsServiceAndWeightByDeviceCount(deviceCount);
+
+            const labelData = await createShipEngineLabel(
+              normalizeCustomerAddress(orderData.shippingInfo),
+              SWIFT_BUYBACK_ADDRESS,
+              `${orderId}-USPS-INBOUND-DEVICE`,
+              {
+                dimensions: EMAIL_LABEL_PACKAGE_DATA.dimensions,
+                service_code: shippingProfile.serviceCode,
+                carrier_code: 'stamps_com',
+                weight: { value: shippingProfile.weightOz, unit: 'ounce' },
+              },
+              {
+                orderId,
+                orderData,
+                carrierCode: 'stamps_com',
+                carrierName: 'USPS',
+                serviceCode: shippingProfile.serviceCode,
+                labelType: 'usps',
+                labelSource: 'submit_order_before_write',
+              }
+            );
+
+            const singleLabel = buildSingleLabelRecord({
+              labelData,
+              labelKey: 'usps',
+              displayName: 'USPS Shipping Label',
+              labelReference: `${orderId}-USPS-INBOUND-DEVICE`,
+              serviceCode: shippingProfile.serviceCode,
+              carrierCode: 'stamps_com',
+            });
+
+            if (!singleLabel.downloadUrl) {
+              throw buildHttpError('Label PDF link not available from ShipEngine.', 502);
+            }
+
+            newOrderStatus = 'label_generated';
+            autoLabelDraft = {
+              autoLabelStatus: 'generated',
+              autoLabelWarnings,
+              orderFields: {
+                status: newOrderStatus,
+                labelGeneratedAt: FieldValue.serverTimestamp(),
+                lastStatusUpdateAt: FieldValue.serverTimestamp(),
+                trackingNumber: singleLabel.labelRecord.trackingNumber,
+                shipEngineLabels: singleLabel.labelRecords,
+                shipEngineLabelIds: singleLabel.labelIds,
+                shipEngineLabelsLastUpdatedAt: singleLabel.nowTimestamp,
+                hasShipEngineLabel: singleLabel.labelIds.length > 0,
+                hasActiveShipEngineLabel: singleLabel.hasActive,
+                shipEngineLabelId: singleLabel.labelId || singleLabel.labelIds[0] || null,
+                labelDeliveryMethod: 'usps',
+                labelGeneratedSource: 'submit_order_auto_usps',
+                labelVoidStatus: 'active',
+                labelVoidMessage: null,
+                labelCarrierCode: singleLabel.labelRecord.carrierCode,
+                labelServiceCode: singleLabel.labelRecord.serviceCode,
+                labelCarrierName: 'USPS',
+                labelTrackingCarrierCode: singleLabel.labelRecord.carrierCode,
+                labelTrackingStatus: labelData?.status_code || labelData?.statusCode || 'LABEL_CREATED',
+                labelTrackingStatusDescription:
+                  labelData?.status_description || labelData?.statusDescription || 'Label created',
+                labelTrackingCarrierStatusCode:
+                  labelData?.carrier_status_code || labelData?.carrierStatusCode || null,
+                labelTrackingCarrierStatusDescription:
+                  labelData?.carrier_status_description || labelData?.carrierStatusDescription || null,
+                labelTrackingLastSyncedAt: FieldValue.serverTimestamp(),
+                shipEngineShipmentId:
+                  labelData?.shipment_id ||
+                  labelData?.shipmentId ||
+                  labelData?.shipment?.shipment_id ||
+                  null,
+                uspsLabelUrl: singleLabel.downloadUrl,
+              },
+            };
+
+            autoLabelMessage =
+              'Your prepaid USPS shipping label has been generated and sent to your email, so your order is fully submitted.';
+
+            try {
+              await transporter.sendMail(
+                buildShippingLabelEmail(
+                  { ...orderData, id: orderId },
+                  {
+                    carrierName: 'USPS',
+                    labelDownloadUrl: singleLabel.downloadUrl,
+                    trackingNumber: singleLabel.labelRecord.trackingNumber,
+                  }
+                )
+              );
+            } catch (emailError) {
+              const warning =
+                `Label was generated, but the confirmation email failed to send: ${emailError?.message || 'unknown error'}`;
+              autoLabelWarnings.push(warning);
+              console.error(`[Shipping Label Email] Order ${orderId}:`, emailError);
+            }
+          } else {
+            const message = requestedLabelResolution.ambiguous
+              ? 'Multiple label carrier values were detected in submit payload. Skipping automatic label generation to avoid choosing the wrong carrier.'
+              : 'No explicit label carrier was provided. Skipping automatic label generation.';
+            autoLabelDraft = {
+              autoLabelStatus: 'not_generated',
+              autoLabelWarnings: [message],
+              orderFields: {},
+            };
+            newOrderStatus = 'order_pending';
+            autoLabelMessage =
+              'Your order was submitted without generating a label yet. Please choose UPS or USPS and generate your label from the next step.';
+            console.warn(`[Submit Order] Order ${orderId}: ${message}`);
+          }
+        } catch (labelError) {
+          const warning =
+            buildShipEngineErrorMessage(
+              labelError,
+              'Failed to generate prepaid shipping label before submission.'
+            );
+          autoLabelDraft = {
+            autoLabelStatus: 'not_generated',
+            autoLabelWarnings: [warning, ...extractShipEngineWarnings(labelError)],
+            orderFields: {},
+          };
+          newOrderStatus = 'order_pending';
+          console.warn(`[Submit Order] Proceeding without label for order ${orderId}:`, warning);
+        }
+
         shippingInstructions = `
         <div style="margin-top: 24px;">
           <h2 style="font-size:18px; color:#0f172a; margin:0 0 10px;">Shipping label instructions</h2>
-          <p style="margin:0 0 12px; color:#475569;">Your order is saved. On the next step, choose your prepaid USPS or UPS label and we’ll email the download link immediately.</p>
+          <p style="margin:0 0 12px; color:#475569;">${autoLabelMessage}</p>
           <ol style="margin:0 0 12px 18px; padding-left:18px; color:#475569;">
             <li style="margin-bottom:8px;">Back up data, remove SIM/eSIM, and sign out of Apple/Google/Samsung accounts.</li>
             <li style="margin-bottom:8px;">Factory reset the device, then wrap it in padding and place it in a sturdy box.</li>
-            <li style="margin-bottom:8px;">Once you pick USPS or UPS, print the label, seal the box, attach it securely, and keep your carrier receipt.</li>
+            <li style="margin-bottom:8px;">If your label is ready, print it, seal the box, attach it securely, and keep your carrier receipt.</li>
           </ol>
           <p style="margin:0; color:#475569;">Questions? Reply to this email.</p>
           ${trackStatusButtonHtml}
@@ -1569,13 +1943,15 @@ function createOrdersRouter({
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         status: newOrderStatus,
         id: orderId,
+        ...(autoLabelDraft?.orderFields || {}),
       };
       await writeOrderBoth(orderId, toSave);
 
       const responsePayload = {
         message: 'Order submitted',
         orderId,
-        autoLabelStatus: 'not_generated',
+        autoLabelStatus: autoLabelDraft?.autoLabelStatus || 'not_generated',
+        warnings: autoLabelDraft?.autoLabelWarnings || [],
       };
 
       res.status(201).json(responsePayload);
