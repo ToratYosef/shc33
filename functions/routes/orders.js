@@ -18,6 +18,7 @@ function createOrdersRouter({
   pdf,
   shipEngine,
   createShipEngineLabel,
+  getShipEngineApiKey,
   transporter,
   deviceHelpers,
 }) {
@@ -76,6 +77,15 @@ function createOrdersRouter({
   const SHIPPING_PREFERENCE = {
     KIT: 'shipping_kit_requested',
     EMAIL_LABEL: 'email_label_requested',
+  };
+
+
+  const UPS_CARRIER_ID = 'se-4054857';
+  const UPS_CONNECTION_PAYLOAD = {
+    nickname: 'UPS Account',
+    account_number: '000076979A',
+    account_postal_code: '11230',
+    account_country_code: 'US',
   };
 
   function normalizeShippingPreference(preference) {
@@ -276,9 +286,53 @@ function createOrdersRouter({
     };
   }
 
+
+  async function reconnectUpsCarrierConnection() {
+    const shipEngineApiKey =
+      (typeof getShipEngineApiKey === 'function' ? getShipEngineApiKey() : null) ||
+      process.env.SHIPENGINE_KEY ||
+      null;
+
+    if (!shipEngineApiKey) {
+      throw buildHttpError(
+        'ShipEngine API key not configured. Cannot reconnect UPS carrier connection.',
+        500
+      );
+    }
+
+    try {
+      const response = await axios.put(
+        `https://api.shipengine.com/v1/connections/carriers/ups/${UPS_CARRIER_ID}`,
+        UPS_CONNECTION_PAYLOAD,
+        {
+          headers: {
+            'API-Key': shipEngineApiKey,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      console.log('[ShipEngine][UPS] Carrier connection refreshed', {
+        carrier_id: UPS_CARRIER_ID,
+        account_number_configured: Boolean(UPS_CONNECTION_PAYLOAD.account_number),
+      });
+
+      return response.data;
+    } catch (error) {
+      const details = error?.response?.data || error?.message || error;
+      console.error(
+        '[ShipEngine][UPS] Failed to refresh carrier connection',
+        JSON.stringify({ carrier_id: UPS_CARRIER_ID }),
+        typeof details === 'string' ? details : JSON.stringify(details)
+      );
+      throw buildHttpError('Failed to reconnect UPS carrier configuration in ShipEngine.', 502);
+    }
+  }
+
   async function createSingleInboundLabelForOrder(order, {
     carrierName,
     carrierCode = null,
+    carrierId = null,
     serviceCode,
     weight,
     dimensions = EMAIL_LABEL_PACKAGE_DATA.dimensions,
@@ -290,6 +344,7 @@ function createOrdersRouter({
     labelDeliveryMethod,
     labelGeneratedSource,
     urlField,
+    accountNumberConfigured = false,
   }) {
     if (!order?.id) {
       throw buildHttpError('Order not found.', 404);
@@ -313,6 +368,7 @@ function createOrdersRouter({
       dimensions,
       service_code: serviceCode,
       carrier_code: carrierCode || undefined,
+      carrier_id: carrierId || undefined,
       weight,
       products: packageProducts || undefined,
       advanced_options: advancedOptions || undefined,
@@ -329,8 +385,10 @@ function createOrdersRouter({
           orderId: order.id,
           orderData: order,
           carrierCode,
+          carrierId,
           carrierName,
           serviceCode,
+          accountNumberConfigured,
           labelType: labelKey,
         }
       );
@@ -1610,6 +1668,7 @@ function createOrdersRouter({
       const upsCarrierCode = String(
         process.env.SHIPENGINE_UPS_CARRIER_CODE || process.env.UPS_SHIPENGINE_CARRIER_CODE || 'ups'
       ).trim();
+      const upsCarrierId = UPS_CARRIER_ID;
       const requestedWeight = Number(req.body?.packageWeightLb);
       const packageWeightLb = Number.isFinite(requestedWeight) && requestedWeight > 0
         ? requestedWeight
@@ -1618,6 +1677,8 @@ function createOrdersRouter({
       if (!upsCarrierCode) {
         throw buildHttpError('SHIPENGINE_UPS_CARRIER_CODE is required for UPS label generation.', 500);
       }
+
+      await reconnectUpsCarrierConnection();
 
       const dangerousGoods = [
         {
@@ -1631,6 +1692,7 @@ function createOrdersRouter({
       const result = await createSingleInboundLabelForOrder(order, {
         carrierName: 'UPS',
         carrierCode: upsCarrierCode,
+        carrierId: upsCarrierId,
         serviceCode: 'ups_ground',
         weight: { value: packageWeightLb, unit: 'pound' },
         packageProducts: [
@@ -1650,6 +1712,7 @@ function createOrdersRouter({
         labelDeliveryMethod: 'ups',
         labelGeneratedSource: 'shipping_endpoint_ups',
         urlField: 'upsLabelUrl',
+        accountNumberConfigured: Boolean(UPS_CONNECTION_PAYLOAD.account_number),
       });
 
       return res.json({

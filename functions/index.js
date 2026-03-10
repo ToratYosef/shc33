@@ -5402,6 +5402,11 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
     packageData?.carrier_code,
     packageData?.carrierCode,
   ].find((entry) => typeof entry === "string" && entry.trim()) || null;
+  const carrierId = [
+    context?.carrierId,
+    packageData?.carrier_id,
+    packageData?.carrierId,
+  ].find((entry) => typeof entry === "string" && entry.trim()) || null;
   const advancedOptions =
     packageData?.advanced_options && typeof packageData.advanced_options === "object"
       ? { ...packageData.advanced_options }
@@ -5462,6 +5467,9 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
   if (carrierCode) {
     payload.shipment.carrier_code = carrierCode;
   }
+  if (carrierId) {
+    payload.shipment.carrier_id = carrierId;
+  }
   if (isHazmat) {
     payload.shipment.advanced_options = {
       ...(advancedOptions || {}),
@@ -5471,6 +5479,27 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
     payload.shipment.advanced_options = advancedOptions;
   }
   if (isSandbox) payload.testLabel = true;
+
+  const thirdPartyBillingFields = [
+    "bill_to_party",
+    "bill_to_account",
+    "bill_to_postal_code",
+    "bill_to_country_code",
+  ];
+  const hasThirdPartyBillingFields = thirdPartyBillingFields.some((field) =>
+    [
+      packageData?.[field],
+      packageData?.advanced_options?.[field],
+      payload?.shipment?.advanced_options?.[field],
+    ].some((value) => value !== undefined && value !== null && value !== "")
+  );
+
+  console.log("ShipEngine UPS config:", {
+    carrier_id: payload.shipment?.carrier_id || null,
+    service_code: payload.shipment?.service_code || null,
+    account_number_configured: Boolean(context?.accountNumberConfigured),
+    third_party_billing_fields_sent: hasThirdPartyBillingFields,
+  });
 
   console.log(
     "ShipEngine DG payload:",
@@ -5843,6 +5872,7 @@ const ordersRouter = createOrdersRouter({
     sendVoidNotificationEmail,
   },
   createShipEngineLabel,
+  getShipEngineApiKey,
   transporter,
   deviceHelpers: {
     buildOrderDeviceKey,
