@@ -5371,6 +5371,28 @@ async function addAdminFirestoreNotification(
 }
 
 async function createShipEngineLabel(fromAddress, toAddress, labelReference, packageData, context = {}) {
+  function normalizeDangerousGoods(dg) {
+    if (!dg) return undefined;
+    if (Array.isArray(dg)) return dg;
+    return [dg];
+  }
+
+  function normalizeDangerousGoodItem(item) {
+    if (!item || typeof item !== "object") {
+      return item;
+    }
+
+    if (item.id_number === undefined || item.id_number === null) {
+      return item;
+    }
+
+    return {
+      ...item,
+      id_number:
+        typeof item.id_number === "string" ? item.id_number : String(item.id_number),
+    };
+  }
+
   const isSandbox = false;
   const serviceCode = packageData?.service_code || "usps_ground_advantage";
   const weightValue = packageData?.weight?.value ?? packageData?.weight?.ounces;
@@ -5380,6 +5402,11 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
     packageData?.carrier_code,
     packageData?.carrierCode,
   ].find((entry) => typeof entry === "string" && entry.trim()) || null;
+  const carrierId = [
+    context?.carrierId,
+    packageData?.carrier_id,
+    packageData?.carrierId,
+  ].find((entry) => typeof entry === "string" && entry.trim()) || null;
   const advancedOptions =
     packageData?.advanced_options && typeof packageData.advanced_options === "object"
       ? { ...packageData.advanced_options }
@@ -5387,7 +5414,18 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
   const products = Array.isArray(packageData?.products)
     ? packageData.products
         .filter((entry) => entry && typeof entry === "object")
-        .map((entry) => ({ ...entry }))
+        .map((entry) => {
+          const normalizedDangerousGoods = normalizeDangerousGoods(entry.dangerous_goods)?.map(
+            normalizeDangerousGoodItem
+          );
+
+          return {
+            ...entry,
+            ...(normalizedDangerousGoods
+              ? { dangerous_goods: normalizedDangerousGoods }
+              : {}),
+          };
+        })
     : null;
 
   const isUspsShipment =
@@ -5429,6 +5467,9 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
   if (carrierCode) {
     payload.shipment.carrier_code = carrierCode;
   }
+  if (carrierId) {
+    payload.shipment.carrier_id = carrierId;
+  }
   if (isHazmat) {
     payload.shipment.advanced_options = {
       ...(advancedOptions || {}),
@@ -5438,6 +5479,38 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
     payload.shipment.advanced_options = advancedOptions;
   }
   if (isSandbox) payload.testLabel = true;
+
+  const thirdPartyBillingFields = [
+    "bill_to_party",
+    "bill_to_account",
+    "bill_to_postal_code",
+    "bill_to_country_code",
+  ];
+  const hasThirdPartyBillingFields = thirdPartyBillingFields.some((field) =>
+    [
+      packageData?.[field],
+      packageData?.advanced_options?.[field],
+      payload?.shipment?.advanced_options?.[field],
+    ].some((value) => value !== undefined && value !== null && value !== "")
+  );
+
+  const accountNumberConfigured = Boolean(
+    context?.accountNumberConfigured ||
+      process.env.SHIPENGINE_UPS_ACCOUNT_NUMBER ||
+      process.env.UPS_ACCOUNT_NUMBER
+  );
+
+  console.log("ShipEngine UPS config:", {
+    carrier_id: payload.shipment?.carrier_id || null,
+    service_code: payload.shipment?.service_code || null,
+    account_number_configured: accountNumberConfigured,
+    third_party_billing_fields_sent: hasThirdPartyBillingFields,
+  });
+
+  console.log(
+    "ShipEngine DG payload:",
+    JSON.stringify(payload.shipment.packages?.[0]?.products?.[0]?.dangerous_goods, null, 2)
+  );
 
   const shipEngineApiKey = getShipEngineApiKey();
   if (!shipEngineApiKey) {

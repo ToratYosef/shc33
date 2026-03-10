@@ -78,6 +78,9 @@ function createOrdersRouter({
     EMAIL_LABEL: 'email_label_requested',
   };
 
+
+  const UPS_CARRIER_ID = 'se-4054857';
+
   function normalizeShippingPreference(preference) {
     const value = String(preference || '').trim().toLowerCase();
 
@@ -276,9 +279,42 @@ function createOrdersRouter({
     };
   }
 
+
+
+  function isUpsReauthorizationFailure(error) {
+    const responseData = error?.responseData || error?.response?.data || null;
+    const status = Number(error?.status || error?.response?.status || 0);
+    const details = [
+      error?.message,
+      responseData?.message,
+      ...(Array.isArray(responseData?.errors)
+        ? responseData.errors.flatMap((entry) => [entry?.message, entry?.error_code, entry?.error_source])
+        : []),
+    ]
+      .filter(Boolean)
+      .map((entry) => String(entry).toLowerCase());
+
+    const hasAuthKeyword = details.some((value) =>
+      [
+        'reauthor',
+        're-author',
+        'oauth',
+        'token',
+        'unauthor',
+        'forbidden',
+        'authentication',
+        'authorization',
+        'expired',
+      ].some((keyword) => value.includes(keyword))
+    );
+
+    return status === 401 || status === 403 || hasAuthKeyword;
+  }
+
   async function createSingleInboundLabelForOrder(order, {
     carrierName,
     carrierCode = null,
+    carrierId = null,
     serviceCode,
     weight,
     dimensions = EMAIL_LABEL_PACKAGE_DATA.dimensions,
@@ -313,6 +349,7 @@ function createOrdersRouter({
       dimensions,
       service_code: serviceCode,
       carrier_code: carrierCode || undefined,
+      carrier_id: carrierId || undefined,
       weight,
       products: packageProducts || undefined,
       advanced_options: advancedOptions || undefined,
@@ -329,6 +366,7 @@ function createOrdersRouter({
           orderId: order.id,
           orderData: order,
           carrierCode,
+          carrierId,
           carrierName,
           serviceCode,
           labelType: labelKey,
@@ -1610,6 +1648,7 @@ function createOrdersRouter({
       const upsCarrierCode = String(
         process.env.SHIPENGINE_UPS_CARRIER_CODE || process.env.UPS_SHIPENGINE_CARRIER_CODE || 'ups'
       ).trim();
+      const upsCarrierId = UPS_CARRIER_ID;
       const requestedWeight = Number(req.body?.packageWeightLb);
       const packageWeightLb = Number.isFinite(requestedWeight) && requestedWeight > 0
         ? requestedWeight
@@ -1619,16 +1658,26 @@ function createOrdersRouter({
         throw buildHttpError('SHIPENGINE_UPS_CARRIER_CODE is required for UPS label generation.', 500);
       }
 
-      const dangerousGoods = {
-        id_number: 'UN3481',
-        shipping_name: 'Lithium ion batteries contained in equipment',
-        regulation_level: 'excepted_quantity',
-        packaging_instruction_section: 'section_2',
-      };
+      // Do not auto-reconnect UPS during label generation. UPS reauthorization must be handled separately.
+      console.log('[ShipEngine][UPS] Generating label', {
+        orderId,
+        carrier_id: upsCarrierId,
+        service_code: 'ups_ground',
+      });
+
+      const dangerousGoods = [
+        {
+          id_number: 'UN3481',
+          shipping_name: 'Lithium ion batteries contained in equipment',
+          product_class: '9',
+          transport_mean: 'ground',
+        },
+      ];
 
       const result = await createSingleInboundLabelForOrder(order, {
         carrierName: 'UPS',
         carrierCode: upsCarrierCode,
+        carrierId: upsCarrierId,
         serviceCode: 'ups_ground',
         weight: { value: packageWeightLb, unit: 'pound' },
         packageProducts: [
@@ -1665,7 +1714,24 @@ function createOrdersRouter({
     } catch (error) {
       const statusCode = error.status || error.response?.status || 500;
       const responseData = error.responseData || error.response?.data || null;
-      console.error('Error generating UPS shipping label:', responseData || error.message || error);
+      const orderId = String(req.body?.orderId || '').trim() || null;
+      const upsCarrierId = UPS_CARRIER_ID;
+
+      console.error('[ShipEngine][UPS] Label generation failed', {
+        orderId,
+        carrier_id: upsCarrierId,
+        shipengine_status: statusCode,
+        shipengine_error_body: responseData || null,
+      });
+
+      if (isUpsReauthorizationFailure(error)) {
+        return res.status(502).json({
+          error: 'UPS carrier requires reauthorization in ShipEngine dashboard',
+          details: responseData,
+          warnings: error.warnings || extractShipEngineWarnings(error),
+        });
+      }
+
       return res.status(statusCode).json({
         error: error.message || 'Failed to generate UPS shipping label.',
         details: responseData,
