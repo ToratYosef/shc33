@@ -2508,7 +2508,19 @@ function createOrdersRouter({
     }
   });
 
-  router.get('/packing-slip/:id', async (req, res) => {
+  function resolveDeviceCountForSlip(orderPayload = {}) {
+    if (Array.isArray(orderPayload.devices) && orderPayload.devices.length) {
+      return orderPayload.devices.length;
+    }
+
+    if (Array.isArray(orderPayload.items) && orderPayload.items.length) {
+      return orderPayload.items.reduce((sum, item) => sum + Math.max(1, Number(item.qty) || 1), 0);
+    }
+
+    return 1;
+  }
+
+  async function handlePackingSlipRequest(req, res) {
     try {
       const doc = await ordersCollection.doc(req.params.id).get();
       if (!doc.exists) {
@@ -2516,8 +2528,28 @@ function createOrdersRouter({
       }
 
       const order = { id: doc.id, ...doc.data() };
-      const pdfData = await generateCustomLabelPdf(order);
-      const buffer = Buffer.isBuffer(pdfData) ? pdfData : Buffer.from(pdfData);
+      const requestedDeviceIndex = Number.parseInt(req.query.deviceIndex, 10);
+      const hasDeviceIndex = Number.isInteger(requestedDeviceIndex) && requestedDeviceIndex >= 0;
+      const includeAllPackingSlips = String(req.query.includeAllPackingSlips || '').toLowerCase() === 'true';
+
+      let buffer;
+      if (includeAllPackingSlips) {
+        const totalDevices = resolveDeviceCountForSlip(order);
+        const slipBuffers = [];
+
+        for (let index = 0; index < totalDevices; index += 1) {
+          const slipPdf = await generateCustomLabelPdf(order, { deviceIndex: index });
+          slipBuffers.push(Buffer.isBuffer(slipPdf) ? slipPdf : Buffer.from(slipPdf));
+        }
+
+        const merged = await mergePdfBuffers(slipBuffers);
+        buffer = Buffer.isBuffer(merged) ? merged : Buffer.from(merged);
+      } else {
+        const pdfData = await generateCustomLabelPdf(order, {
+          deviceIndex: hasDeviceIndex ? requestedDeviceIndex : undefined,
+        });
+        buffer = Buffer.isBuffer(pdfData) ? pdfData : Buffer.from(pdfData);
+      }
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader(
@@ -2529,9 +2561,12 @@ function createOrdersRouter({
       console.error('Failed to generate packing slip PDF:', error);
       res.status(500).json({ error: 'Failed to generate packing slip PDF' });
     }
-  });
+  }
 
-  router.get('/print-bundle/:id', async (req, res) => {
+  router.get('/packing-slip/:id', handlePackingSlipRequest);
+  router.get('/orders/packing-slip/:id', handlePackingSlipRequest);
+
+  async function handlePrintBundleRequest(req, res) {
     try {
       const doc = await ordersCollection.doc(req.params.id).get();
       if (!doc.exists) {
@@ -2539,6 +2574,9 @@ function createOrdersRouter({
       }
 
       const order = { id: doc.id, ...doc.data() };
+      const requestedDeviceIndex = Number.parseInt(req.query.deviceIndex, 10);
+      const hasDeviceIndex = Number.isInteger(requestedDeviceIndex) && requestedDeviceIndex >= 0;
+      const includeAllPackingSlips = String(req.query.includeAllPackingSlips || '').toLowerCase() === 'true';
 
       async function fetchPdfBuffer(url) {
         if (!url) {
@@ -2570,7 +2608,20 @@ function createOrdersRouter({
       const origin = resolveRequestOrigin(req);
       const basePath = String(req.baseUrl || '').replace(/\/$/, '');
       const packingSlipPath = `${basePath}/packing-slip/${encodeURIComponent(order.id)}`;
-      const packingSlipUrl = origin ? `${origin}${packingSlipPath}` : null;
+      const packingSlipUrls = [];
+
+      if (origin) {
+        if (includeAllPackingSlips) {
+          const totalDevices = resolveDeviceCountForSlip(order);
+          for (let index = 0; index < totalDevices; index += 1) {
+            packingSlipUrls.push(`${origin}${packingSlipPath}?deviceIndex=${index}`);
+          }
+        } else if (hasDeviceIndex) {
+          packingSlipUrls.push(`${origin}${packingSlipPath}?deviceIndex=${requestedDeviceIndex}`);
+        } else {
+          packingSlipUrls.push(`${origin}${packingSlipPath}`);
+        }
+      }
 
       const labelUrls = Array.from(collectLabelUrlCandidates(order));
       const labelBuffers = [];
@@ -2582,7 +2633,13 @@ function createOrdersRouter({
         }
       }
 
-      const packingSlipBuffer = await fetchPdfBuffer(packingSlipUrl);
+      const packingSlipBuffers = [];
+      for (const packingSlipUrl of packingSlipUrls) {
+        const packingSlipBuffer = await fetchPdfBuffer(packingSlipUrl);
+        if (packingSlipBuffer) {
+          packingSlipBuffers.push(packingSlipBuffer);
+        }
+      }
 
       if (!labelUrls.length) {
         return res.status(400).json({
@@ -2590,7 +2647,7 @@ function createOrdersRouter({
         });
       }
 
-      const pdfParts = [...labelBuffers, packingSlipBuffer].filter(Boolean);
+      const pdfParts = [...labelBuffers, ...packingSlipBuffers].filter(Boolean);
       if (!pdfParts.length) {
         return res.status(500).json({ error: 'Failed to prepare print bundle' });
       }
@@ -2608,7 +2665,10 @@ function createOrdersRouter({
       console.error('Failed to generate print bundle:', error);
       res.status(500).json({ error: 'Failed to prepare print bundle' });
     }
-  });
+  }
+
+  router.get('/print-bundle/:id', handlePrintBundleRequest);
+  router.get('/orders/print-bundle/:id', handlePrintBundleRequest);
 
   async function repairLabelGeneratedOrders(req, res) {
     try {

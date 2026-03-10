@@ -15,7 +15,7 @@ const LINE_HEIGHT = 14;
  * @param {Object} order - Firestore order payload.
  * @returns {Promise<Buffer>} PDF buffer ready for download/print.
  */
-async function generateCustomLabelPdf(order) {
+async function generateCustomLabelPdf(order, options = {}) {
     const pdfDoc = await PDFDocument.create();
     const regularFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -120,9 +120,10 @@ async function generateCustomLabelPdf(order) {
         shippingInfo.contactPhone ||
         '';
 
-    const itemLabel = buildDeviceLabel(order);
-
-    const estimatedPayout = resolveOrderPayout(order);
+    const slipDevices = resolveOrderDevicesForSlip(order);
+    const selectedDevice = resolveSelectedSlipDevice(order, options, slipDevices);
+    const itemLabel = buildDeviceLabel(selectedDevice);
+    const estimatedPayout = resolveOrderPayout(selectedDevice);
 
     drawCenteredText('SecondHandCell', {
         size: 18,
@@ -152,13 +153,17 @@ async function generateCustomLabelPdf(order) {
     drawKeyValue('Phone', formatPhoneNumber(contactPhone));
 
     drawSectionTitle('Device Details');
+    if (slipDevices.length > 1) {
+        const deviceNumber = (selectedDevice.deviceIndex || 0) + 1;
+        drawKeyValue('Device', `${deviceNumber} of ${slipDevices.length}`);
+    }
     drawKeyValue('Item (Model)', itemLabel || '—');
-    drawKeyValue('Storage', order.storage || order.memory || '—');
-    drawKeyValue('Carrier', prettifyCarrier(order.carrier));
+    drawKeyValue('Storage', selectedDevice.storage || selectedDevice.memory || '—');
+    drawKeyValue('Carrier', prettifyCarrier(selectedDevice.carrier));
     drawKeyValue('Estimated Payout', `$${formatCurrency(estimatedPayout)}`);
 
     drawSectionTitle('Conditions');
-    drawKeyValue('Cosmetic Condition', formatValue(order.condition_cosmetic));
+    drawKeyValue('Cosmetic Condition', formatValue(selectedDevice.condition_cosmetic));
 
     ensureSpace(4);
     const barcodePng = await buildBarcode(order.id || String(order.orderId || ''));
@@ -187,6 +192,55 @@ async function generateCustomLabelPdf(order) {
     });
 
     return pdfDoc.save();
+}
+
+function resolveSelectedSlipDevice(order = {}, options = {}, devices = []) {
+    if (!devices.length) {
+        return { ...order, deviceIndex: 0 };
+    }
+
+    const requestedIndex = Number.parseInt(options.deviceIndex, 10);
+    const safeIndex = Number.isInteger(requestedIndex) && requestedIndex >= 0
+        ? Math.min(requestedIndex, devices.length - 1)
+        : 0;
+
+    return devices[safeIndex];
+}
+
+function resolveOrderDevicesForSlip(order = {}) {
+    if (Array.isArray(order.devices) && order.devices.length) {
+        return order.devices.map((device, index) => ({ ...order, ...device, deviceIndex: index }));
+    }
+
+    if (!Array.isArray(order.items) || !order.items.length) {
+        return [{ ...order, deviceIndex: 0, estimatedQuote: resolveOrderPayout(order) }];
+    }
+
+    const normalizedItems = order.items
+        .map((item) => {
+            const qty = Math.max(1, Number(item.qty) || 1);
+            const total = resolveOrderPayout(item);
+            const unit = qty > 0 ? total / qty : total;
+            return { item, qty, unit };
+        })
+        .filter(({ item }) => item && (item.device || item.modelName || item.modelId));
+
+    const expandedDevices = [];
+    normalizedItems.forEach(({ item, qty, unit }) => {
+        for (let i = 0; i < qty; i += 1) {
+            expandedDevices.push({
+                ...order,
+                ...item,
+                estimatedQuote: unit,
+            });
+        }
+    });
+
+    if (!expandedDevices.length) {
+        return [{ ...order, deviceIndex: 0, estimatedQuote: resolveOrderPayout(order) }];
+    }
+
+    return expandedDevices.map((device, index) => ({ ...device, deviceIndex: index }));
 }
 
 async function generateBagLabelPdf(order) {
