@@ -119,6 +119,77 @@ function createOrdersRouter({
     return 'Email Label Requested';
   }
 
+  function detectLabelCarrierFromValue(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return null;
+
+    if (
+      normalized === 'ups' ||
+      normalized.includes('ups') ||
+      normalized.includes('ups_ground') ||
+      normalized.includes('ground')
+    ) {
+      return 'ups';
+    }
+
+    if (
+      normalized === 'usps' ||
+      normalized.includes('usps') ||
+      normalized.includes('stamps_com') ||
+      normalized.includes('postal') ||
+      normalized.includes('first_class') ||
+      normalized.includes('priority_mail')
+    ) {
+      return 'usps';
+    }
+
+    return null;
+  }
+
+  function resolveRequestedLabelCarrier(orderData = {}) {
+    const shippingInfo = orderData.shippingInfo || {};
+    const candidates = [
+      orderData.labelCarrier,
+      orderData.shippingLabelCarrier,
+      orderData.selectedShippingLabelCarrier,
+      orderData.selectedLabelCarrier,
+      orderData.labelProvider,
+      orderData.shippingLabelProvider,
+      orderData.labelDeliveryMethod,
+      orderData.shippingMethod,
+      orderData.selectedShippingMethod,
+      orderData.selectedShippingOption,
+      orderData.returnLabelCarrier,
+      orderData.preferredLabelCarrier,
+      orderData.preferredShippingCarrier,
+      orderData.requestedLabelCarrier,
+      orderData.shippingCarrier,
+      orderData.shipCarrier,
+      orderData.labelType,
+      orderData.selectedLabelType,
+      orderData.requestedLabelType,
+      orderData.labelServiceCode,
+      orderData.selectedLabelServiceCode,
+      shippingInfo.labelCarrier,
+      shippingInfo.shippingLabelCarrier,
+      shippingInfo.selectedLabelCarrier,
+      shippingInfo.selectedShippingLabelCarrier,
+      shippingInfo.labelDeliveryMethod,
+      shippingInfo.shippingMethod,
+      shippingInfo.selectedShippingMethod,
+      shippingInfo.selectedShippingOption,
+      shippingInfo.requestedLabelCarrier,
+      shippingInfo.labelServiceCode,
+    ];
+
+    for (const candidate of candidates) {
+      const detected = detectLabelCarrierFromValue(candidate);
+      if (detected) return detected;
+    }
+
+    return 'usps';
+  }
+
   function resolveOrderDeviceCount(order = {}) {
     const items = Array.isArray(order.items) ? order.items : [];
     const itemCount = items.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
@@ -1432,20 +1503,7 @@ function createOrdersRouter({
         </div>
       `;
       } else {
-        const requestedLabelCarrierRaw = String(
-          orderData.labelCarrier ||
-          orderData.shippingLabelCarrier ||
-          orderData.selectedShippingLabelCarrier ||
-          orderData.selectedLabelCarrier ||
-          orderData.labelProvider ||
-          orderData.shippingLabelProvider ||
-          ''
-        ).trim().toLowerCase();
-        const requestedLabelCarrier = requestedLabelCarrierRaw.includes('ups')
-          ? 'ups'
-          : requestedLabelCarrierRaw.includes('usps') || requestedLabelCarrierRaw.includes('postal')
-            ? 'usps'
-            : 'usps';
+        const requestedLabelCarrier = resolveRequestedLabelCarrier(orderData);
 
         const autoLabelWarnings = [];
         let autoLabelMessage =
