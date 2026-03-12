@@ -1039,6 +1039,20 @@ function buildIssueList(order) {
   return issues;
 }
 
+app.get('/api/orders/:orderId/issue-resolved', (req, res) => {
+  const orderId = String(req.params.orderId || '').trim();
+  const deviceKey = req.query.deviceKey ? String(req.query.deviceKey).trim() : '';
+  if (!orderId) {
+    return res.status(400).send('Order ID is required.');
+  }
+
+  const redirectUrl = new URL(`https://api.secondhandcell.com/fix-issue/${encodeURIComponent(orderId)}`);
+  if (deviceKey) {
+    redirectUrl.searchParams.set('deviceKey', deviceKey);
+  }
+  return res.redirect(redirectUrl.toString());
+});
+
 app.get('/fix-issue/:orderId', async (req, res) => {
   try {
     const orderId = String(req.params.orderId || '').trim();
