@@ -1039,6 +1039,20 @@ function buildIssueList(order) {
   return issues;
 }
 
+app.get('/api/orders/:orderId/issue-resolved', (req, res) => {
+  const orderId = String(req.params.orderId || '').trim();
+  const deviceKey = req.query.deviceKey ? String(req.query.deviceKey).trim() : '';
+  if (!orderId) {
+    return res.status(400).send('Order ID is required.');
+  }
+
+  const redirectUrl = new URL(`https://api.secondhandcell.com/fix-issue/${encodeURIComponent(orderId)}`);
+  if (deviceKey) {
+    redirectUrl.searchParams.set('deviceKey', deviceKey);
+  }
+  return res.redirect(redirectUrl.toString());
+});
+
 app.get('/fix-issue/:orderId', async (req, res) => {
   try {
     const orderId = String(req.params.orderId || '').trim();
@@ -3215,7 +3229,7 @@ function buildConditionEmail(reason, order, notes, deviceKey = null) {
   const resolvedButtonHtml = template.showResolvedButton
     ? `
       <div style="text-align:center; margin:32px 0 24px;">
-        <a href="https://api.secondhandcell.com/api/orders/${escapeHtml(orderId)}/issue-resolved${deviceKeyParam}" 
+        <a href="https://api.secondhandcell.com/server/api/orders/${escapeHtml(orderId)}/issue-resolved${deviceKeyParam}" 
            style="display:inline-block; padding:14px 32px; border-radius:9999px; background-color:#10b981; color:#ffffff !important; font-weight:600; text-decoration:none; font-size:17px; box-shadow:0 4px 12px rgba(16,185,129,0.3);">
           ✓ Issue Resolved
         </a>
