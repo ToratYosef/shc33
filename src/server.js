@@ -29,8 +29,8 @@ const {
   buildOrderDeviceKey,
   runAutomaticInboundTrackingRefresh,
   runAutomaticLabelVoidSweep,
+  getOrderByIdFromFirestore,
 } = require('../functions/index.js');
-const { getWithId } = require('./services/db');
 
 const app = express();
 
@@ -625,7 +625,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       return res.status(400).send('Order ID is required.');
     }
 
-    const order = await getWithId('orders', orderId);
+    const order = await getOrderByIdFromFirestore(orderId);
     if (!order) {
       return res.status(404).send('Order not found.');
     }
@@ -2257,7 +2257,7 @@ app.post('/fix-issue/:orderId/confirm', async (req, res) => {
       return res.status(400).json({ error: 'Issue reason is required.' });
     }
 
-    const order = await getWithId('orders', orderId);
+    const order = await getOrderByIdFromFirestore(orderId);
     if (!order) {
       return res.status(404).json({ error: 'Order not found.' });
     }
