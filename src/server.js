@@ -27,6 +27,8 @@ const {
   expressApp,
   updateOrderBoth,
   buildOrderDeviceKey,
+  runAutomaticInboundTrackingRefresh,
+  runAutomaticLabelVoidSweep,
 } = require('../functions/index.js');
 const { getWithId } = require('./services/db');
 
@@ -46,8 +48,13 @@ const repricerOutputCsvPath = '/shc33/feed/repricer-output.csv';
 const repricerScheduleTimezone = 'America/New_York';
 const repricerScheduleHour = 23;
 const repricerScheduleMinute = 30;
+const maintenanceScheduleTimezone = process.env.MAINTENANCE_SCHEDULE_TZ || 'America/New_York';
+const maintenanceScheduleHours = new Set([8, 17]);
+const maintenanceScheduleMinute = 0;
 let repricerRunInFlight = null;
 let lastScheduledRunDateKey = '';
+let maintenanceRunInFlight = null;
+let lastMaintenanceRunSlotKey = '';
 
 function getZonedDateParts(date, timeZone) {
   const formatter = new Intl.DateTimeFormat('en-US', {
@@ -155,6 +162,95 @@ function startRepricerDailyScheduler() {
 
   maybeRunScheduledRepricer();
   setInterval(maybeRunScheduledRepricer, 30 * 1000);
+}
+
+async function runMaintenanceSweep(trigger = 'manual') {
+  if (maintenanceRunInFlight) {
+    return maintenanceRunInFlight;
+  }
+
+  maintenanceRunInFlight = (async () => {
+    const startedAt = Date.now();
+    const result = {
+      trigger,
+      startedAt: new Date(startedAt).toISOString(),
+      trackingRefresh: { ok: true },
+      labelVoid: { ok: true },
+    };
+
+    try {
+      await runAutomaticInboundTrackingRefresh();
+    } catch (error) {
+      result.trackingRefresh = {
+        ok: false,
+        error: error?.message || 'unknown_error',
+      };
+    }
+
+    try {
+      await runAutomaticLabelVoidSweep();
+    } catch (error) {
+      result.labelVoid = {
+        ok: false,
+        error: error?.message || 'unknown_error',
+      };
+    }
+
+    result.durationMs = Date.now() - startedAt;
+    return result;
+  })().finally(() => {
+    maintenanceRunInFlight = null;
+  });
+
+  return maintenanceRunInFlight;
+}
+
+function maybeRunScheduledMaintenanceSweep() {
+  const now = new Date();
+  const zonedNow = getZonedDateParts(now, maintenanceScheduleTimezone);
+  const isScheduledSlot =
+    maintenanceScheduleHours.has(zonedNow.hour) && zonedNow.minute === maintenanceScheduleMinute;
+
+  if (!isScheduledSlot) {
+    return;
+  }
+
+  const slotKey = `${zonedNow.dateKey}-${String(zonedNow.hour).padStart(2, '0')}:${String(maintenanceScheduleMinute).padStart(2, '0')}`;
+  if (lastMaintenanceRunSlotKey === slotKey) {
+    return;
+  }
+
+  lastMaintenanceRunSlotKey = slotKey;
+
+  runMaintenanceSweep(`daily-${maintenanceScheduleTimezone}-${slotKey}`)
+    .then((result) => {
+      const status = result.trackingRefresh.ok && result.labelVoid.ok ? 'ok' : 'partial_failure';
+      console.log(
+        `[maintenance-schedule] ${status} trigger=${result.trigger} durationMs=${result.durationMs} trackingOk=${result.trackingRefresh.ok} labelVoidOk=${result.labelVoid.ok}`
+      );
+      if (!result.trackingRefresh.ok) {
+        console.error('[maintenance-schedule] tracking refresh failed:', result.trackingRefresh.error);
+      }
+      if (!result.labelVoid.ok) {
+        console.error('[maintenance-schedule] label void sweep failed:', result.labelVoid.error);
+      }
+    })
+    .catch((error) => {
+      console.error('[maintenance-schedule] unexpected error:', error?.message || error);
+    });
+}
+
+function startMaintenanceTwiceDailyScheduler() {
+  if (isServerless) {
+    return;
+  }
+
+  console.log(
+    `[maintenance-schedule] enabled: daily at 08:00 and 17:00 ${maintenanceScheduleTimezone}`
+  );
+
+  maybeRunScheduledMaintenanceSweep();
+  setInterval(maybeRunScheduledMaintenanceSweep, 30 * 1000);
 }
 
 function parseCsvLine(line) {
@@ -2497,6 +2593,7 @@ if (!isServerless && require.main === module) {
   app.listen(port, () => {
     console.log(`API server listening on port ${port}`);
     startRepricerDailyScheduler();
+    startMaintenanceTwiceDailyScheduler();
   });
 }
 

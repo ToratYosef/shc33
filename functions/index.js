@@ -7848,6 +7848,9 @@ async function runAutomaticInboundTrackingRefresh() {
   }
 }
 
+exports.runAutomaticLabelVoidSweep = runAutomaticLabelVoidSweep;
+exports.runAutomaticInboundTrackingRefresh = runAutomaticInboundTrackingRefresh;
+
 exports.autoVoidExpiredLabels = functions.pubsub
   .schedule("every 60 minutes")
   .onRun(async () => {
