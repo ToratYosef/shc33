@@ -1039,7 +1039,7 @@ function buildIssueList(order) {
   return issues;
 }
 
-app.get('/api/orders/:orderId/issue-resolved', (req, res) => {
+app.get(['/orders/:orderId/issue-resolved', '/api/orders/:orderId/issue-resolved'], (req, res) => {
   const orderId = String(req.params.orderId || '').trim();
   const deviceKey = req.query.deviceKey ? String(req.query.deviceKey).trim() : '';
   if (!orderId) {
@@ -3427,7 +3427,7 @@ function buildConditionEmail(reason, order, notes, deviceKey = null) {
   const resolvedButtonHtml = template.showResolvedButton
     ? `
       <div style="text-align:center; margin:32px 0 24px;">
-        <a href="https://api.secondhandcell.com/server/api/orders/${escapeHtml(orderId)}/issue-resolved${deviceKeyParam}" 
+        <a href="https://api.secondhandcell.com/orders/${escapeHtml(orderId)}/issue-resolved${deviceKeyParam}" 
            style="display:inline-block; padding:14px 32px; border-radius:9999px; background-color:#10b981; color:#ffffff !important; font-weight:600; text-decoration:none; font-size:17px; box-shadow:0 4px 12px rgba(16,185,129,0.3);">
           ✓ Issue Resolved
         </a>
@@ -9888,12 +9888,27 @@ exports.notifyWholesaleOfferUpdated = functions.firestore
     return null;
   });
 
+async function getOrderByIdFromFirestore(orderId) {
+  const trimmedOrderId = String(orderId || '').trim();
+  if (!trimmedOrderId) {
+    return null;
+  }
+
+  const snapshot = await ordersCollection.doc(trimmedOrderId).get();
+  if (!snapshot.exists) {
+    return null;
+  }
+
+  return { id: snapshot.id, ...snapshot.data() };
+}
+
 exports.api = functions.https.onRequest(app);
 exports.expressApp = app;
 exports.updateOrderBoth = updateOrderBoth;
 exports.buildOrderDeviceKey = buildOrderDeviceKey;
 exports.collectOrderDeviceKeys = collectOrderDeviceKeys;
 exports.deriveOrderStatusFromDevices = deriveOrderStatusFromDevices;
+exports.getOrderByIdFromFirestore = getOrderByIdFromFirestore;
 
 exports.refreshTracking = functions.runWith({ timeoutSeconds: 540, memory: '1GB' }).https.onRequest(
   async (req, res) => {
