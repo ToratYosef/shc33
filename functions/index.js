@@ -1039,6 +1039,20 @@ function buildIssueList(order) {
   return issues;
 }
 
+app.get(['/orders/:orderId/issue-resolved', '/api/orders/:orderId/issue-resolved'], (req, res) => {
+  const orderId = String(req.params.orderId || '').trim();
+  const deviceKey = req.query.deviceKey ? String(req.query.deviceKey).trim() : '';
+  if (!orderId) {
+    return res.status(400).send('Order ID is required.');
+  }
+
+  const redirectUrl = new URL(`https://api.secondhandcell.com/fix-issue/${encodeURIComponent(orderId)}`);
+  if (deviceKey) {
+    redirectUrl.searchParams.set('deviceKey', deviceKey);
+  }
+  return res.redirect(redirectUrl.toString());
+});
+
 app.get('/fix-issue/:orderId', async (req, res) => {
   try {
     const orderId = String(req.params.orderId || '').trim();
@@ -1266,6 +1280,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Issue Resolution - SecondHandCell</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
       :root {
         --site-indigo: #4f46e5;
@@ -1987,9 +2002,206 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       .shc-auth-dropdown button:hover {
         background: #f1f5f9;
       }
+
+
+      /* ================================
+         FIX-ISSUE PAGE LAYOUT (TAILWIND-FRIENDLY)
+      ================================ */
+      .main-content {
+        width: min(1120px, 100%);
+        margin: 0 auto;
+        padding: 24px 16px 32px;
+        display: block;
+      }
+      .page-header {
+        margin: 0 auto 16px;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 20px 18px;
+        box-shadow: 0 14px 30px -24px rgba(15, 23, 42, 0.5);
+      }
+      .page-title {
+        margin: 0;
+        font-size: clamp(1.45rem, 3.8vw, 2rem);
+        font-weight: 800;
+        color: #0f172a;
+      }
+      .page-subtitle {
+        margin: 8px 0 0;
+        color: #475569;
+        line-height: 1.5;
+        font-size: 0.97rem;
+      }
+      .order-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 16px;
+        box-shadow: 0 20px 45px -35px rgba(15, 23, 42, 0.8);
+      }
+      .order-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+      .order-id {
+        font-weight: 700;
+        color: #0f172a;
+        font-size: 1.03rem;
+      }
+      .order-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        font-size: 12px;
+        padding: 6px 10px;
+        font-weight: 700;
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .order-status.completed {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .device-grid {
+        width: 100%;
+      }
+      .issues-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 14px;
+      }
+      .issue-column {
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: linear-gradient(180deg, #fff, #f8fafc);
+        display: flex;
+        flex-direction: column;
+        min-height: 100%;
+      }
+      .issue-column.resolved {
+        border-color: #86efac;
+        background: linear-gradient(180deg, #f0fdf4, #ffffff);
+      }
+      .issue-column-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 12px 12px 8px;
+      }
+      .device-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        background: #eef2ff;
+        color: #3730a3;
+        border-radius: 999px;
+        padding: 5px 10px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .issue-badge {
+        font-size: 11px;
+        font-weight: 700;
+        border-radius: 999px;
+        padding: 5px 10px;
+      }
+      .issue-badge.pending { background: #fef3c7; color: #92400e; }
+      .issue-badge.resolved { background: #dcfce7; color: #166534; }
+      .issue-column-content {
+        padding: 0 12px 10px;
+        flex: 1;
+      }
+      .issue-actions {
+        padding: 0 12px 12px;
+      }
+      .issue-button {
+        width: 100%;
+      }
+      .issue-feedback {
+        border-radius: 10px;
+        background: #f8fafc;
+        padding: 8px 10px;
+      }
+      .issue-feedback.visible { display: block; }
+      .empty-state {
+        text-align: center;
+        padding: 28px 16px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 16px;
+        background: #f8fafc;
+      }
+      .empty-state-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 999px;
+        margin: 0 auto 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #dcfce7;
+        color: #166534;
+        font-size: 22px;
+        font-weight: 700;
+      }
+      .empty-state-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #0f172a;
+      }
+      .empty-state-message {
+        color: #475569;
+        margin-top: 4px;
+      }
+
+      @media (max-width: 768px) {
+        .site-header__inner {
+          padding: 0.55rem 0.8rem;
+          gap: 0.45rem;
+        }
+        .logo-tagline {
+          display: none;
+        }
+        .logo-image {
+          max-height: 2.7rem;
+        }
+        .site-header__login {
+          padding: 0.45rem 0.8rem;
+          font-size: 0.83rem;
+        }
+        .main-content {
+          padding: 16px 12px 24px;
+        }
+        .page-header {
+          border-radius: 14px;
+          padding: 14px 12px;
+        }
+        .order-card {
+          border-radius: 14px;
+          padding: 12px;
+        }
+        .issues-grid {
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+        .unlock-pattern-grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .unlock-dot {
+          width: 100%;
+          aspect-ratio: 1 / 1;
+          height: auto;
+        }
+      }
     </style>
   </head>
-  <body>
+  <body class="bg-slate-100 text-slate-900 antialiased">
     <header class="site-header site-header--mobile-compact relative" data-site-header>
       <div class="site-header__inner site-header__inner--centered">
         <div class="logo-container-left">
@@ -3215,7 +3427,7 @@ function buildConditionEmail(reason, order, notes, deviceKey = null) {
   const resolvedButtonHtml = template.showResolvedButton
     ? `
       <div style="text-align:center; margin:32px 0 24px;">
-        <a href="https://api.secondhandcell.com/api/orders/${escapeHtml(orderId)}/issue-resolved${deviceKeyParam}" 
+        <a href="https://api.secondhandcell.com/orders/${escapeHtml(orderId)}/issue-resolved${deviceKeyParam}" 
            style="display:inline-block; padding:14px 32px; border-radius:9999px; background-color:#10b981; color:#ffffff !important; font-weight:600; text-decoration:none; font-size:17px; box-shadow:0 4px 12px rgba(16,185,129,0.3);">
           ✓ Issue Resolved
         </a>
