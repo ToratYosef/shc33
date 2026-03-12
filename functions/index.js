@@ -2651,6 +2651,71 @@ app.get('/fix-issue/:orderId', async (req, res) => {
   }
 });
 
+
+function normalizeUnlockInfo(unlockInfo = null) {
+  if (!unlockInfo || typeof unlockInfo !== 'object') {
+    return null;
+  }
+
+  const method = String(unlockInfo.method || '').trim().toLowerCase();
+  const value = String(unlockInfo.value || '').trim();
+  const patternPath = Array.isArray(unlockInfo.patternPath)
+    ? unlockInfo.patternPath.map((entry) => Number(entry)).filter((entry) => Number.isFinite(entry) && entry >= 1 && entry <= 9)
+    : [];
+
+  if (!method || (!value && !patternPath.length)) {
+    return null;
+  }
+
+  return {
+    method,
+    value,
+    patternPath,
+    updatedAt: unlockInfo.updatedAt || null,
+  };
+}
+
+function getPasswordLockIssueContext(order = {}, requestedDeviceKey = '') {
+  const issueMapByDevice = order?.qcIssuesByDevice && typeof order.qcIssuesByDevice === 'object'
+    ? order.qcIssuesByDevice
+    : {};
+
+  const candidateDeviceKeys = requestedDeviceKey
+    ? [requestedDeviceKey]
+    : Object.keys(issueMapByDevice);
+
+  for (const deviceKey of candidateDeviceKeys) {
+    const issueMap = issueMapByDevice?.[deviceKey];
+    if (!issueMap || typeof issueMap !== 'object') {
+      continue;
+    }
+
+    const issue = issueMap.password_locked;
+    if (!issue || typeof issue !== 'object') {
+      continue;
+    }
+
+    const unlockInfo = normalizeUnlockInfo(
+      order?.unlockInfoByDevice?.[deviceKey] ||
+      issue.unlockInfo ||
+      null
+    );
+
+    if (!unlockInfo) {
+      continue;
+    }
+
+    return {
+      deviceKey,
+      issue,
+      unlockInfo,
+      resolved: Boolean(issue.resolved) || Boolean(issue.resolvedAt),
+    };
+  }
+
+  return null;
+}
+
 app.post('/fix-issue/:orderId/confirm', async (req, res) => {
   try {
     const orderId = String(req.params.orderId || '').trim();
@@ -2786,6 +2851,169 @@ app.post('/fix-issue/:orderId/confirm', async (req, res) => {
     return res.status(500).json({ error: 'Unable to confirm issue resolution.' });
   }
 });
+
+app.get(['/orders/:orderId/reqc-unlock-info', '/api/orders/:orderId/reqc-unlock-info'], async (req, res) => {
+  try {
+    const orderId = String(req.params.orderId || '').trim();
+    if (!orderId) {
+      return res.status(400).json({ error: 'Order ID is required.' });
+    }
+
+    const deviceKey = req.query.deviceKey ? String(req.query.deviceKey).trim() : '';
+    const orderSnap = await ordersCollection.doc(orderId).get();
+    if (!orderSnap.exists) {
+      return res.status(404).json({ error: 'Order not found.' });
+    }
+
+    const order = { id: orderSnap.id, ...orderSnap.data() };
+    const context = getPasswordLockIssueContext(order, deviceKey);
+    if (!context) {
+      return res.status(404).json({ error: 'No password/pin/pattern unlock info found for this order/device.' });
+    }
+
+    return res.json({
+      ok: true,
+      orderId,
+      orderStatus: order.status || '',
+      deviceKey: context.deviceKey,
+      issueResolved: context.resolved,
+      unlockInfo: context.unlockInfo,
+      issueNotes: context.issue?.notes || '',
+      adminReview: context.issue?.adminReview || null,
+    });
+  } catch (error) {
+    console.error('Failed to load re-QC unlock info:', error);
+    return res.status(500).json({ error: 'Unable to load unlock info.' });
+  }
+});
+
+app.post(['/orders/:orderId/reqc-unlock-result', '/api/orders/:orderId/reqc-unlock-result'], async (req, res) => {
+  try {
+    const orderId = String(req.params.orderId || '').trim();
+    if (!orderId) {
+      return res.status(400).json({ error: 'Order ID is required.' });
+    }
+
+    const result = String(req.body?.result || '').trim().toLowerCase();
+    if (!['worked', 'failed'].includes(result)) {
+      return res.status(400).json({ error: 'result must be either "worked" or "failed".' });
+    }
+
+    const requestedDeviceKey = req.body?.deviceKey ? String(req.body.deviceKey).trim() : '';
+    const adminNotes = String(req.body?.notes || '').trim();
+
+    const orderRef = ordersCollection.doc(orderId);
+    const orderSnap = await orderRef.get();
+    if (!orderSnap.exists) {
+      return res.status(404).json({ error: 'Order not found.' });
+    }
+
+    const order = { id: orderSnap.id, ...orderSnap.data() };
+    const context = getPasswordLockIssueContext(order, requestedDeviceKey);
+    if (!context) {
+      return res.status(404).json({ error: 'No password/pin/pattern unlock info found for this order/device.' });
+    }
+
+    const deviceKey = context.deviceKey;
+    const updatePayload = {
+      [`qcIssuesByDevice.${deviceKey}.password_locked.adminReview`]: {
+        result,
+        notes: adminNotes,
+        reviewedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+    };
+
+    const logEntries = [];
+
+    if (result === 'worked') {
+      updatePayload[`deviceStatusByKey.${deviceKey}`] = 'processing';
+      logEntries.push({
+        type: 'status_change',
+        message: 'Admin verified customer unlock info during re-QC; unlock worked.',
+        metadata: {
+          deviceKey,
+          unlockMethod: context.unlockInfo.method,
+        },
+      });
+
+      await updateOrderBoth(orderId, updatePayload, {
+        autoLogStatus: false,
+        logEntries,
+      });
+
+      return res.json({
+        ok: true,
+        orderId,
+        deviceKey,
+        result,
+        nextAction: 'continue_qc',
+      });
+    }
+
+    updatePayload[`qcIssuesByDevice.${deviceKey}.password_locked.resolved`] = false;
+    updatePayload[`qcIssuesByDevice.${deviceKey}.password_locked.resolvedAt`] = admin.firestore.FieldValue.delete();
+    updatePayload[`qcIssuesByDevice.${deviceKey}.password_locked.updatedAt`] = admin.firestore.FieldValue.serverTimestamp();
+    updatePayload[`deviceStatusByKey.${deviceKey}`] = 'emailed';
+    updatePayload.qcAwaitingResponse = true;
+    updatePayload.status = 'emailed';
+    updatePayload.lastConditionEmailReason = 'password_locked';
+
+    const retryNotes = [
+      context.issue?.notes ? String(context.issue.notes).trim() : '',
+      'We attempted the unlock details you provided, but it did not work during re-QC. Please recheck and submit updated unlock info.',
+      adminNotes ? `Admin note: ${adminNotes}` : '',
+    ].filter(Boolean).join('\n\n');
+
+    const customerEmail = order?.shippingInfo?.email ? String(order.shippingInfo.email).trim() : '';
+    if (!customerEmail) {
+      return res.status(400).json({ error: 'Order is missing customer email address.' });
+    }
+
+    const emailPayload = buildConditionEmail('password_locked', order, retryNotes, deviceKey);
+    const mailSubject = `Action Needed: Unlock attempt failed for order #${order.id}`;
+
+    await transporter.sendMail({
+      from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+      to: customerEmail,
+      subject: mailSubject,
+      html: emailPayload.html,
+      text: emailPayload.text,
+    });
+
+    logEntries.push({
+      type: 'email',
+      message: 'Re-QC unlock attempt failed email sent to customer.',
+      metadata: {
+        deviceKey,
+        unlockMethod: context.unlockInfo.method,
+      },
+    });
+
+    await updateOrderBoth(orderId, updatePayload, {
+      autoLogStatus: false,
+      logEntries,
+    });
+
+    await recordCustomerEmail(orderId, 'Re-QC unlock attempt failed email sent to customer.', {
+      reason: 'password_locked',
+      deviceKey,
+      unlockMethod: context.unlockInfo.method,
+    });
+
+    return res.json({
+      ok: true,
+      orderId,
+      deviceKey,
+      result,
+      nextAction: 'await_customer_resubmission',
+      emailed: true,
+    });
+  } catch (error) {
+    console.error('Failed to process re-QC unlock result:', error);
+    return res.status(500).json({ error: 'Unable to process re-QC unlock result.' });
+  }
+});
+
 
 const handleVerifyAddress = async (req, res) => {
   const {
