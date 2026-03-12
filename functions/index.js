@@ -9888,12 +9888,27 @@ exports.notifyWholesaleOfferUpdated = functions.firestore
     return null;
   });
 
+async function getOrderByIdFromFirestore(orderId) {
+  const trimmedOrderId = String(orderId || '').trim();
+  if (!trimmedOrderId) {
+    return null;
+  }
+
+  const snapshot = await ordersCollection.doc(trimmedOrderId).get();
+  if (!snapshot.exists) {
+    return null;
+  }
+
+  return { id: snapshot.id, ...snapshot.data() };
+}
+
 exports.api = functions.https.onRequest(app);
 exports.expressApp = app;
 exports.updateOrderBoth = updateOrderBoth;
 exports.buildOrderDeviceKey = buildOrderDeviceKey;
 exports.collectOrderDeviceKeys = collectOrderDeviceKeys;
 exports.deriveOrderStatusFromDevices = deriveOrderStatusFromDevices;
+exports.getOrderByIdFromFirestore = getOrderByIdFromFirestore;
 
 exports.refreshTracking = functions.runWith({ timeoutSeconds: 540, memory: '1GB' }).https.onRequest(
   async (req, res) => {
