@@ -10140,6 +10140,122 @@ async function getOrderByIdFromFirestore(orderId) {
   return { id: snapshot.id, ...snapshot.data() };
 }
 
+function createHttpError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
+function normalizeRefreshTrackingRequest(body = {}) {
+  const { orderId, type, force } = body;
+  if (!orderId || !type) {
+    throw createHttpError(400, 'orderId and type are required.');
+  }
+
+  const normalizedType = String(type).toLowerCase();
+  const handler = normalizedType === 'kit'
+    ? refreshKitTrackingById
+    : normalizedType === 'email'
+      ? refreshEmailLabelTrackingById
+      : null;
+
+  if (!handler) {
+    throw createHttpError(400, 'Invalid tracking type requested.');
+  }
+
+  return {
+    orderId,
+    normalizedType,
+    handler,
+    force: Boolean(force),
+  };
+}
+
+async function refreshTrackingByRequestBody(body = {}) {
+  const { orderId, normalizedType, handler, force } = normalizeRefreshTrackingRequest(body);
+  const payload = await handler(orderId, {
+    source: 'admin_manual',
+    force,
+  });
+
+  return {
+    type: normalizedType,
+    ...payload,
+  };
+}
+
+async function runConcurrentJobs(items, worker, maxConcurrency = 3) {
+  const safeConcurrency = Math.min(5, Math.max(2, Number(maxConcurrency) || 3));
+  const results = new Array(items.length);
+  let cursor = 0;
+
+  async function runWorker() {
+    while (true) {
+      const index = cursor;
+      cursor += 1;
+      if (index >= items.length) {
+        return;
+      }
+      results[index] = await worker(items[index], index);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(safeConcurrency, items.length) }, () => runWorker());
+  await Promise.all(workers);
+  return results;
+}
+
+async function runBulkKitRefresh({ orderIds, force = false, refreshFn = refreshTrackingByRequestBody, concurrency = 3 }) {
+  if (!Array.isArray(orderIds) || orderIds.length === 0) {
+    throw createHttpError(400, 'orderIds must be a non-empty array.');
+  }
+
+  const cleanedOrderIds = orderIds
+    .map((orderId) => String(orderId || '').trim())
+    .filter(Boolean);
+
+  if (!cleanedOrderIds.length) {
+    throw createHttpError(400, 'orderIds must be a non-empty array.');
+  }
+
+  const startedAt = Date.now();
+  console.log('[refreshTracking.bulkKit] start', {
+    processed: cleanedOrderIds.length,
+    force: Boolean(force),
+    concurrency: Math.min(5, Math.max(2, Number(concurrency) || 3)),
+  });
+
+  const results = await runConcurrentJobs(
+    cleanedOrderIds,
+    async (orderId) => {
+      try {
+        const payload = await refreshFn({ orderId, type: 'kit', force: Boolean(force) });
+        return { orderId, ok: true, status: payload.status || null };
+      } catch (error) {
+        return { orderId, ok: false, error: error?.message || 'Failed to refresh tracking' };
+      }
+    },
+    concurrency
+  );
+
+  const succeeded = results.filter((item) => item.ok).length;
+  const failed = results.length - succeeded;
+
+  console.log('[refreshTracking.bulkKit] end', {
+    processed: results.length,
+    succeeded,
+    failed,
+    durationMs: Date.now() - startedAt,
+  });
+
+  return {
+    processed: results.length,
+    succeeded,
+    failed,
+    results,
+  };
+}
+
 exports.api = functions.https.onRequest(app);
 exports.expressApp = app;
 exports.updateOrderBoth = updateOrderBoth;
@@ -10162,33 +10278,49 @@ exports.refreshTracking = functions.runWith({ timeoutSeconds: 540, memory: '1GB'
       return res.status(405).json({ error: 'Method not allowed. Use POST.' });
     }
 
-    const { orderId, type, force } = req.body || {};
-    if (!orderId || !type) {
-      return res.status(400).json({ error: 'orderId and type are required.' });
-    }
-
-    const normalizedType = String(type).toLowerCase();
-    const handler = normalizedType === 'kit'
-      ? refreshKitTrackingById
-      : normalizedType === 'email'
-        ? refreshEmailLabelTrackingById
-        : null;
-
-    if (!handler) {
-      return res.status(400).json({ error: 'Invalid tracking type requested.' });
-    }
-
     try {
-      const payload = await handler(orderId, {
-        source: 'admin_manual',
-        force: Boolean(force),
-      });
-      res.json({ type: normalizedType, ...payload });
+      const payload = await refreshTrackingByRequestBody(req.body || {});
+      res.json(payload);
     } catch (error) {
       const statusCode = error?.statusCode || 500;
       const message = error?.message || 'Failed to refresh tracking';
-      console.error('refreshTracking function error:', { orderId, type: normalizedType, error });
+      console.error('refreshTracking function error:', {
+        orderId: req.body?.orderId,
+        type: req.body?.type,
+        error,
+      });
       res.status(statusCode).json({ error: message });
     }
   }
 );
+
+exports.refreshTrackingBulkKit = functions.runWith({ timeoutSeconds: 540, memory: '1GB' }).https.onRequest(
+  async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+      return res.status(204).send('');
+    }
+
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed. Use POST.' });
+    }
+
+    try {
+      const summary = await runBulkKitRefresh({
+        orderIds: req.body?.orderIds,
+        force: req.body?.force,
+      });
+      return res.json(summary);
+    } catch (error) {
+      const statusCode = error?.statusCode || 500;
+      const message = error?.message || 'Failed to refresh kit tracking in bulk';
+      return res.status(statusCode).json({ error: message });
+    }
+  }
+);
+
+exports.refreshTrackingByRequestBody = refreshTrackingByRequestBody;
+exports.runBulkKitRefresh = runBulkKitRefresh;
