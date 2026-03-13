@@ -797,7 +797,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
 
             const resolveButtonLabels = {
               outstanding_balance: "I've paid the balance",
-              password_locked: 'I entered my password',
+              password_locked: 'Enter password',
               stolen: 'Blacklist issue fixed',
               fmi_active: 'Activation lock removed'
             };

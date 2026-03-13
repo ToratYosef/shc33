@@ -56,7 +56,7 @@ const CONDITION_EMAIL_TEMPLATES = {
       "Reply to this email once the lock has been cleared so we can finish processing the order.",
     ],
     showResolvedButton: true,
-    resolvedButtonLabel: 'I entered my password',
+    resolvedButtonLabel: 'Enter password',
     resolvedButtonHint: 'Tap once the phone can be unlocked for testing',
   },
   stolen: {
@@ -135,7 +135,7 @@ function buildConditionEmail(reason, order, notes, deviceKey = null) {
   const resolvedButtonHtml = template.showResolvedButton
     ? `
       <div style="text-align:center; margin:32px 0 24px;">
-        <a href="https://api.secondhandcell.com/server/api/orders/${escapeHtml(orderId)}/issue-resolved${deviceKeyParam}" 
+        <a href="https://api.secondhandcell.com/server/orders/${escapeHtml(orderId)}/issue-resolved${deviceKeyParam}" 
            style="display:inline-block; padding:14px 32px; border-radius:9999px; background-color:#14b8a6; color:#ffffff !important; font-weight:600; text-decoration:none; font-size:17px; box-shadow:0 4px 12px rgba(20,184,166,0.3);">
           ${escapeHtml(resolvedButtonLabel)}
         </a>
