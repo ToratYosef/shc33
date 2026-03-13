@@ -1195,7 +1195,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         }
 
         const buttonsHtml = issue.resolved
-          ? '<div class="issue-actions"><button class="issue-button primary" disabled>✓ Resolved</button></div>'
+          ? `<div class="issue-actions"><button class="issue-button primary" disabled>✓ ${escapeHtml((({ outstanding_balance: "I've paid the balance", password_locked: 'Enter password', stolen: 'Blacklist issue fixed', fmi_active: 'Activation lock removed' })[issue.reason] || 'Issue resolved'))}</button></div>`
           : (() => {
               const requiresUnlockInfo = issue.reason === 'password_locked' && !issue.resolved;
               const unlockSectionHtml = requiresUnlockInfo
@@ -1235,7 +1235,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
               return `
                 <div class="issue-actions">
                   <button class="issue-button primary" data-device-key="${safeDeviceKey}" data-reason="${safeReason}" data-action="resolve" ${requiresUnlockInfo ? 'disabled data-requires-unlock="1"' : ''}>
-                    ✓ Submit as Resolved
+                    ✓ ${escapeHtml((({ outstanding_balance: "I've paid the balance", password_locked: 'Enter password', stolen: 'Blacklist issue fixed', fmi_active: 'Activation lock removed' })[issue.reason] || 'Issue resolved'))}
                   </button>
                 </div>
                 ${unlockSectionHtml}
@@ -3574,6 +3574,8 @@ const CONDITION_EMAIL_TEMPLATES = {
       "Reply to this email with confirmation so we can re-run the check and release your payout.",
     ],
     showResolvedButton: true,
+    resolvedButtonLabel: "I've paid the balance",
+    resolvedButtonHint: "Tap once you've paid your carrier balance",
   },
   password_locked: {
     subject: "Device Locked: Action Needed",
@@ -3585,6 +3587,8 @@ const CONDITION_EMAIL_TEMPLATES = {
       "Reply to this email once the lock has been cleared so we can finish processing the order.",
     ],
     showResolvedButton: true,
+    resolvedButtonLabel: 'Enter password',
+    resolvedButtonHint: 'Tap once the phone can be unlocked for testing',
   },
   stolen: {
     subject: "Important: Device Reported Lost or Stolen",
@@ -3596,6 +3600,8 @@ const CONDITION_EMAIL_TEMPLATES = {
       "Provide any supporting documentation by replying to this email so we can review and re-run the check.",
     ],
     showResolvedButton: true,
+    resolvedButtonLabel: 'Blacklist issue fixed',
+    resolvedButtonHint: 'Tap once your carrier clears the blacklist flag',
   },
   fmi_active: {
     subject: "Find My / Activation Lock Detected",
@@ -3608,6 +3614,8 @@ const CONDITION_EMAIL_TEMPLATES = {
       "Reply to this email once the lock has been removed so we can verify and continue.",
     ],
     showResolvedButton: true,
+    resolvedButtonLabel: 'Activation lock removed',
+    resolvedButtonHint: 'Tap once Find My / Activation Lock is turned off',
   },
 };
 
@@ -3652,14 +3660,16 @@ function buildConditionEmail(reason, order, notes, deviceKey = null) {
   };
 
   const deviceKeyParam = deviceKey ? `?deviceKey=${encodeURIComponent(deviceKey)}` : '';
+  const resolvedButtonLabel = template.resolvedButtonLabel || '✓ Issue Resolved';
+  const resolvedButtonHint = template.resolvedButtonHint || "Tap once you've fixed this issue";
   const resolvedButtonHtml = template.showResolvedButton
     ? `
       <div style="text-align:center; margin:32px 0 24px;">
-        <a href="https://api.secondhandcell.com/orders/${escapeHtml(orderId)}/issue-resolved${deviceKeyParam}" 
+        <a href="https://api.secondhandcell.com/server/orders/${escapeHtml(orderId)}/issue-resolved${deviceKeyParam}" 
            style="display:inline-block; padding:14px 32px; border-radius:9999px; background-color:#10b981; color:#ffffff !important; font-weight:600; text-decoration:none; font-size:17px; box-shadow:0 4px 12px rgba(16,185,129,0.3);">
-          ✓ Issue Resolved
+          ${escapeHtml(resolvedButtonLabel)}
         </a>
-        <p style="font-size:14px; color:#64748b; margin-top:12px;">Click this button once you've fixed the issue</p>
+        <p style="font-size:14px; color:#64748b; margin-top:12px;">${escapeHtml(resolvedButtonHint)}</p>
       </div>
     `
     : "";
