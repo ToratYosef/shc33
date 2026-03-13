@@ -795,12 +795,20 @@ app.get('/fix-issue/:orderId', async (req, res) => {
               `
               : '';
 
+            const resolveButtonLabels = {
+              outstanding_balance: "I've paid the balance",
+              password_locked: 'I entered my password',
+              stolen: 'Blacklist issue fixed',
+              fmi_active: 'Activation lock removed'
+            };
+            const resolvedLabel = resolveButtonLabels[issue.reason] || 'Issue resolved';
+
             const buttonsHtml = issue.resolved
-              ? '<div class="issue-actions"><button class="issue-button primary" disabled>✓ Resolved</button></div>'
+              ? `<div class="issue-actions"><button class="issue-button primary" disabled>✓ ${escapeHtml(resolvedLabel)}</button></div>`
               : `
                 <div class="issue-actions">
                   <button class="issue-button primary" data-device-key="${safeDeviceKey}" data-reason="${safeReason}" data-action="resolve" ${requiresUnlockInfo ? 'disabled data-requires-unlock="1"' : ''}>
-                    ✓ Submit as Resolved
+                    ✓ ${escapeHtml(resolvedLabel)}
                   </button>
                 </div>
               `;
@@ -1035,8 +1043,8 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       }
       body {
         margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        background: linear-gradient(to bottom, #f1f5f9 0%, #e2e8f0 100%);
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background: radial-gradient(circle at 10% 10%, #e0e7ff 0%, #f8fafc 45%, #ecfeff 100%);
         color: #0f172a;
         min-height: 100vh;
         display: flex;
@@ -1059,8 +1067,8 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       }
       .main-content {
         flex: 1;
-        padding: 24px 16px;
-        max-width: 1400px;
+        padding: 34px 18px 50px;
+        max-width: 1220px;
         width: 100%;
         margin: 0 auto;
       }
@@ -1081,12 +1089,13 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         line-height: 1.6;
       }
       .order-card {
-        background: #ffffff;
-        border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        padding: 16px;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 24px;
+        box-shadow: 0 24px 60px -35px rgba(15, 23, 42, 0.45);
+        padding: 24px;
         margin-bottom: 16px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        backdrop-filter: blur(8px);
       }
       .order-header {
         display: flex;
@@ -1118,35 +1127,34 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       }
       .issues-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
-        gap: 16px;
-        margin-top: 16px;
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+        gap: 18px;
+        margin-top: 20px;
       }
       .issue-column {
-        background: white;
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        transition: all 0.3s ease;
+        background: linear-gradient(160deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 20px;
+        border: 1px solid #dbeafe;
+        box-shadow: 0 20px 40px -30px rgba(59, 130, 246, 0.55);
+        transition: all 0.24s ease;
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        max-height: calc(100vh - 240px);
-        height: 100%;
+        min-height: 440px;
       }
       .issue-column:hover {
-        border-color: #cbd5e1;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-        transform: translateY(-2px);
+        border-color: #93c5fd;
+        box-shadow: 0 28px 55px -35px rgba(37, 99, 235, 0.6);
+        transform: translateY(-3px);
       }
       .issue-column.resolved {
         opacity: 0.75;
         background: #f0fdf4;
       }
       .issue-column-header {
-        background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-        border-bottom: 2px solid #e2e8f0;
-        padding: 8px;
+        background: linear-gradient(120deg, #eff6ff, #e0f2fe);
+        border-bottom: 1px solid #bfdbfe;
+        padding: 12px;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -1174,7 +1182,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         text-overflow: ellipsis;
       }
       .issue-column-content {
-        padding: 8px;
+        padding: 14px;
         flex: 1;
         display: flex;
         flex-direction: column;
@@ -1224,8 +1232,8 @@ app.get('/fix-issue/:orderId', async (req, res) => {
         opacity: 0.7;
       }
       .issue-title {
-        font-weight: 700;
-        font-size: 14px;
+        font-weight: 800;
+        font-size: 18px;
         color: #1e293b;
         margin: 0 0 6px;
         display: flex;
