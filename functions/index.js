@@ -5886,11 +5886,9 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
         const normalized = entry.toLowerCase();
         return normalized.includes("usps") || normalized.includes("stamps");
       });
-  const isHazmat =
-    Boolean(advancedOptions?.dangerous_goods) ||
-    Boolean(products?.some((entry) => entry?.dangerous_goods)) ||
-    isUspsShipment;
-  const resolvedServiceCode = serviceCode;
+  const isHazmat = true;
+  const resolvedServiceCode =
+    isHazmat && isUspsShipment ? "usps_ground_advantage" : serviceCode;
 
   const payload = {
     shipment: {
