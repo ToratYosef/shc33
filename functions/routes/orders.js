@@ -2401,10 +2401,102 @@ function createOrdersRouter({
           html: customerEmailHtml,
         };
       } else {
-        throw buildHttpError(
-          'Regular customer labels now require the dedicated shipping endpoints: /api/shipping/generate-usps-label or /api/shipping/generate-ups-label.',
-          400
-        );
+        const requestedCarrier = String(
+          req.body?.carrier ||
+          req.body?.shippingCarrier ||
+          req.body?.labelCarrier ||
+          req.query?.carrier ||
+          'usps'
+        )
+          .trim()
+          .toLowerCase();
+
+        const useUps = requestedCarrier === 'ups';
+        const labelKey = useUps ? 'ups' : 'usps';
+        const existingLabel = findActiveLabelForCarrier(order, labelKey);
+
+        if (existingLabel) {
+          updateData = {
+            ...updateData,
+            trackingNumber: existingLabel.trackingNumber || null,
+            [useUps ? 'upsLabelUrl' : 'uspsLabelUrl']: existingLabel.downloadUrl || null,
+          };
+        } else {
+          const sku =
+            String(order?.modelId || order?.modelName || order?.device || 'PHONE-DEVICE')
+              .trim()
+              .replace(/[^A-Za-z0-9_-]+/g, '-')
+              .toUpperCase();
+          const upsCarrierCode = String(
+            process.env.SHIPENGINE_UPS_CARRIER_CODE ||
+              process.env.UPS_SHIPENGINE_CARRIER_CODE ||
+              'ups'
+          ).trim();
+          const requestedWeight = Number(req.body?.packageWeightLb);
+          const packageWeightLb =
+            Number.isFinite(requestedWeight) && requestedWeight > 0
+              ? requestedWeight
+              : Math.max(1.5, Number((deviceCount * 1.5).toFixed(2)));
+          const dangerousGoods = [
+            {
+              id_number: 'UN3481',
+              shipping_name: 'Lithium ion batteries contained in equipment',
+              product_class: '9',
+              transport_mean: 'ground',
+            },
+          ];
+
+          if (useUps) {
+            if (!upsCarrierCode) {
+              throw buildHttpError(
+                'SHIPENGINE_UPS_CARRIER_CODE is required for UPS label generation.',
+                500
+              );
+            }
+
+            await reconnectUpsCarrierConnection();
+          }
+
+          const generatedLabel = await createSingleInboundLabelForOrder(order, {
+            carrierName: useUps ? 'UPS' : 'USPS',
+            carrierCode: useUps ? upsCarrierCode : 'stamps_com',
+            carrierId: useUps ? UPS_CARRIER_ID : undefined,
+            serviceCode: useUps ? 'ups_ground' : shippingProfile.serviceCode,
+            weight: useUps
+              ? { value: packageWeightLb, unit: 'pound' }
+              : { value: shippingProfile.weightOz, unit: 'ounce' },
+            packageProducts: useUps
+              ? [
+                  {
+                    sku,
+                    description: order?.device || order?.modelName || 'Mobile Phone',
+                    quantity: Math.max(1, deviceCount),
+                    dangerous_goods: dangerousGoods,
+                  },
+                ]
+              : undefined,
+            advancedOptions: useUps
+              ? {
+                  dangerous_goods: true,
+                }
+              : undefined,
+            labelKey,
+            labelReferenceSuffix: useUps ? 'UPS-INBOUND-DEVICE' : 'USPS-INBOUND-DEVICE',
+            displayName: useUps ? 'UPS Shipping Label' : 'USPS Shipping Label',
+            labelDeliveryMethod: useUps ? 'ups' : 'usps',
+            labelGeneratedSource: `legacy_endpoint_${labelKey}`,
+            urlField: useUps ? 'upsLabelUrl' : 'uspsLabelUrl',
+            accountNumberConfigured: useUps
+              ? Boolean(UPS_CONNECTION_PAYLOAD.account_number)
+              : undefined,
+          });
+
+          updateData = {
+            ...updateData,
+            trackingNumber: generatedLabel.trackingNumber || null,
+            [useUps ? 'upsLabelUrl' : 'uspsLabelUrl']: generatedLabel.labelDownloadUrl || null,
+          };
+        }
       }
 
       const labelIds = buildLabelIdList(labelRecords);
