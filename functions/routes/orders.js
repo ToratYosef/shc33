@@ -4,6 +4,287 @@ const path = require('path');
 const { resolveUspsServiceAndWeightByDeviceCount } = require('../helpers/shipengine');
 // Updated: Added DELETE endpoint for shipping address
 
+function normalizeNullableString(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeIpCandidate(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const withoutPort = /^(\d{1,3}\.){3}\d{1,3}:\d+$/.test(trimmed)
+    ? trimmed.split(':')[0]
+    : trimmed;
+  const unwrapped = withoutPort.replace(/^\[|\]$/g, '').trim();
+  if (!unwrapped) return null;
+  if (unwrapped.startsWith('::ffff:')) {
+    return unwrapped.slice(7);
+  }
+  return unwrapped;
+}
+
+function parseForwardedFor(value) {
+  if (!value) return null;
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const parsed = parseForwardedFor(entry);
+      if (parsed) return parsed;
+    }
+    return null;
+  }
+  const parts = String(value)
+    .split(',')
+    .map((part) => normalizeIpCandidate(part))
+    .filter(Boolean);
+  return parts[0] || null;
+}
+
+function resolveSubmitterIpAddress(req = {}) {
+  const headers = req.headers || {};
+  return (
+    parseForwardedFor(headers['x-forwarded-for']) ||
+    normalizeIpCandidate(headers['cf-connecting-ip']) ||
+    normalizeIpCandidate(headers['x-real-ip']) ||
+    normalizeIpCandidate(req.ip) ||
+    normalizeIpCandidate(req.socket?.remoteAddress) ||
+    normalizeIpCandidate(req.connection?.remoteAddress) ||
+    null
+  );
+}
+
+function inferUserAgentMetadata(userAgent) {
+  const ua = String(userAgent || '').toLowerCase();
+  if (!ua) {
+    return { browser: null, os: null, deviceType: null };
+  }
+
+  let browser = null;
+  if (ua.includes('edg/')) browser = 'Edge';
+  else if (ua.includes('opr/') || ua.includes('opera')) browser = 'Opera';
+  else if (ua.includes('chrome/')) browser = 'Chrome';
+  else if (ua.includes('safari/') && !ua.includes('chrome/')) browser = 'Safari';
+  else if (ua.includes('firefox/')) browser = 'Firefox';
+  else if (ua.includes('msie') || ua.includes('trident/')) browser = 'Internet Explorer';
+
+  let os = null;
+  if (ua.includes('windows nt')) os = 'Windows';
+  else if (ua.includes('android')) os = 'Android';
+  else if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ios')) os = 'iOS';
+  else if (ua.includes('mac os x') || ua.includes('macintosh')) os = 'macOS';
+  else if (ua.includes('linux')) os = 'Linux';
+
+  let deviceType = null;
+  if (ua.includes('ipad') || ua.includes('tablet')) deviceType = 'tablet';
+  else if (ua.includes('mobile') || ua.includes('iphone') || ua.includes('android')) deviceType = 'mobile';
+  else deviceType = 'desktop';
+
+  return { browser, os, deviceType };
+}
+
+function buildSubmitterMetadata(req = {}, incomingContext = {}) {
+  const incoming = incomingContext && typeof incomingContext === 'object'
+    ? incomingContext
+    : {};
+  const requestUserAgent = normalizeNullableString(req.headers?.['user-agent']);
+  const userAgent = normalizeNullableString(incoming.userAgent) || requestUserAgent;
+  const inferred = inferUserAgentMetadata(userAgent);
+
+  const submitterContext = {
+    deviceId: normalizeNullableString(incoming.deviceId),
+    browser: normalizeNullableString(incoming.browser) || inferred.browser,
+    deviceType: normalizeNullableString(incoming.deviceType) || inferred.deviceType,
+    os: normalizeNullableString(incoming.os) || inferred.os,
+    userAgent,
+  };
+
+  return {
+    submitterContext,
+    submitterIpAddress: resolveSubmitterIpAddress(req),
+    submitterDeviceId: submitterContext.deviceId,
+    submitterBrowser: submitterContext.browser,
+    submitterDeviceType: submitterContext.deviceType,
+    submitterOs: submitterContext.os,
+  };
+}
+
+function normalizeNameForConflict(value) {
+  const name = normalizeNullableString(value);
+  if (!name) return null;
+  return name.trim().toLowerCase();
+}
+
+function buildIpConflictSummary(orders = []) {
+  const groupedByIp = new Map();
+
+  for (const order of Array.isArray(orders) ? orders : []) {
+    const ipAddress = normalizeNullableString(order?.submitterIpAddress)
+      || normalizeNullableString(order?.submitterContext?.ipAddress)
+      || normalizeNullableString(order?.submitterContext?.ip);
+    if (!ipAddress) continue;
+
+    const rawName = normalizeNullableString(order?.shippingInfo?.fullName) || 'Unknown';
+    const normalizedName = normalizeNameForConflict(rawName);
+    if (!normalizedName) continue;
+
+    if (!groupedByIp.has(ipAddress)) {
+      groupedByIp.set(ipAddress, {
+        ipAddress,
+        normalizedNameSet: new Set(),
+        namesByNormalized: new Map(),
+        orders: [],
+      });
+    }
+
+    const group = groupedByIp.get(ipAddress);
+    group.normalizedNameSet.add(normalizedName);
+    if (!group.namesByNormalized.has(normalizedName)) {
+      group.namesByNormalized.set(normalizedName, rawName.trim());
+    }
+
+    group.orders.push({
+      orderId: normalizeNullableString(order?.id) || normalizeNullableString(order?.orderId) || '',
+      createdAt: serializeCreatedAt(order?.createdAt),
+      name: rawName,
+      email: normalizeNullableString(order?.shippingInfo?.email),
+      device: normalizeNullableString(order?.device) || normalizeNullableString(order?.modelName),
+      submitterDeviceId:
+        normalizeNullableString(order?.submitterDeviceId)
+        || normalizeNullableString(order?.submitterContext?.deviceId),
+      browser:
+        normalizeNullableString(order?.submitterBrowser)
+        || normalizeNullableString(order?.submitterContext?.browser),
+      os:
+        normalizeNullableString(order?.submitterOs)
+        || normalizeNullableString(order?.submitterContext?.os),
+      deviceType:
+        normalizeNullableString(order?.submitterDeviceType)
+        || normalizeNullableString(order?.submitterContext?.deviceType),
+    });
+  }
+
+  const conflicts = Array.from(groupedByIp.values())
+    .filter((group) => group.normalizedNameSet.size > 1)
+    .map((group) => ({
+      ipAddress: group.ipAddress,
+      uniqueNameCount: group.normalizedNameSet.size,
+      names: Array.from(group.namesByNormalized.values()).sort((a, b) => a.localeCompare(b)),
+      orderCount: group.orders.length,
+      orders: group.orders,
+    }))
+    .sort((a, b) => b.uniqueNameCount - a.uniqueNameCount || b.orderCount - a.orderCount);
+
+  return {
+    scannedOrders: Array.isArray(orders) ? orders.length : 0,
+    conflictCount: conflicts.length,
+    conflicts,
+  };
+}
+
+function parseLimitParam(value, fallback = 500, max = 2000) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return fallback;
+  }
+  return Math.min(Math.floor(numeric), max);
+}
+
+function parseLimitParamStrict(rawValue, fallback = 500, max = 2000) {
+  if (typeof rawValue === 'undefined') {
+    return { ok: true, value: fallback };
+  }
+  const value = Number(rawValue);
+  if (!Number.isFinite(value) || value <= 0 || !Number.isInteger(value)) {
+    return { ok: false, error: 'Invalid limit', code: 'BAD_LIMIT' };
+  }
+  return { ok: true, value: Math.min(value, max) };
+}
+
+function serializeCreatedAt(value) {
+  if (value == null) return null;
+  if (typeof value === 'string' || typeof value === 'number') return value;
+  if (typeof value?.toMillis === 'function') return value.toMillis();
+  if (typeof value?.seconds === 'number') return value.seconds * 1000;
+  return null;
+}
+
+function generateRequestId(req = {}) {
+  const headerValue = req.headers?.['x-request-id'];
+  const existing = normalizeNullableString(
+    Array.isArray(headerValue) ? headerValue[0] : headerValue
+  );
+  if (existing) return existing;
+  return `req_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function isAuthDisabled() {
+  const raw = String(process.env.DISABLE_AUTH || '').trim().toLowerCase();
+  return ['1', 'true', 'yes', 'on'].includes(raw);
+}
+
+async function defaultAuthenticateAdminRequest(req, { admin, adminsCollection }) {
+  if (isAuthDisabled()) {
+    req.user = { uid: 'public', isAdmin: true };
+    return { ok: true, uid: req.user.uid };
+  }
+
+  const authHeader = String(req.headers?.authorization || '').trim();
+  if (!authHeader.toLowerCase().startsWith('bearer ')) {
+    return {
+      ok: false,
+      status: 401,
+      error: 'Authentication required',
+      code: 'AUTH_MISSING',
+      reason: 'missing token',
+      uid: null,
+    };
+  }
+
+  const token = authHeader.slice(7).trim();
+  if (!token) {
+    return {
+      ok: false,
+      status: 401,
+      error: 'Authentication required',
+      code: 'AUTH_MISSING',
+      reason: 'missing token',
+      uid: null,
+    };
+  }
+
+  try {
+    const decoded = await admin.auth().verifyIdToken(token);
+    const uid = decoded?.uid || null;
+    const adminDoc = uid ? await adminsCollection.doc(uid).get() : null;
+    if (!adminDoc?.exists) {
+      return {
+        ok: false,
+        status: 403,
+        error: 'Admin access required',
+        code: 'AUTH_FORBIDDEN',
+        reason: 'not admin',
+        uid,
+      };
+    }
+    req.user = decoded;
+    return { ok: true, uid };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 403,
+      error: 'Admin access required',
+      code: 'AUTH_FORBIDDEN',
+      reason: 'invalid token',
+      uid: null,
+      details: error?.message || 'Token verification failed',
+    };
+  }
+}
+
 function createOrdersRouter({
   axios,
   admin,
@@ -21,8 +302,11 @@ function createOrdersRouter({
   getShipEngineApiKey,
   transporter,
   deviceHelpers,
+  authenticateAdminRequest = null,
 }) {
   const router = express.Router();
+  const resolvedAuthenticateAdminRequest = authenticateAdminRequest
+    || ((req) => defaultAuthenticateAdminRequest(req, { admin, adminsCollection }));
 
   const {
     ORDER_RECEIVED_EMAIL_HTML,
@@ -1390,6 +1674,64 @@ function createOrdersRouter({
     }
   });
 
+  router.get('/orders/ip-conflicts', async (req, res) => {
+    const requestId = generateRequestId(req);
+    const startedAt = Date.now();
+    const limitResult = parseLimitParamStrict(req.query?.limit, 500, 2000);
+    const ipAddress = resolveSubmitterIpAddress(req);
+    console.log(`[IP_CONFLICTS][${requestId}] start route=/orders/ip-conflicts uid=${req.user?.uid || 'unknown'} ip=${ipAddress || 'unknown'} limit=${req.query?.limit ?? 'default'}`);
+
+    if (!limitResult.ok) {
+      console.warn(`[IP_CONFLICTS][${requestId}] auth=skipped reason=bad_limit`);
+      return res.status(400).json({
+        error: limitResult.error,
+        code: limitResult.code,
+        requestId,
+      });
+    }
+
+    const authResult = await resolvedAuthenticateAdminRequest(req);
+    if (!authResult.ok) {
+      console.warn(`[IP_CONFLICTS][${requestId}] auth_failed reason=${authResult.reason} uid=${authResult.uid || 'unknown'}`);
+      return res.status(authResult.status).json({
+        error: authResult.error,
+        code: authResult.code,
+        requestId,
+      });
+    }
+
+    try {
+      const limit = limitResult.value;
+      const snapshot = await ordersCollection
+        .orderBy('createdAt', 'desc')
+        .limit(limit)
+        .get();
+
+      const orders = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const summary = buildIpConflictSummary(orders);
+      const durationMs = Date.now() - startedAt;
+      console.log(`[IP_CONFLICTS][${requestId}] success scannedOrders=${summary.scannedOrders} conflictCount=${summary.conflictCount} durationMs=${durationMs}`);
+      return res.json(summary);
+    } catch (error) {
+      const durationMs = Date.now() - startedAt;
+      console.error(`[IP_CONFLICTS][${requestId}] error durationMs=${durationMs}`, error?.stack || error);
+      if (error?.code === 'failed-precondition' || String(error?.message || '').toLowerCase().includes('index')) {
+        return res.status(500).json({
+          error: 'Failed to query recent orders',
+          code: error?.code || 'FIRESTORE_QUERY_FAILED',
+          hint: 'Firestore index may be missing for createdAt desc query. Create the required index and retry.',
+          requestId,
+        });
+      }
+      return res.status(500).json({
+        error: 'Failed to generate IP conflict report',
+        code: error?.code || 'INTERNAL_ERROR',
+        hint: 'Please check server logs using requestId for more details.',
+        requestId,
+      });
+    }
+  });
+
   router.get('/orders/:id', async (req, res) => {
     try {
       const docRef = ordersCollection.doc(req.params.id);
@@ -1425,8 +1767,12 @@ function createOrdersRouter({
   });
 
   router.post('/submit-order', async (req, res) => {
+    const requestId = generateRequestId(req);
+    const startedAt = Date.now();
     try {
       const orderData = req.body;
+      const requestIp = resolveSubmitterIpAddress(req);
+      console.log(`[SUBMIT_ORDER][${requestId}] start ip=${requestIp || 'unknown'}`);
 
       if (
         !orderData?.shippingInfo ||
@@ -1987,8 +2333,18 @@ function createOrdersRouter({
           console.error('Unexpected order notification error:', notificationError);
         });
 
+      const submitterMetadata = buildSubmitterMetadata(req, orderData?.submitterContext);
+      if (!submitterMetadata.submitterIpAddress) {
+        console.warn(`[SUBMIT_ORDER][${requestId}] warning orderId=${orderId} reason=missing_submitter_ip`);
+      } else {
+        console.log(
+          `[SUBMIT_ORDER][${requestId}] metadata orderId=${orderId} ip=${submitterMetadata.submitterIpAddress} browser=${submitterMetadata.submitterBrowser || 'unknown'} deviceType=${submitterMetadata.submitterDeviceType || 'unknown'} os=${submitterMetadata.submitterOs || 'unknown'}`
+        );
+      }
+
       const toSave = {
         ...orderData,
+        ...submitterMetadata,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         status: newOrderStatus,
         id: orderId,
@@ -2025,9 +2381,10 @@ function createOrdersRouter({
           null,
       };
 
+      console.log(`[SUBMIT_ORDER][${requestId}] success orderId=${orderId} durationMs=${Date.now() - startedAt}`);
       res.status(201).json(responsePayload);
     } catch (err) {
-      console.error('Error submitting order:', err);
+      console.error(`[SUBMIT_ORDER][${requestId}] failure durationMs=${Date.now() - startedAt}`, err?.stack || err);
       const statusCode = err.status || 500;
       res.status(statusCode).json({ error: err.message || 'Failed to submit order' });
     }
@@ -2991,3 +3348,10 @@ function createOrdersRouter({
 }
 
 module.exports = createOrdersRouter;
+module.exports.__testUtils = {
+  resolveSubmitterIpAddress,
+  inferUserAgentMetadata,
+  buildSubmitterMetadata,
+  buildIpConflictSummary,
+  parseLimitParam,
+};
