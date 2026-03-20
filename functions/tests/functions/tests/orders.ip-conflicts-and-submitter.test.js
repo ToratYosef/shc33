@@ -91,7 +91,7 @@ function createRouterDeps(overrides = {}) {
       collectOrderDeviceKeys: () => ['SHC-54321::0'],
       deriveOrderStatusFromDevices: () => null,
     },
-    adminAuthMiddleware: (_req, _res, next) => next(),
+    authenticateAdminRequest: async () => ({ ok: true, uid: 'admin-user' }),
     ...overrides,
   };
 
@@ -221,14 +221,52 @@ test('buildIpConflictSummary only returns multi-name conflicts', () => {
   assert.deepEqual(summary.conflicts[0].names.sort(), ['Alice Doe', 'Bob Smith']);
 });
 
-test('ip-conflicts endpoint enforces admin auth middleware', async () => {
+test('ip-conflicts endpoint returns 401 for missing auth', async () => {
   const { deps } = createRouterDeps({
-    adminAuthMiddleware: (req, res, next) => {
-      if (req.headers.authorization !== 'Bearer admin-token') {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-      return next();
-    },
+    authenticateAdminRequest: async () => ({
+      ok: false,
+      status: 401,
+      error: 'Authentication required',
+      code: 'AUTH_MISSING',
+      reason: 'missing token',
+    }),
+  });
+
+  const router = createOrdersRouter(deps);
+  const app = express();
+  app.use(express.json());
+  app.use(router);
+
+  const unauthorized = await request(app, { path: '/orders/ip-conflicts' });
+  assert.equal(unauthorized.status, 401);
+  assert.equal(unauthorized.body.code, 'AUTH_MISSING');
+});
+
+test('ip-conflicts endpoint returns 403 for non-admin user', async () => {
+  const { deps } = createRouterDeps({
+    authenticateAdminRequest: async () => ({
+      ok: false,
+      status: 403,
+      error: 'Admin access required',
+      code: 'AUTH_FORBIDDEN',
+      reason: 'not admin',
+      uid: 'user-123',
+    }),
+  });
+
+  const router = createOrdersRouter(deps);
+  const app = express();
+  app.use(express.json());
+  app.use(router);
+
+  const forbidden = await request(app, { path: '/orders/ip-conflicts' });
+  assert.equal(forbidden.status, 403);
+  assert.equal(forbidden.body.code, 'AUTH_FORBIDDEN');
+});
+
+test('ip-conflicts endpoint returns conflict data for authorized admin', async () => {
+  const { deps } = createRouterDeps({
+    authenticateAdminRequest: async () => ({ ok: true, uid: 'admin-1' }),
     orders: [
       {
         id: 'SHC-10',
@@ -248,17 +286,27 @@ test('ip-conflicts endpoint enforces admin auth middleware', async () => {
   app.use(express.json());
   app.use(router);
 
-  const unauthorized = await request(app, { path: '/orders/ip-conflicts' });
-  assert.equal(unauthorized.status, 401);
-
   const authorized = await request(app, {
     path: '/orders/ip-conflicts?limit=50',
-    headers: { authorization: 'Bearer admin-token' },
   });
 
   assert.equal(authorized.status, 200);
   assert.equal(authorized.body.scannedOrders, 2);
   assert.equal(authorized.body.conflictCount, 1);
+});
+
+test('ip-conflicts endpoint validates bad limit query param', async () => {
+  const { deps } = createRouterDeps({
+    authenticateAdminRequest: async () => ({ ok: true, uid: 'admin-2' }),
+  });
+  const router = createOrdersRouter(deps);
+  const app = express();
+  app.use(express.json());
+  app.use(router);
+
+  const result = await request(app, { path: '/orders/ip-conflicts?limit=abc' });
+  assert.equal(result.status, 400);
+  assert.equal(result.body.code, 'BAD_LIMIT');
 });
 
 test('buildSubmitterMetadata fills missing browser/os/deviceType from user-agent', () => {
