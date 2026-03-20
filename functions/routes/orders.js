@@ -1593,6 +1593,10 @@ function createOrdersRouter({
   router.get('/orders/ip-conflicts', resolvedAdminAuthMiddleware, async (req, res) => {
     try {
       const limit = parseLimitParam(req.query?.limit, 500, 2000);
+      console.log('[IP Conflict Review] Request received', {
+        limit,
+        requestedBy: req.user?.uid || 'unknown',
+      });
       const snapshot = await ordersCollection
         .orderBy('createdAt', 'desc')
         .limit(limit)
@@ -1600,6 +1604,10 @@ function createOrdersRouter({
 
       const orders = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       const summary = buildIpConflictSummary(orders);
+      console.log('[IP Conflict Review] Completed', {
+        scannedOrders: summary.scannedOrders,
+        conflictCount: summary.conflictCount,
+      });
       return res.json(summary);
     } catch (error) {
       console.error('Error generating IP conflict report:', error);
@@ -2204,9 +2212,23 @@ function createOrdersRouter({
           console.error('Unexpected order notification error:', notificationError);
         });
 
+      const submitterMetadata = buildSubmitterMetadata(req, orderData?.submitterContext);
+      if (!submitterMetadata.submitterIpAddress) {
+        console.warn(`[Submit Order] Unable to resolve submitter IP for order ${orderId}`);
+      } else {
+        console.log('[Submit Order] Captured submitter metadata', {
+          orderId,
+          submitterIpAddress: submitterMetadata.submitterIpAddress,
+          submitterDeviceId: submitterMetadata.submitterDeviceId,
+          submitterBrowser: submitterMetadata.submitterBrowser,
+          submitterOs: submitterMetadata.submitterOs,
+          submitterDeviceType: submitterMetadata.submitterDeviceType,
+        });
+      }
+
       const toSave = {
         ...orderData,
-        ...buildSubmitterMetadata(req, orderData?.submitterContext),
+        ...submitterMetadata,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         status: newOrderStatus,
         id: orderId,
