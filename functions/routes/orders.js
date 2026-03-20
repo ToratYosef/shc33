@@ -4,6 +4,203 @@ const path = require('path');
 const { resolveUspsServiceAndWeightByDeviceCount } = require('../helpers/shipengine');
 // Updated: Added DELETE endpoint for shipping address
 
+function normalizeNullableString(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeIpCandidate(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const withoutPort = /^(\d{1,3}\.){3}\d{1,3}:\d+$/.test(trimmed)
+    ? trimmed.split(':')[0]
+    : trimmed;
+  const unwrapped = withoutPort.replace(/^\[|\]$/g, '').trim();
+  if (!unwrapped) return null;
+  if (unwrapped.startsWith('::ffff:')) {
+    return unwrapped.slice(7);
+  }
+  return unwrapped;
+}
+
+function parseForwardedFor(value) {
+  if (!value) return null;
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const parsed = parseForwardedFor(entry);
+      if (parsed) return parsed;
+    }
+    return null;
+  }
+  const parts = String(value)
+    .split(',')
+    .map((part) => normalizeIpCandidate(part))
+    .filter(Boolean);
+  return parts[0] || null;
+}
+
+function resolveSubmitterIpAddress(req = {}) {
+  const headers = req.headers || {};
+  return (
+    parseForwardedFor(headers['x-forwarded-for']) ||
+    normalizeIpCandidate(headers['cf-connecting-ip']) ||
+    normalizeIpCandidate(headers['x-real-ip']) ||
+    normalizeIpCandidate(req.ip) ||
+    normalizeIpCandidate(req.socket?.remoteAddress) ||
+    normalizeIpCandidate(req.connection?.remoteAddress) ||
+    null
+  );
+}
+
+function inferUserAgentMetadata(userAgent) {
+  const ua = String(userAgent || '').toLowerCase();
+  if (!ua) {
+    return { browser: null, os: null, deviceType: null };
+  }
+
+  let browser = null;
+  if (ua.includes('edg/')) browser = 'Edge';
+  else if (ua.includes('opr/') || ua.includes('opera')) browser = 'Opera';
+  else if (ua.includes('chrome/')) browser = 'Chrome';
+  else if (ua.includes('safari/') && !ua.includes('chrome/')) browser = 'Safari';
+  else if (ua.includes('firefox/')) browser = 'Firefox';
+  else if (ua.includes('msie') || ua.includes('trident/')) browser = 'Internet Explorer';
+
+  let os = null;
+  if (ua.includes('windows nt')) os = 'Windows';
+  else if (ua.includes('android')) os = 'Android';
+  else if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ios')) os = 'iOS';
+  else if (ua.includes('mac os x') || ua.includes('macintosh')) os = 'macOS';
+  else if (ua.includes('linux')) os = 'Linux';
+
+  let deviceType = null;
+  if (ua.includes('ipad') || ua.includes('tablet')) deviceType = 'tablet';
+  else if (ua.includes('mobile') || ua.includes('iphone') || ua.includes('android')) deviceType = 'mobile';
+  else deviceType = 'desktop';
+
+  return { browser, os, deviceType };
+}
+
+function buildSubmitterMetadata(req = {}, incomingContext = {}) {
+  const incoming = incomingContext && typeof incomingContext === 'object'
+    ? incomingContext
+    : {};
+  const requestUserAgent = normalizeNullableString(req.headers?.['user-agent']);
+  const userAgent = normalizeNullableString(incoming.userAgent) || requestUserAgent;
+  const inferred = inferUserAgentMetadata(userAgent);
+
+  const submitterContext = {
+    deviceId: normalizeNullableString(incoming.deviceId),
+    browser: normalizeNullableString(incoming.browser) || inferred.browser,
+    deviceType: normalizeNullableString(incoming.deviceType) || inferred.deviceType,
+    os: normalizeNullableString(incoming.os) || inferred.os,
+    userAgent,
+  };
+
+  return {
+    submitterContext,
+    submitterIpAddress: resolveSubmitterIpAddress(req),
+    submitterDeviceId: submitterContext.deviceId,
+    submitterBrowser: submitterContext.browser,
+    submitterDeviceType: submitterContext.deviceType,
+    submitterOs: submitterContext.os,
+  };
+}
+
+function normalizeNameForConflict(value) {
+  const name = normalizeNullableString(value);
+  if (!name) return null;
+  return name.trim().toLowerCase();
+}
+
+function buildIpConflictSummary(orders = []) {
+  const groupedByIp = new Map();
+
+  for (const order of Array.isArray(orders) ? orders : []) {
+    const ipAddress = normalizeNullableString(order?.submitterIpAddress)
+      || normalizeNullableString(order?.submitterContext?.ipAddress)
+      || normalizeNullableString(order?.submitterContext?.ip);
+    if (!ipAddress) continue;
+
+    const rawName = normalizeNullableString(order?.shippingInfo?.fullName) || 'Unknown';
+    const normalizedName = normalizeNameForConflict(rawName);
+    if (!normalizedName) continue;
+
+    if (!groupedByIp.has(ipAddress)) {
+      groupedByIp.set(ipAddress, {
+        ipAddress,
+        normalizedNameSet: new Set(),
+        namesByNormalized: new Map(),
+        orders: [],
+      });
+    }
+
+    const group = groupedByIp.get(ipAddress);
+    group.normalizedNameSet.add(normalizedName);
+    if (!group.namesByNormalized.has(normalizedName)) {
+      group.namesByNormalized.set(normalizedName, rawName.trim());
+    }
+
+    group.orders.push({
+      orderId: normalizeNullableString(order?.id) || normalizeNullableString(order?.orderId) || '',
+      createdAt: serializeCreatedAt(order?.createdAt),
+      name: rawName,
+      email: normalizeNullableString(order?.shippingInfo?.email),
+      device: normalizeNullableString(order?.device) || normalizeNullableString(order?.modelName),
+      submitterDeviceId:
+        normalizeNullableString(order?.submitterDeviceId)
+        || normalizeNullableString(order?.submitterContext?.deviceId),
+      browser:
+        normalizeNullableString(order?.submitterBrowser)
+        || normalizeNullableString(order?.submitterContext?.browser),
+      os:
+        normalizeNullableString(order?.submitterOs)
+        || normalizeNullableString(order?.submitterContext?.os),
+      deviceType:
+        normalizeNullableString(order?.submitterDeviceType)
+        || normalizeNullableString(order?.submitterContext?.deviceType),
+    });
+  }
+
+  const conflicts = Array.from(groupedByIp.values())
+    .filter((group) => group.normalizedNameSet.size > 1)
+    .map((group) => ({
+      ipAddress: group.ipAddress,
+      uniqueNameCount: group.normalizedNameSet.size,
+      names: Array.from(group.namesByNormalized.values()).sort((a, b) => a.localeCompare(b)),
+      orderCount: group.orders.length,
+      orders: group.orders,
+    }))
+    .sort((a, b) => b.uniqueNameCount - a.uniqueNameCount || b.orderCount - a.orderCount);
+
+  return {
+    scannedOrders: Array.isArray(orders) ? orders.length : 0,
+    conflictCount: conflicts.length,
+    conflicts,
+  };
+}
+
+function parseLimitParam(value, fallback = 500, max = 2000) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return fallback;
+  }
+  return Math.min(Math.floor(numeric), max);
+}
+
+function serializeCreatedAt(value) {
+  if (value == null) return null;
+  if (typeof value === 'string' || typeof value === 'number') return value;
+  if (typeof value?.toMillis === 'function') return value.toMillis();
+  if (typeof value?.seconds === 'number') return value.seconds * 1000;
+  return null;
+}
+
 function createOrdersRouter({
   axios,
   admin,
@@ -21,8 +218,11 @@ function createOrdersRouter({
   getShipEngineApiKey,
   transporter,
   deviceHelpers,
+  adminAuthMiddleware = null,
 }) {
   const router = express.Router();
+  const resolvedAdminAuthMiddleware = adminAuthMiddleware
+    || require('../helpers/security').verifyFirebaseToken;
 
   const {
     ORDER_RECEIVED_EMAIL_HTML,
@@ -1390,6 +1590,23 @@ function createOrdersRouter({
     }
   });
 
+  router.get('/orders/ip-conflicts', resolvedAdminAuthMiddleware, async (req, res) => {
+    try {
+      const limit = parseLimitParam(req.query?.limit, 500, 2000);
+      const snapshot = await ordersCollection
+        .orderBy('createdAt', 'desc')
+        .limit(limit)
+        .get();
+
+      const orders = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const summary = buildIpConflictSummary(orders);
+      return res.json(summary);
+    } catch (error) {
+      console.error('Error generating IP conflict report:', error);
+      return res.status(500).json({ error: 'Failed to generate IP conflict report' });
+    }
+  });
+
   router.get('/orders/:id', async (req, res) => {
     try {
       const docRef = ordersCollection.doc(req.params.id);
@@ -1989,6 +2206,7 @@ function createOrdersRouter({
 
       const toSave = {
         ...orderData,
+        ...buildSubmitterMetadata(req, orderData?.submitterContext),
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         status: newOrderStatus,
         id: orderId,
@@ -2991,3 +3209,10 @@ function createOrdersRouter({
 }
 
 module.exports = createOrdersRouter;
+module.exports.__testUtils = {
+  resolveSubmitterIpAddress,
+  inferUserAgentMetadata,
+  buildSubmitterMetadata,
+  buildIpConflictSummary,
+  parseLimitParam,
+};
