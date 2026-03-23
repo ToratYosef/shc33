@@ -1,0 +1,271 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2600" height="1900" viewBox="0 0 2600 1900" role="img" aria-label="Order lifecycle flow with all paths">
+  <defs>
+    <style>
+      .title { font: 700 34px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 500 18px Arial, sans-serif; fill: #334155; }
+      .node { fill: #f8fafc; stroke: #334155; stroke-width: 2; rx: 12; ry: 12; }
+      .decision { fill: #fff7ed; stroke: #c2410c; stroke-width: 2; }
+      .auto { fill: #ecfeff; stroke: #0e7490; stroke-width: 2; }
+      .admin { fill: #eef2ff; stroke: #4338ca; stroke-width: 2; }
+      .warn { fill: #fef2f2; stroke: #b91c1c; stroke-width: 2; }
+      .text { font: 14px Arial, sans-serif; fill: #0f172a; }
+      .small { font: 12px Arial, sans-serif; fill: #334155; }
+      .edge { stroke: #1f2937; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .edgeAuto { stroke: #0e7490; stroke-width: 2.2; fill: none; marker-end: url(#arrowCyan); }
+      .edgeAdmin { stroke: #4338ca; stroke-width: 2.2; fill: none; marker-end: url(#arrowIndigo); }
+      .edgeWarn { stroke: #b91c1c; stroke-width: 2.2; fill: none; marker-end: url(#arrowRed); }
+      .label { font: 12px Arial, sans-serif; fill: #111827; }
+      .legend { font: 13px Arial, sans-serif; fill: #0f172a; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#1f2937" />
+    </marker>
+    <marker id="arrowCyan" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#0e7490" />
+    </marker>
+    <marker id="arrowIndigo" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#4338ca" />
+    </marker>
+    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#b91c1c" />
+    </marker>
+  </defs>
+
+  <text x="40" y="50" class="title">SecondHandCell Order Lifecycle — Full SVG Path Map</text>
+  <text x="40" y="80" class="subtitle">Includes USPS, UPS, shipping kit, QC, re-offer, auto-jobs, cancellation, and admin override branches.</text>
+
+  <!-- Legend -->
+  <rect x="40" y="100" width="860" height="70" class="node" />
+  <text x="60" y="127" class="legend">Legend:</text>
+  <rect x="130" y="109" width="90" height="22" class="node"/><text x="140" y="124" class="small">Normal</text>
+  <rect x="235" y="109" width="90" height="22" class="decision"/><text x="245" y="124" class="small">Decision</text>
+  <rect x="340" y="109" width="90" height="22" class="auto"/><text x="353" y="124" class="small">[AUTO]</text>
+  <rect x="445" y="109" width="90" height="22" class="admin"/><text x="454" y="124" class="small">[ADMIN]</text>
+  <rect x="550" y="109" width="90" height="22" class="warn"/><text x="560" y="124" class="small">Terminal</text>
+  <text x="650" y="124" class="small">Arrows represent allowed transitions / actions.</text>
+
+  <!-- Top start -->
+  <rect x="1030" y="120" width="220" height="58" class="node"/>
+  <text x="1060" y="154" class="text">Order Submitted</text>
+
+  <rect x="1000" y="230" width="280" height="72" class="decision"/>
+  <text x="1050" y="260" class="text">Shipping preference?</text>
+  <text x="1030" y="280" class="small">(kit / email-label + auto-label / pending)</text>
+
+  <!-- Entry branches -->
+  <rect x="140" y="360" width="290" height="64" class="node"/>
+  <text x="170" y="390" class="text">shipping_kit_requested</text>
+
+  <rect x="760" y="360" width="280" height="64" class="node"/>
+  <text x="790" y="390" class="text">label_generated</text>
+  <text x="785" y="410" class="small">(UPS auto-label success)</text>
+
+  <rect x="1140" y="360" width="280" height="64" class="node"/>
+  <text x="1170" y="390" class="text">label_generated</text>
+  <text x="1165" y="410" class="small">(USPS auto-label success)</text>
+
+  <rect x="1700" y="360" width="300" height="64" class="node"/>
+  <text x="1790" y="390" class="text">order_pending</text>
+  <text x="1730" y="410" class="small">(email-label, no auto-label generated)</text>
+
+  <!-- Pending -> label generation -->
+  <rect x="1650" y="490" width="180" height="60" class="admin"/>
+  <text x="1670" y="515" class="text">Generate UPS</text>
+  <text x="1705" y="535" class="small">label</text>
+
+  <rect x="1860" y="490" width="180" height="60" class="admin"/>
+  <text x="1880" y="515" class="text">Generate USPS</text>
+  <text x="1915" y="535" class="small">label</text>
+
+  <rect x="1735" y="610" width="220" height="60" class="node"/>
+  <text x="1770" y="645" class="text">label_generated</text>
+
+  <!-- Shipping kit chain -->
+  <rect x="110" y="500" width="320" height="60" class="admin"/>
+  <text x="128" y="535" class="text">/generate-label/:id (kit)</text>
+
+  <rect x="140" y="610" width="260" height="60" class="node"/>
+  <text x="220" y="645" class="text">needs_printing</text>
+
+  <rect x="140" y="720" width="260" height="60" class="admin"/>
+  <text x="190" y="755" class="text">Admin set kit_sent</text>
+
+  <rect x="120" y="840" width="300" height="60" class="auto"/>
+  <text x="145" y="875" class="text">Outbound tracking sync</text>
+
+  <rect x="120" y="950" width="300" height="60" class="node"/>
+  <text x="145" y="985" class="text">kit_on_the_way_to_customer</text>
+
+  <rect x="120" y="1060" width="300" height="60" class="node"/>
+  <text x="210" y="1095" class="text">kit_delivered</text>
+
+  <!-- Inbound shared chain -->
+  <rect x="700" y="740" width="360" height="60" class="auto"/>
+  <text x="730" y="775" class="text">[AUTO hourly] inbound tracking refresh</text>
+
+  <rect x="730" y="860" width="300" height="72" class="decision"/>
+  <text x="810" y="890" class="text">Tracking movement?</text>
+  <text x="754" y="910" class="small">movement / delivered / no movement</text>
+
+  <rect x="560" y="990" width="260" height="60" class="node"/>
+  <text x="625" y="1025" class="text">phone_on_the_way</text>
+
+  <rect x="880" y="990" width="260" height="60" class="node"/>
+  <text x="945" y="1025" class="text">delivered_to_us</text>
+
+  <rect x="1200" y="990" width="280" height="60" class="node"/>
+  <text x="1240" y="1015" class="text">No movement:</text>
+  <text x="1220" y="1035" class="small">stay/reset baseline status</text>
+
+  <!-- QC branch -->
+  <rect x="860" y="1120" width="300" height="72" class="decision"/>
+  <text x="955" y="1150" class="text">QC issue?</text>
+  <text x="895" y="1170" class="small">after delivered_to_us / inspection</text>
+
+  <rect x="560" y="1240" width="260" height="60" class="admin"/>
+  <text x="620" y="1275" class="text">Set completed</text>
+
+  <rect x="960" y="1240" width="360" height="70" class="admin"/>
+  <text x="1000" y="1270" class="text">Send condition email</text>
+  <text x="975" y="1290" class="small">status=emailed, qcAwaitingResponse=true</text>
+
+  <rect x="1410" y="1240" width="330" height="70" class="auto"/>
+  <text x="1445" y="1270" class="text">[AUTO hourly] unresolved 7-day</text>
+  <text x="1470" y="1290" class="small">autoFinalizeUnresolvedPayouts</text>
+
+  <rect x="1430" y="1360" width="290" height="66" class="warn"/>
+  <text x="1490" y="1390" class="text">completed</text>
+  <text x="1460" y="1410" class="small">(75% payout reduction path)</text>
+
+  <!-- Re-offer branch -->
+  <rect x="1820" y="940" width="340" height="70" class="admin"/>
+  <text x="1870" y="970" class="text">Create re-offer</text>
+  <text x="1838" y="990" class="small">device status=re-offered-pending (+7d)</text>
+
+  <rect x="1860" y="1070" width="300" height="70" class="decision"/>
+  <text x="1930" y="1100" class="text">Customer response?</text>
+  <text x="1900" y="1120" class="small">accept / decline / no response</text>
+
+  <rect x="1700" y="1180" width="220" height="60" class="node"/>
+  <text x="1730" y="1215" class="text">re-offered-accepted</text>
+
+  <rect x="1940" y="1180" width="220" height="60" class="node"/>
+  <text x="1975" y="1215" class="text">re-offered-declined</text>
+
+  <rect x="2180" y="1180" width="300" height="60" class="auto"/>
+  <text x="2220" y="1215" class="text">re-offered-auto-accepted</text>
+
+  <rect x="1940" y="1290" width="260" height="60" class="admin"/>
+  <text x="1988" y="1325" class="text">Generate return label</text>
+
+  <rect x="1940" y="1390" width="260" height="60" class="node"/>
+  <text x="1970" y="1425" class="text">return-label-generated</text>
+
+  <rect x="2140" y="1360" width="340" height="90" class="decision"/>
+  <text x="2190" y="1390" class="text">All device statuses terminal?</text>
+  <text x="2160" y="1410" class="small">roll-up: accepted / declined / completed</text>
+  <text x="2195" y="1430" class="small">deriveOrderStatusFromDevices</text>
+
+  <rect x="2280" y="1500" width="180" height="54" class="node"/>
+  <text x="2320" y="1532" class="text">completed</text>
+
+  <rect x="2080" y="1500" width="180" height="54" class="node"/>
+  <text x="2105" y="1532" class="text">re-offered-declined</text>
+
+  <rect x="2480" y="1500" width="110" height="54" class="node"/>
+  <text x="2490" y="1532" class="text">re-offered-accepted</text>
+
+  <!-- Cancellation branches -->
+  <rect x="40" y="1240" width="380" height="70" class="admin"/>
+  <text x="70" y="1270" class="text">Manual cancel /orders/:id/cancel</text>
+  <text x="72" y="1290" class="small">(eligible: email-label or kit_delivered)</text>
+
+  <rect x="40" y="1360" width="380" height="70" class="auto"/>
+  <text x="70" y="1390" class="text">[AUTO hourly] autoVoidExpiredLabels</text>
+  <text x="100" y="1410" class="small">label_generated unused 28 days</text>
+
+  <rect x="40" y="1480" width="380" height="70" class="auto"/>
+  <text x="80" y="1510" class="text">15-day dormant auto-cancel sweep</text>
+  <text x="70" y="1530" class="small">exists but feature flag disabled</text>
+
+  <rect x="140" y="1610" width="180" height="60" class="warn"/>
+  <text x="180" y="1645" class="text">cancelled</text>
+
+  <!-- Admin override -->
+  <rect x="900" y="1610" width="450" height="70" class="admin"/>
+  <text x="950" y="1640" class="text">Admin override: PUT /orders/:id/status</text>
+  <text x="960" y="1660" class="small">Can force statuses (received/completed/etc.) outside normal automatic progression.</text>
+
+  <!-- Arrows -->
+  <path d="M1140,178 L1140,230" class="edge"/>
+  <path d="M1000,266 L430,392" class="edge"/>
+  <path d="M1080,302 L900,360" class="edge"/>
+  <path d="M1140,302 L1280,360" class="edge"/>
+  <path d="M1280,266 L1700,392" class="edge"/>
+
+  <path d="M1850,424 L1740,490" class="edgeAdmin"/>
+  <path d="M1900,424 L1940,490" class="edgeAdmin"/>
+  <path d="M1740,550 L1820,610" class="edgeAdmin"/>
+  <path d="M1940,550 L1880,610" class="edgeAdmin"/>
+
+  <path d="M900,424 L860,740" class="edgeAuto"/>
+  <path d="M1280,424 L920,740" class="edgeAuto"/>
+  <path d="M1845,670 L1020,740" class="edgeAuto"/>
+
+  <path d="M290,424 L270,500" class="edgeAdmin"/>
+  <path d="M270,560 L270,610" class="edgeAdmin"/>
+  <path d="M270,670 L270,720" class="edgeAdmin"/>
+  <path d="M270,780 L270,840" class="edgeAuto"/>
+  <path d="M270,900 L270,950" class="edgeAuto"/>
+  <path d="M270,1010 L270,1060" class="edgeAuto"/>
+  <path d="M420,1090 L700,770" class="edgeAuto"/>
+
+  <path d="M880,800 L880,860" class="edgeAuto"/>
+  <path d="M820,932 L690,990" class="edge"/>
+  <path d="M930,932 L1010,990" class="edge"/>
+  <path d="M1030,932 L1200,990" class="edge"/>
+
+  <path d="M1010,1050 L1010,1120" class="edge"/>
+  <path d="M930,1192 L700,1240" class="edgeAdmin"/>
+  <path d="M1110,1192 L1130,1240" class="edgeAdmin"/>
+  <path d="M1320,1275 L1410,1275" class="edgeAuto"/>
+  <path d="M1575,1310 L1575,1360" class="edgeWarn"/>
+
+  <path d="M1140,1050 L1850,940" class="edgeAdmin"/>
+  <path d="M1990,1010 L2010,1070" class="edge"/>
+  <path d="M1950,1140 L1810,1180" class="edge"/>
+  <path d="M2020,1140 L2050,1180" class="edge"/>
+  <path d="M2090,1140 L2240,1180" class="edgeAuto"/>
+  <path d="M2050,1240 L2070,1290" class="edgeAdmin"/>
+  <path d="M2070,1350 L2070,1390" class="edgeAdmin"/>
+
+  <path d="M1810,1240 L2160,1360" class="edge"/>
+  <path d="M2050,1240 L2200,1360" class="edge"/>
+  <path d="M2330,1240 L2280,1360" class="edgeAuto"/>
+  <path d="M2240,1450 L2170,1500" class="edge"/>
+  <path d="M2310,1450 L2370,1500" class="edge"/>
+  <path d="M2380,1450 L2520,1500" class="edge"/>
+
+  <path d="M760,424 L260,1240" class="edgeAdmin"/>
+  <path d="M1735,640 L260,1360" class="edgeAuto"/>
+  <path d="M270,1310 L230,1610" class="edgeWarn"/>
+  <path d="M270,1430 L230,1610" class="edgeWarn"/>
+  <path d="M270,1550 L230,1610" class="edgeWarn"/>
+
+  <path d="M700,1270 L360,1270" class="edgeAdmin"/>
+  <path d="M700,1270 L360,1360" class="edgeAuto"/>
+
+  <path d="M1010,1300 L1010,1610" class="edgeAdmin"/>
+
+  <!-- labels -->
+  <text x="650" y="350" class="label">kit</text>
+  <text x="860" y="330" class="label">email + UPS auto label</text>
+  <text x="1220" y="330" class="label">email + USPS auto label</text>
+  <text x="1710" y="340" class="label">email + no auto label</text>
+  <text x="820" y="975" class="label">movement</text>
+  <text x="1000" y="975" class="label">delivered</text>
+  <text x="1225" y="975" class="label">no movement</text>
+
+  <!-- footer -->
+  <text x="40" y="1855" class="small">Generated for operational documentation. Reflects current flow implementation and automation branches in repository code.</text>
+</svg>
