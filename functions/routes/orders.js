@@ -1960,10 +1960,7 @@ function createOrdersRouter({
               },
             ];
 
-            const requestedWeight = Number(orderData.packageWeightLb);
-            const packageWeightLb = Number.isFinite(requestedWeight) && requestedWeight > 0
-              ? requestedWeight
-              : Math.max(1.5, Number((deviceCount * 1.5).toFixed(2)));
+            const packageWeightLb = 1;
 
             const labelData = await createShipEngineLabel(
               normalizeCustomerAddress(orderData.shippingInfo),
@@ -2504,10 +2501,7 @@ function createOrdersRouter({
         process.env.SHIPENGINE_UPS_CARRIER_CODE || process.env.UPS_SHIPENGINE_CARRIER_CODE || 'ups'
       ).trim();
       const upsCarrierId = UPS_CARRIER_ID;
-      const requestedWeight = Number(req.body?.packageWeightLb);
-      const packageWeightLb = Number.isFinite(requestedWeight) && requestedWeight > 0
-        ? requestedWeight
-        : Math.max(1.5, Number((deviceCount * 1.5).toFixed(2)));
+      const packageWeightLb = 1;
 
       if (!upsCarrierCode) {
         throw buildHttpError('SHIPENGINE_UPS_CARRIER_CODE is required for UPS label generation.', 500);
