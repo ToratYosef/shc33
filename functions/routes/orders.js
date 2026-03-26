@@ -344,7 +344,7 @@ function createOrdersRouter({
   const FieldValue = admin.firestore.FieldValue;
   const Timestamp = admin.firestore.Timestamp;
   const SWIFT_BUYBACK_ADDRESS = {
-    name: 'SHC Returns',
+    name: 'SHC Sales',
     company_name: 'SecondHandCell',
     phone: '3475591707',
     address_line1: '1602 MCDONALD AVE STE REAR ENTRANCE',
@@ -739,18 +739,16 @@ function createOrdersRouter({
     } catch (error) {
       const statusCode = Number(error?.response?.status || 0);
       const details = error?.response?.data || error?.message || error;
+      if (statusCode === 405) {
+        console.warn('[ShipEngine][UPS] Refresh not supported for this carrier connection (405), using existing connection.');
+        return { skipped: true, reason: 'method_not_allowed' };
+      }
+
       console.error(
         '[ShipEngine][UPS] Failed to refresh carrier connection',
         JSON.stringify({ carrier_id: UPS_CARRIER_ID, statusCode }),
         typeof details === 'string' ? details : JSON.stringify(details)
       );
-
-      if (statusCode === 405) {
-        console.warn(
-          '[ShipEngine][UPS] Refresh endpoint returned 405. Proceeding with existing UPS carrier connection.'
-        );
-        return { skipped: true, reason: 'method_not_allowed' };
-      }
 
       throw buildHttpError('Failed to reconnect UPS carrier configuration in ShipEngine.', 502);
     }
@@ -1962,10 +1960,7 @@ function createOrdersRouter({
               },
             ];
 
-            const requestedWeight = Number(orderData.packageWeightLb);
-            const packageWeightLb = Number.isFinite(requestedWeight) && requestedWeight > 0
-              ? requestedWeight
-              : Math.max(1.5, Number((deviceCount * 1.5).toFixed(2)));
+            const packageWeightLb = 1;
 
             const labelData = await createShipEngineLabel(
               normalizeCustomerAddress(orderData.shippingInfo),
@@ -2506,10 +2501,7 @@ function createOrdersRouter({
         process.env.SHIPENGINE_UPS_CARRIER_CODE || process.env.UPS_SHIPENGINE_CARRIER_CODE || 'ups'
       ).trim();
       const upsCarrierId = UPS_CARRIER_ID;
-      const requestedWeight = Number(req.body?.packageWeightLb);
-      const packageWeightLb = Number.isFinite(requestedWeight) && requestedWeight > 0
-        ? requestedWeight
-        : Math.max(1.5, Number((deviceCount * 1.5).toFixed(2)));
+      const packageWeightLb = 1;
 
       if (!upsCarrierCode) {
         throw buildHttpError('SHIPENGINE_UPS_CARRIER_CODE is required for UPS label generation.', 500);
@@ -2611,7 +2603,7 @@ function createOrdersRouter({
       };
 
       const swiftBuyBackAddress = {
-        name: 'SHC Returns',
+        name: 'SHC Sales',
         company_name: 'SecondHandCell',
         phone: '3475591707',
         address_line1: '1602 MCDONALD AVE STE REAR ENTRANCE',
