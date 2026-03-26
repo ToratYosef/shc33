@@ -344,7 +344,7 @@ function createOrdersRouter({
   const FieldValue = admin.firestore.FieldValue;
   const Timestamp = admin.firestore.Timestamp;
   const SWIFT_BUYBACK_ADDRESS = {
-    name: 'SHC Returns',
+    name: 'SHC Sales',
     company_name: 'SecondHandCell',
     phone: '3475591707',
     address_line1: '1602 MCDONALD AVE STE REAR ENTRANCE',
@@ -2609,7 +2609,7 @@ function createOrdersRouter({
       };
 
       const swiftBuyBackAddress = {
-        name: 'SHC Returns',
+        name: 'SHC Sales',
         company_name: 'SecondHandCell',
         phone: '3475591707',
         address_line1: '1602 MCDONALD AVE STE REAR ENTRANCE',

@@ -7425,8 +7425,8 @@ app.post("/orders/:id/return-label", async (req, res) => {
     const buyerShippingInfo = order.shippingInfo;
     const orderIdForLabel = order.id || "N/A";
 
-    const secondHandCellAddress = {
-      name: "Second Hand Cell",
+    const shcSalesAddress = {
+      name: "SHC Sales",
       company_name: "Second Hand Cell",
       phone: "3475591707",
       address_line1: "1602 MCDONALD AVE STE REAR ENTRANCE",
@@ -7434,6 +7434,10 @@ app.post("/orders/:id/return-label", async (req, res) => {
       state_province: "NY",
       postal_code: "11230-6336",
       country_code: "US",
+    };
+    const shcReturnsAddress = {
+      ...shcSalesAddress,
+      name: "SHC Returns",
     };
 
     const buyerAddress = {
@@ -7447,12 +7451,13 @@ app.post("/orders/:id/return-label", async (req, res) => {
     };
 
     const isReturnToCustomer = order.status === "re-offered-declined";
+    const shipEngineOriginAddress = isReturnToCustomer ? shcReturnsAddress : shcSalesAddress;
     const shipFromAddress = isReturnToCustomer
-      ? secondHandCellAddress
+      ? shipEngineOriginAddress
       : buyerAddress;
     const shipToAddress = isReturnToCustomer
       ? buyerAddress
-      : secondHandCellAddress;
+      : shipEngineOriginAddress;
 
     const items = Array.isArray(order?.items) ? order.items : [];
     const itemsDeviceCount = items.reduce((sum, item) => sum + (Number(item?.qty) || 0), 0);
