@@ -5821,6 +5821,51 @@ async function addAdminFirestoreNotification(
 }
 
 async function createShipEngineLabel(fromAddress, toAddress, labelReference, packageData, context = {}) {
+  function normalizeCarrierForLogging(rawCarrier) {
+    if (typeof rawCarrier !== "string") return null;
+    const normalized = rawCarrier.trim().toLowerCase();
+    if (!normalized) return null;
+    if (normalized === "stamps_com" || normalized.includes("usps")) return "usps";
+    if (normalized.includes("ups")) return "ups";
+    return normalized;
+  }
+
+  function buildShipEngineCarrierLog({
+    contextData,
+    shipmentPayload,
+    fallbackCarrierCode,
+    hasThirdPartyBilling,
+  }) {
+    const requestedCarrier = normalizeCarrierForLogging(
+      contextData?.requestedCarrier ||
+        contextData?.labelType ||
+        contextData?.carrierName ||
+        contextData?.carrierCode
+    );
+    const resolvedCarrier =
+      normalizeCarrierForLogging(
+        contextData?.resolvedCarrier ||
+          shipmentPayload?.carrier_code ||
+          fallbackCarrierCode ||
+          shipmentPayload?.service_code
+      ) || "unknown";
+    const carrierId = shipmentPayload?.carrier_id || null;
+    const carrierLog = {
+      requested_carrier: requestedCarrier,
+      resolved_carrier: resolvedCarrier,
+      carrier_id: carrierId,
+      carrier_id_source: carrierId ? "explicit" : "default_or_not_required",
+      service_code: shipmentPayload?.service_code || null,
+    };
+
+    if (resolvedCarrier === "ups") {
+      carrierLog.account_number_configured = Boolean(contextData?.accountNumberConfigured);
+      carrierLog.third_party_billing_fields_sent = hasThirdPartyBilling;
+    }
+
+    return carrierLog;
+  }
+
   function normalizeDangerousGoods(dg) {
     if (!dg) return undefined;
     if (Array.isArray(dg)) return dg;
@@ -5942,12 +5987,15 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
     ].some((value) => value !== undefined && value !== null && value !== "")
   );
 
-  console.log("ShipEngine UPS config:", {
-    carrier_id: payload.shipment?.carrier_id || null,
-    service_code: payload.shipment?.service_code || null,
-    account_number_configured: Boolean(context?.accountNumberConfigured),
-    third_party_billing_fields_sent: hasThirdPartyBillingFields,
-  });
+  console.log(
+    "ShipEngine carrier config:",
+    buildShipEngineCarrierLog({
+      contextData: context,
+      shipmentPayload: payload.shipment,
+      fallbackCarrierCode: carrierCode,
+      hasThirdPartyBilling: hasThirdPartyBillingFields,
+    })
+  );
 
   console.log(
     "ShipEngine DG payload:",
