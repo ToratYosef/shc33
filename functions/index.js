@@ -8335,9 +8335,10 @@ exports.autoFinalizeUnresolvedPayouts = functions.pubsub
   });
 
 exports.autoAcceptOffers = functions.pubsub
-  .schedule("every 24 hours")
+  .schedule("every 60 minutes")
   .onRun(async (context) => {
     const now = admin.firestore.Timestamp.now();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
     const pendingOrders = await ordersCollection
       .where("status", "==", "re-offered-pending")
       .get();
@@ -8349,7 +8350,10 @@ exports.autoAcceptOffers = functions.pubsub
       const expiredDeviceKeys = [];
 
       for (const [deviceKey, offer] of Object.entries(byDeviceOffers)) {
-        const deadline = offer?.autoAcceptDate;
+        const deadline = offer?.autoAcceptDate
+          || (offer?.createdAt && typeof offer.createdAt.toMillis === 'function'
+            ? admin.firestore.Timestamp.fromMillis(offer.createdAt.toMillis() + sevenDaysMs)
+            : null);
         const isPending = normalizeStatusValue(nextDeviceStatusByKey[deviceKey] || orderData.status) === 're_offered_pending';
         const deadlineMillis = deadline && typeof deadline.toMillis === 'function' ? deadline.toMillis() : null;
 
@@ -8359,7 +8363,10 @@ exports.autoAcceptOffers = functions.pubsub
       }
 
       if (!expiredDeviceKeys.length) {
-        const fallbackDeadline = orderData.reOffer?.autoAcceptDate;
+        const fallbackDeadline = orderData.reOffer?.autoAcceptDate
+          || (orderData.reOffer?.createdAt && typeof orderData.reOffer.createdAt.toMillis === 'function'
+            ? admin.firestore.Timestamp.fromMillis(orderData.reOffer.createdAt.toMillis() + sevenDaysMs)
+            : null);
         const fallbackMillis = fallbackDeadline && typeof fallbackDeadline.toMillis === 'function'
           ? fallbackDeadline.toMillis()
           : null;
