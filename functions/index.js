@@ -1040,7 +1040,7 @@ function buildIssueList(order) {
   return issues;
 }
 
-app.get('/api/orders/:orderId/issue-resolved', (req, res) => {
+app.get(['/orders/:orderId/issue-resolved', '/api/orders/:orderId/issue-resolved'], (req, res) => {
   const orderId = String(req.params.orderId || '').trim();
   const deviceKey = req.query.deviceKey ? String(req.query.deviceKey).trim() : '';
   if (!orderId) {
@@ -6124,6 +6124,10 @@ function buildReofferEmailHtml({
         </div>
         <p style="margin-bottom:12px;">Reason for the change:</p>
         <p style="background:#fef3c7; border-radius:14px; border:1px solid #fde68a; color:#92400e; padding:14px 18px; margin:0 0 28px;">${safeReason}</p>
+        <p style="margin:0 0 14px;">As per our guidelines, broken condition can only have a maximum of 3 defects. Otherwise it is considered severely damaged, and at that point we can only offer a price for parts because the device will not be able to be resold.</p>
+        <p style="margin:0 0 14px;">Please look out for an email from us within the next 24 hours with any additional updates.</p>
+        <p style="margin:0 0 14px;">If you are not happy with the re-quote, you can decline and choose to have the device returned to you free of charge.</p>
+        <p style="margin:0 0 20px;">If we do not hear back within 7 regular days, the updated offer will be auto-accepted per our guidelines.</p>
         <p style="margin-bottom:20px;">Review the updated offer and choose how you'd like to proceed:</p>
         <div style="text-align:center; margin-bottom:20px;">
           <a href="${reviewUrl}" class="button-link" style="background-color:#16a34a;">Review offer & choose</a>
