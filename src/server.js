@@ -651,6 +651,13 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       return res.status(400).send('Order ID is required.');
     }
 
+    const redirectUrl = new URL(`https://api.secondhandcell.com/server/orders/${encodeURIComponent(orderId)}/issue-resolved`);
+    const redirectDeviceKey = req.query.deviceKey ? String(req.query.deviceKey).trim() : '';
+    if (redirectDeviceKey) {
+      redirectUrl.searchParams.set('deviceKey', redirectDeviceKey);
+    }
+    return res.redirect(302, redirectUrl.toString());
+
     const order = await getOrderByIdFromFirestore(orderId);
     if (!order) {
       return res.status(404).send('Order not found.');

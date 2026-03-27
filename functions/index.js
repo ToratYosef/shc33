@@ -1040,7 +1040,7 @@ function buildIssueList(order) {
   return issues;
 }
 
-app.get(['/orders/:orderId/issue-resolved', '/api/orders/:orderId/issue-resolved'], (req, res) => {
+app.get('/api/orders/:orderId/issue-resolved', (req, res) => {
   const orderId = String(req.params.orderId || '').trim();
   const deviceKey = req.query.deviceKey ? String(req.query.deviceKey).trim() : '';
   if (!orderId) {
