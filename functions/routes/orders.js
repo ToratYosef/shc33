@@ -302,6 +302,7 @@ function createOrdersRouter({
   getShipEngineApiKey,
   transporter,
   deviceHelpers,
+  issuePageHelpers,
   authenticateAdminRequest = null,
 }) {
   const router = express.Router();
@@ -324,6 +325,9 @@ function createOrdersRouter({
     sendVoidNotificationEmail,
   } = shipEngine;
   const { buildOrderDeviceKey, collectOrderDeviceKeys, deriveOrderStatusFromDevices } = deviceHelpers;
+  const { buildIssueList, ISSUE_COPY, toTitleCase } = issuePageHelpers;
+  const fixIssuePageTemplatePath = path.join(__dirname, '..', 'templates', 'fix-issue-page.html');
+  let fixIssuePageTemplateCache = null;
 
   const PRINT_QUEUE_STATUSES = [
     'shipping_kit_requested',
@@ -362,6 +366,43 @@ function createOrdersRouter({
     KIT: 'shipping_kit_requested',
     EMAIL_LABEL: 'email_label_requested',
   };
+
+  function getFixIssuePageTemplate() {
+    if (typeof fixIssuePageTemplateCache === 'string') {
+      return fixIssuePageTemplateCache;
+    }
+    fixIssuePageTemplateCache = fs.readFileSync(fixIssuePageTemplatePath, 'utf8');
+    return fixIssuePageTemplateCache;
+  }
+
+  function serializePageState(value) {
+    return JSON.stringify(value)
+      .replace(/</g, '\\u003c')
+      .replace(/>/g, '\\u003e')
+      .replace(/&/g, '\\u0026')
+      .replace(/<\/script/gi, '<\\/script');
+  }
+
+  function getOrderDeviceInfo(order, deviceKey) {
+    const parts = String(deviceKey || '').split('::');
+    const idx = Number(parts[1]);
+    const deviceNumber = Number.isFinite(idx) ? idx + 1 : 1;
+    const items = Array.isArray(order?.items) ? order.items : [];
+    const item = Number.isFinite(idx) ? items[idx] : null;
+    const model = item?.deviceName || item?.model || order?.device || order?.deviceName || 'Device';
+    const storage = item?.storage || item?.capacity || order?.storage || '';
+
+    return {
+      deviceNumber,
+      model,
+      storage,
+      deviceLabel: `Device ${deviceNumber}${model ? ` • ${model}` : ''}${storage ? ` • ${storage}` : ''}`,
+    };
+  }
+
+  function renderFixIssuePage(pageState) {
+    return getFixIssuePageTemplate().replace('__FIX_ISSUE_PAGE_DATA__', serializePageState(pageState));
+  }
 
 
   const UPS_CARRIER_ID = 'se-5093141';
@@ -3265,7 +3306,7 @@ function createOrdersRouter({
     }
   });
 
-  // Issue Resolved endpoint - customer confirms issue fixed
+  // Issue resolved page - serves the customer-facing fix flow at the original email path
   router.get('/orders/:id/issue-resolved', async (req, res) => {
     try {
       const orderId = String(req.params.id || '').trim();
@@ -3273,7 +3314,7 @@ function createOrdersRouter({
         return res.status(400).send('Order ID is required.');
       }
 
-      const deviceKey = req.query.deviceKey ? String(req.query.deviceKey).trim() : null;
+      const requestedDeviceKey = req.query.deviceKey ? String(req.query.deviceKey).trim() : null;
 
       const orderRef = ordersCollection.doc(orderId);
       const orderSnap = await orderRef.get();
@@ -3282,71 +3323,58 @@ function createOrdersRouter({
       }
 
       const order = { id: orderSnap.id, ...orderSnap.data() };
-      
-      // Determine which device was resolved
-      const resolvedDeviceKey = deviceKey || buildOrderDeviceKey(orderId, 0);
+      const issues = buildIssueList(order);
+      const visibleIssues = requestedDeviceKey
+        ? issues.filter((issue) => issue.deviceKey === requestedDeviceKey)
+        : issues;
 
-      const serverTimestamp = admin.firestore.FieldValue.serverTimestamp();
-      const deleteField = admin.firestore.FieldValue.delete();
+      const pageIssues = visibleIssues.map((issue) => {
+        const copy = ISSUE_COPY[issue.reason] || {
+          title: toTitleCase(issue.reason),
+          problem: 'Please resolve this issue so we can continue processing your order.',
+        };
+        const deviceInfo = getOrderDeviceInfo(order, issue.deviceKey || buildOrderDeviceKey(orderId, 0));
+        const resolvedButtonLabels = {
+          outstanding_balance: "I've paid the balance",
+          password_locked: 'Submit unlock info',
+          stolen: 'Blacklist issue fixed',
+          fmi_active: 'Activation lock removed',
+          google_frp_active: 'Google lock removed',
+        };
 
-      // Build update payload
-      const updatePayload = {
-        [`deviceStatusByKey.${resolvedDeviceKey}`]: 'issue_resolved',
-        [`qcDataByDevice.${resolvedDeviceKey}`]: deleteField,
-        [`qcIssuesByDevice.${resolvedDeviceKey}`]: deleteField,
-        lastUpdatedAt: serverTimestamp,
-      };
-
-      // Derive order status from all devices
-      const nextDeviceStatusByKey = {
-        ...(order.deviceStatusByKey || {}),
-        [resolvedDeviceKey]: 'issue_resolved',
-      };
-      const derivedStatus = deriveOrderStatusFromDevices(order, nextDeviceStatusByKey);
-      if (derivedStatus) {
-        updatePayload.status = derivedStatus;
-      } else {
-        // If not all devices are in terminal states, check if single device order
-        const deviceKeys = collectOrderDeviceKeys(order);
-        if (deviceKeys.length === 1) {
-          updatePayload.status = 'issue_resolved';
-        }
-      }
-
-      // Update order
-      await updateOrderBoth(orderRef, updatePayload, {
-        context: 'Issue resolved by customer via email link',
-        autoLogStatus: false,
+        return {
+          deviceKey: issue.deviceKey || buildOrderDeviceKey(orderId, 0),
+          reason: issue.reason,
+          resolved: Boolean(issue.resolved),
+          notes: issue.notes || '',
+          title: copy.title || toTitleCase(issue.reason),
+          problem: copy.problem || '',
+          why: copy.why || '',
+          commonReasons: Array.isArray(copy.commonReasons) ? copy.commonReasons : [],
+          fixOptions: Array.isArray(copy.fixOptions) ? copy.fixOptions : [],
+          afterComplete: copy.afterComplete || '',
+          resolvedButtonLabel: resolvedButtonLabels[issue.reason] || 'Issue resolved',
+          deviceLabel: deviceInfo.deviceLabel,
+          requiresUnlockInfo: issue.reason === 'password_locked',
+        };
       });
 
-      // Send admin notification
-      try {
-        const deviceIndex = resolvedDeviceKey.split('::')[1] || '0';
-        const notificationMessage = `Customer confirmed issue resolved for order #${orderId} (Device ${Number(deviceIndex) + 1})`;
-        await addAdminFirestoreNotification({
-          title: 'Issue Resolved',
-          message: notificationMessage,
-          orderId,
-          deviceKey: resolvedDeviceKey,
-          type: 'issue_resolved',
-          createdAt: serverTimestamp,
-        });
-        await sendAdminPushNotification('Issue Resolved', notificationMessage);
-      } catch (notifError) {
-        console.error('Failed to send admin notification:', notifError);
-      }
-
-      // Redirect to confirmation page with device context
-      const deviceIndex = Number(resolvedDeviceKey.split('::')[1] || '0');
-      const confirmationParams = new URLSearchParams({
+      const initialDeviceKey = requestedDeviceKey
+        || pageIssues[0]?.deviceKey
+        || buildOrderDeviceKey(orderId, 0);
+      const pageState = {
         orderId,
-        deviceKey: resolvedDeviceKey,
-        deviceLabel: `Device ${deviceIndex + 1}`,
-      });
-      return res.redirect(`/issue-resolved-confirmation.html?${confirmationParams.toString()}`);
+        deviceKey: initialDeviceKey,
+        customerEmail: order?.shippingInfo?.email || '',
+        confirmUrl: `/fix-issue/${encodeURIComponent(orderId)}/confirm`,
+        hasIssues: pageIssues.some((issue) => !issue.resolved),
+        issues: pageIssues,
+      };
+
+      return res.status(200).type('html').send(renderFixIssuePage(pageState));
     } catch (error) {
-      console.error('Error processing issue resolution:', error);
-      return res.status(500).send('Failed to process issue resolution.');
+      console.error('Error loading issue resolution page:', error);
+      return res.status(500).send('Failed to load issue resolution page.');
     }
   });
 

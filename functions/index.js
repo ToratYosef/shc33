@@ -6375,6 +6375,11 @@ const ordersRouter = createOrdersRouter({
     collectOrderDeviceKeys,
     deriveOrderStatusFromDevices,
   },
+  issuePageHelpers: {
+    buildIssueList,
+    ISSUE_COPY,
+    toTitleCase,
+  },
 });
 
 app.use('/', ordersRouter);
