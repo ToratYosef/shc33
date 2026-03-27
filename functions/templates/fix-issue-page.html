@@ -783,26 +783,22 @@
       }
 
       function renderIssueCard(issue, idx) {
-        const optionsHtml = Array.isArray(issue.fixOptions) && issue.fixOptions.length
-          ? `
-            <div class="issue-options">
-              ${issue.fixOptions.map((option) => `
-                <section class="issue-option">
-                  <h4>${esc(option.title || 'How to fix')}</h4>
-                  ${option.prerequisite ? `<p>${esc(option.prerequisite)}</p>` : ''}
-                  ${Array.isArray(option.steps) && option.steps.length ? `<ol>${option.steps.map((step) => `<li>${esc(step)}</li>`).join('')}</ol>` : ''}
-                  ${option.note ? `<p style="margin-top:10px;">${esc(option.note)}</p>` : ''}
-                </section>
-              `).join('')}
-            </div>
-          `
-          : '';
+        const primaryOption = Array.isArray(issue.fixOptions) && issue.fixOptions.length
+          ? issue.fixOptions[0]
+          : null;
 
-        const commonReasonsHtml = Array.isArray(issue.commonReasons) && issue.commonReasons.length
+        const quickSteps = Array.isArray(primaryOption?.steps)
+          ? primaryOption.steps.slice(0, 3)
+          : [];
+
+        const optionsHtml = primaryOption
           ? `
-            <section class="issue-callout why">
-              <p class="issue-callout-title">Common reasons</p>
-              <ul>${issue.commonReasons.map((reason) => `<li>${esc(reason)}</li>`).join('')}</ul>
+            <section class="issue-option">
+              <p class="issue-callout-title">What to do</p>
+              <h4>${esc(primaryOption.title || 'How to fix')}</h4>
+              ${primaryOption.prerequisite ? `<p>${esc(primaryOption.prerequisite)}</p>` : ''}
+              ${quickSteps.length ? `<ol>${quickSteps.map((step) => `<li>${esc(step)}</li>`).join('')}</ol>` : ''}
+              ${primaryOption.note ? `<p style="margin-top:8px;">${esc(primaryOption.note)}</p>` : ''}
             </section>
           `
           : '';
@@ -821,26 +817,13 @@
                 <p class="issue-callout-title">Problem</p>
                 <p>${esc(issue.problem || 'Please resolve this issue so we can continue processing your order.')}</p>
               </section>
-              ${issue.why ? `
-                <section class="issue-callout why">
-                  <p class="issue-callout-title">Why it matters</p>
-                  <p>${esc(issue.why)}</p>
-                </section>
-              ` : ''}
               ${issue.notes ? `
                 <section class="issue-callout">
                   <p class="issue-callout-title">Notes from inspection</p>
                   <p>${esc(issue.notes)}</p>
                 </section>
               ` : ''}
-              ${commonReasonsHtml}
               ${optionsHtml}
-              ${issue.afterComplete ? `
-                <section class="issue-callout after">
-                  <p class="issue-callout-title">After you finish</p>
-                  <p>${esc(issue.afterComplete)}</p>
-                </section>
-              ` : ''}
               ${renderUnlockPanel(issue, idx)}
               <div class="issue-feedback" data-feedback="${idx}"></div>
               <button class="issue-primary" type="button" data-resolve-button="${idx}" ${issue.resolved ? 'disabled' : ''}>${esc(issue.resolved ? `Resolved: ${issue.resolvedButtonLabel || 'Issue resolved'}` : (issue.resolvedButtonLabel || 'Issue resolved'))}</button>
