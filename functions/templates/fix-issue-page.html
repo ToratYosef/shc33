@@ -754,6 +754,32 @@
       transform: translateY(-1px);
     }
 
+    .issue-choice-button.is-resolved {
+      background: #f8fafc;
+      border-color: #dbe2ea;
+      color: #64748b;
+    }
+
+    .issue-choice-button.is-resolved .issue-choice-title,
+    .issue-choice-button.is-resolved .issue-choice-meta {
+      color: #64748b;
+    }
+
+    .issue-choice-check {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      color: #334155;
+      font-size: 14px;
+      font-weight: 900;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+
     .issue-choice-title {
       display: block;
       font-size: 14px;
@@ -1247,8 +1273,8 @@
           <div class="issue-modal-content">
             <div class="issue-choice-list">
               ${issueChoices.map((issue) => `
-                <button type="button" class="issue-choice-button" data-open-specific-issue="${esc(issue.reason)}">
-                  <span class="issue-choice-title">${esc(issue.title)}</span>
+                <button type="button" class="issue-choice-button ${issue.resolved ? 'is-resolved' : ''}" data-open-specific-issue="${esc(issue.reason)}">
+                  <span class="issue-choice-title">${issue.resolved ? '<span class="issue-choice-check">✓</span>' : ''}${esc(issue.title)}</span>
                   <span class="issue-choice-meta">${issue.resolved ? 'Resolved' : 'Pending fix'}</span>
                 </button>
               `).join('')}

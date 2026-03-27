@@ -389,10 +389,19 @@ function createOrdersRouter({
     const deviceNumber = Number.isFinite(idx) ? idx + 1 : 1;
     const items = Array.isArray(order?.items) ? order.items : [];
     const item = Number.isFinite(idx) ? items[idx] : null;
-    const model = item?.deviceName || item?.model || order?.device || order?.deviceName || 'Device';
+    const model = item?.modelName || item?.deviceName || item?.model || order?.modelName || order?.device || order?.deviceName || 'Device';
     const storage = item?.storage || item?.capacity || order?.storage || '';
     const brand = item?.brand || order?.brand || '';
-    const imageUrl = item?.imageUrl || item?.image || item?.thumbnail || item?.photo || order?.imageUrl || '';
+    const imageUrl =
+      item?.imageUrl
+      || item?.image
+      || item?.thumbnail
+      || item?.photo
+      || order?.imageUrl
+      || order?.image
+      || order?.thumbnail
+      || order?.photo
+      || '';
 
     return {
       deviceNumber,
@@ -406,8 +415,35 @@ function createOrdersRouter({
 
   async function hydrateOrderDeviceImageUrls(order = {}) {
     const items = Array.isArray(order?.items) ? order.items : [];
+    const hydrateImageForBrandModel = async (brandValue, modelValue) => {
+      const brand = String(brandValue || '').trim();
+      const model = String(modelValue || '').trim();
+      if (!brand || !model) return '';
+      try {
+        const candidates = [model];
+        const lowered = model.toLowerCase();
+        if (!candidates.includes(lowered)) candidates.push(lowered);
+        for (const candidate of candidates) {
+          const modelSnap = await firestore.collection('devices').doc(brand).collection('models').doc(candidate).get();
+          if (modelSnap.exists) {
+            const modelData = modelSnap.data() || {};
+            if (modelData.imageUrl) {
+              return String(modelData.imageUrl);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn(`Could not hydrate imageUrl for ${brand}/${model}:`, error.message);
+      }
+      return '';
+    };
+
     if (!items.length) {
-      return order;
+      if (order?.imageUrl || order?.image || order?.thumbnail || order?.photo) {
+        return order;
+      }
+      const hydratedOrderImage = await hydrateImageForBrandModel(order?.brand, order?.model || order?.modelName || order?.device || order?.deviceName);
+      return hydratedOrderImage ? { ...order, imageUrl: hydratedOrderImage } : order;
     }
 
     let changed = false;
@@ -421,24 +457,16 @@ function createOrdersRouter({
         return item;
       }
 
-      const brand = String(item.brand || '').trim();
-      const model = String(item.model || item.deviceName || '').trim();
-      if (!brand || !model) {
+      const hydratedImageUrl = await hydrateImageForBrandModel(
+        item.brand || order?.brand,
+        item.model || item.modelName || item.deviceName || order?.model || order?.modelName || order?.device || order?.deviceName
+      );
+      if (!hydratedImageUrl) {
         return item;
       }
 
-      try {
-        const modelSnap = await firestore.collection('devices').doc(brand).collection('models').doc(model).get();
-        if (modelSnap.exists) {
-          const modelData = modelSnap.data() || {};
-          if (modelData.imageUrl) {
-            item.imageUrl = String(modelData.imageUrl);
-            changed = true;
-          }
-        }
-      } catch (error) {
-        console.warn(`Could not hydrate imageUrl for ${brand}/${model}:`, error.message);
-      }
+      item.imageUrl = hydratedImageUrl;
+      changed = true;
 
       return item;
     }));
