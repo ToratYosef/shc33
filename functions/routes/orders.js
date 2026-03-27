@@ -401,7 +401,7 @@ function createOrdersRouter({
   }
 
   function renderFixIssuePage(pageState) {
-    return getFixIssuePageTemplate().replace('__FIX_ISSUE_PAGE_DATA__', serializePageState(pageState));
+    return getFixIssuePageTemplate().replace('__FIX_ISSUE_PAGE_DATA_JSON__', serializePageState(pageState));
   }
 
 
