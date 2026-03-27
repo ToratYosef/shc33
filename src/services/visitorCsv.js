@@ -24,6 +24,7 @@ const CSV_HEADER = [
   'screen',
   'viewport',
   'user_agent',
+  'notes',
 ];
 
 function escapeCsv(value) {
@@ -103,6 +104,7 @@ function buildVisitorCsvRow(row) {
     screen,
     viewport,
     row.user_agent || '',
+    Array.isArray(row.notes) ? row.notes.join(' | ') : '',
   ];
 
   return `${values.map(escapeCsv).join(',')}\n`;

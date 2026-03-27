@@ -5,9 +5,9 @@ const { getClientIp, maskIp } = require('../utils/ip');
 const { deriveSource } = require('../utils/source');
 const { lookupGeo } = require('../geo/maxmind');
 const { inferUserAgentMetadata } = require('../utils/userAgent');
-const { appendVisitorCsvRow } = require('../services/visitorCsv');
 const {
   addSessionEvent,
+  getSession,
   resolveServerSession,
   setSession,
 } = require('../services/analyticsStore');
@@ -41,9 +41,10 @@ function parsePage(urlValue) {
   if (!urlValue) return { pageUrl: null, path: null, query: null };
   try {
     const parsed = new URL(urlValue);
+    const pathWithQuery = `${parsed.pathname}${parsed.search || ''}`;
     return {
       pageUrl: parsed.toString().slice(0, 2048),
-      path: parsed.pathname.slice(0, 512),
+      path: pathWithQuery.slice(0, 512),
       query: parsed.search ? parsed.search.slice(1, 1024) : null,
     };
   } catch (error) {
@@ -58,7 +59,7 @@ function validatePayload(payload) {
   if (!Array.isArray(payload.events) || payload.events.length < 1 || payload.events.length > 25) {
     return 'events must be array length 1..25';
   }
-  const allowedTypes = new Set(['pageview', 'click', 'conversion', 'heartbeat']);
+  const allowedTypes = new Set(['pageview', 'click', 'conversion', 'heartbeat', 'input']);
   for (const event of payload.events) {
     if (!event || typeof event !== 'object') return 'event must be object';
     const eventType = clampString(event.event_type || event.type, 40);
@@ -139,11 +140,16 @@ function buildLogContext({ sessionId, clientIp, geo, userAgent, event }) {
   const screen = client.screenWidth && client.screenHeight
     ? `${client.screenWidth}x${client.screenHeight}`
     : 'unknown';
+  const pageUrl = clampString(event.page_url, 2048) || 'unknown';
+  const notes = Array.isArray(event.extra?.notes)
+    ? event.extra.notes.filter(Boolean).slice(0, 4).join(' | ')
+    : '';
 
   return [
     `[visitor] session=${sessionId}`,
     `type=${event.event_type}`,
     `path=${event.path || 'unknown'}`,
+    `page=${pageUrl}`,
     `source=${source}`,
     `referrer=${referrer}`,
     `ip=${clientIp || 'unknown'}`,
@@ -154,7 +160,22 @@ function buildLogContext({ sessionId, clientIp, geo, userAgent, event }) {
     `os=${os}`,
     `screen=${screen}`,
     `bot=${uaMeta.isBot ? 'yes' : 'no'}`,
+    notes ? `notes=${notes}` : '',
   ].join(' ');
+}
+
+function extractEventNotes(events = []) {
+  const notes = [];
+  events.forEach((event) => {
+    const eventNotes = Array.isArray(event?.extra?.notes) ? event.extra.notes : [];
+    eventNotes.forEach((note) => {
+      const text = clampString(note, 280);
+      if (text && !notes.includes(text)) {
+        notes.push(text);
+      }
+    });
+  });
+  return notes.slice(-40);
 }
 
 function isConversion(eventType, path) {
@@ -177,11 +198,22 @@ async function ingest(req, res, payload) {
   const firstEvent = normalizedEvents[0];
   const firstParsed = parsePage(firstEvent.page_url);
   const sourceMeta = deriveSource({ pageUrl: firstEvent.page_url, referrer: firstEvent.referrer });
+  const sourceLabel = clampString(firstEvent.extra?.source, 120) || sourceMeta.source;
   const userAgent = clampString(req.headers['user-agent'], 1000);
   const sessionInfo = await resolveServerSession(cookieSessionId, SESSION_TIMEOUT_MS);
   const serverSessionId = sessionInfo.sessionId;
   const firstSeenAt = firstEvent.ts || new Date();
   const lastSeenAt = normalizedEvents[normalizedEvents.length - 1]?.ts || new Date();
+
+  const existingSession = await getSession(serverSessionId);
+  const nextNotes = [
+    ...(Array.isArray(existingSession?.notes) ? existingSession.notes : []),
+    ...extractEventNotes(normalizedEvents),
+  ].filter(Boolean);
+  const dedupedNotes = [];
+  nextNotes.forEach((note) => {
+    if (!dedupedNotes.includes(note)) dedupedNotes.push(note);
+  });
 
   await setSession(serverSessionId, {
     session_id: serverSessionId,
@@ -193,7 +225,7 @@ async function ingest(req, res, payload) {
     landing_path: firstParsed.path,
     landing_query: firstParsed.query,
     referrer: clampString(firstEvent.referrer, 2048),
-    source: sourceMeta.source,
+    source: sourceLabel,
     utm: sourceMeta.utm || {},
     user_agent: userAgent,
     ip_masked: ipMasked,
@@ -202,23 +234,8 @@ async function ingest(req, res, payload) {
     region: geo.region || null,
     city: geo.city || null,
     landing_extra: firstEvent.extra || null,
+    notes: dedupedNotes.slice(-40),
   });
-
-  if (sessionInfo.isNewSession) {
-    appendVisitorCsvRow({
-      session_id: serverSessionId,
-      first_seen: firstSeenAt,
-      ip_masked: ipMasked,
-      ip_full: storeFullIp ? clientIp : null,
-      country: geo.country || null,
-      region: geo.region || null,
-      city: geo.city || null,
-      source: sourceMeta.source,
-      landing_path: firstParsed.path,
-      user_agent: userAgent,
-      landing_extra: firstEvent.extra || null,
-    });
-  }
 
   let converted = false;
   let conversionTime = null;
@@ -238,7 +255,7 @@ async function ingest(req, res, payload) {
       seq: index + 1,
     });
 
-    if (event.event_type === 'pageview' || event.event_type === 'conversion') {
+    if (event.event_type === 'pageview' || event.event_type === 'conversion' || event.event_type === 'click' || event.event_type === 'input') {
       console.log(buildLogContext({
         sessionId: serverSessionId,
         clientIp,
@@ -262,7 +279,16 @@ async function ingest(req, res, payload) {
     converted,
     conversion_time: conversionTime || null,
     event_count: normalizedEvents.length,
+    notes: dedupedNotes.slice(-40),
   });
+
+  try {
+    const sessionDate = firstSeenAt instanceof Date ? firstSeenAt : new Date(firstSeenAt);
+    const { exportDailyVisitorCsv, getDateKeyForTimeZone } = require('../services/visitorCsv');
+    await exportDailyVisitorCsv(getDateKeyForTimeZone(sessionDate));
+  } catch (error) {
+    console.error('[visitor-csv] live export failed:', error?.message || error);
+  }
 
   res.set('X-Analytics-Session', serverSessionId);
   return res.status(202).json({ ok: true, session_id: serverSessionId });

@@ -35,6 +35,7 @@ function serializeSession(doc) {
     country: data.country || null,
     region: data.region || null,
     city: data.city || null,
+    notes: Array.isArray(data.notes) ? data.notes : [],
     converted: Boolean(data.converted),
     conversion_time: toDate(data.conversion_time),
     landing_extra: data.landing_extra || null,
