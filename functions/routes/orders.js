@@ -391,13 +391,59 @@ function createOrdersRouter({
     const item = Number.isFinite(idx) ? items[idx] : null;
     const model = item?.deviceName || item?.model || order?.device || order?.deviceName || 'Device';
     const storage = item?.storage || item?.capacity || order?.storage || '';
+    const brand = item?.brand || order?.brand || '';
+    const imageUrl = item?.imageUrl || item?.image || item?.thumbnail || item?.photo || order?.imageUrl || '';
 
     return {
       deviceNumber,
+      brand,
       model,
       storage,
+      imageUrl,
       deviceLabel: `Device ${deviceNumber}${model ? ` • ${model}` : ''}${storage ? ` • ${storage}` : ''}`,
     };
+  }
+
+  async function hydrateOrderDeviceImageUrls(order = {}) {
+    const items = Array.isArray(order?.items) ? order.items : [];
+    if (!items.length) {
+      return order;
+    }
+
+    let changed = false;
+    const nextItems = await Promise.all(items.map(async (rawItem) => {
+      const item = rawItem && typeof rawItem === 'object' ? { ...rawItem } : rawItem;
+      if (!item || typeof item !== 'object') {
+        return item;
+      }
+
+      if (item.imageUrl || item.image || item.thumbnail || item.photo) {
+        return item;
+      }
+
+      const brand = String(item.brand || '').trim();
+      const model = String(item.model || item.deviceName || '').trim();
+      if (!brand || !model) {
+        return item;
+      }
+
+      try {
+        const modelSnap = await firestore.collection('devices').doc(brand).collection('models').doc(model).get();
+        if (modelSnap.exists) {
+          const modelData = modelSnap.data() || {};
+          if (modelData.imageUrl) {
+            item.imageUrl = String(modelData.imageUrl);
+            changed = true;
+          }
+        }
+      } catch (error) {
+        console.warn(`Could not hydrate imageUrl for ${brand}/${model}:`, error.message);
+      }
+
+      return item;
+    }));
+
+    return changed ? { ...order, items: nextItems } : order;
   }
 
   function renderFixIssuePage(pageState) {
@@ -3322,13 +3368,10 @@ function createOrdersRouter({
         return res.status(404).send('Order not found.');
       }
 
-      const order = { id: orderSnap.id, ...orderSnap.data() };
+      const order = await hydrateOrderDeviceImageUrls({ id: orderSnap.id, ...orderSnap.data() });
       const issues = buildIssueList(order);
-      const visibleIssues = requestedDeviceKey
-        ? issues.filter((issue) => issue.deviceKey === requestedDeviceKey)
-        : issues;
 
-      const pageIssues = visibleIssues.map((issue) => {
+      const pageIssues = issues.map((issue) => {
         const copy = ISSUE_COPY[issue.reason] || {
           title: toTitleCase(issue.reason),
           problem: 'Please resolve this issue so we can continue processing your order.',
@@ -3354,8 +3397,34 @@ function createOrdersRouter({
           fixOptions: Array.isArray(copy.fixOptions) ? copy.fixOptions : [],
           afterComplete: copy.afterComplete || '',
           resolvedButtonLabel: resolvedButtonLabels[issue.reason] || 'Issue resolved',
+          brand: deviceInfo.brand,
+          model: deviceInfo.model,
+          storage: deviceInfo.storage,
+          imageUrl: deviceInfo.imageUrl || '',
+          deviceNumber: deviceInfo.deviceNumber,
           deviceLabel: deviceInfo.deviceLabel,
           requiresUnlockInfo: issue.reason === 'password_locked',
+        };
+      });
+
+      const itemCount = Array.isArray(order?.items) && order.items.length ? order.items.length : 1;
+      const pageDevices = Array.from({ length: itemCount }, (_, index) => {
+        const deviceKey = buildOrderDeviceKey(orderId, index);
+        const deviceInfo = getOrderDeviceInfo(order, deviceKey);
+        const linkedIssue = pageIssues.find((issue) => issue.deviceKey === deviceKey) || null;
+
+        return {
+          deviceKey,
+          deviceNumber: deviceInfo.deviceNumber,
+          deviceLabel: deviceInfo.deviceLabel,
+          model: deviceInfo.model,
+          storage: deviceInfo.storage,
+          brand: deviceInfo.brand,
+          imageUrl: deviceInfo.imageUrl || '',
+          hasIssue: Boolean(linkedIssue && !linkedIssue.resolved),
+          resolved: Boolean(linkedIssue?.resolved),
+          problemLabel: linkedIssue ? (linkedIssue.title || toTitleCase(linkedIssue.reason)) : 'No issue detected',
+          problemReason: linkedIssue?.reason || '',
         };
       });
 
@@ -3368,6 +3437,7 @@ function createOrdersRouter({
         customerEmail: order?.shippingInfo?.email || '',
         confirmUrl: `/fix-issue/${encodeURIComponent(orderId)}/confirm`,
         hasIssues: pageIssues.some((issue) => !issue.resolved),
+        devices: pageDevices,
         issues: pageIssues,
       };
 

@@ -197,6 +197,122 @@
       gap: 12px;
     }
 
+    .issue-device-card {
+      position: relative;
+      border: 1px solid var(--issue-line);
+      border-radius: 18px;
+      background: #fff;
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+      box-shadow: 0 18px 34px -28px rgba(15, 23, 42, 0.18);
+    }
+
+    .issue-device-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 24px 44px -30px rgba(15, 23, 42, 0.24);
+    }
+
+    .issue-device-card.has-issue {
+      border-color: #fca5a5;
+      background: linear-gradient(180deg, #fffafa 0%, #ffffff 100%);
+    }
+
+    .issue-device-card.is-selected {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
+
+    .issue-device-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .issue-device-number {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--issue-muted);
+    }
+
+    .issue-device-thumb {
+      width: 96px;
+      height: 96px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
+      border: 1px solid #dbe7f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      margin: 0 auto;
+      padding: 10px;
+    }
+
+    .issue-device-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .issue-device-name {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1.35;
+      text-align: center;
+    }
+
+    .issue-device-storage {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: var(--issue-muted);
+      text-align: center;
+    }
+
+    .issue-problem-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: fit-content;
+      margin: 0 auto;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: #e8fdf3;
+      color: #047857;
+    }
+
+    .issue-problem-badge.has-issue {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .issue-card-action {
+      width: 100%;
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .issue-card-action.has-issue {
+      background: linear-gradient(135deg, #dc2626 0%, #f97316 100%);
+      color: #fff;
+    }
+
     .issue-card {
       border: 1px solid var(--issue-line);
       border-radius: 16px;
@@ -529,6 +645,91 @@
       gap: 10px;
     }
 
+    .issue-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(15, 23, 42, 0.58);
+      z-index: 1800;
+      backdrop-filter: blur(6px);
+    }
+
+    .issue-modal.is-visible {
+      display: flex;
+      animation: issueFadeIn 0.22s ease;
+    }
+
+    .issue-modal-card {
+      width: min(760px, 100%);
+      max-height: 88vh;
+      overflow: auto;
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 36px 90px -48px rgba(15, 23, 42, 0.72);
+      transform: translateY(14px) scale(0.98);
+      opacity: 0;
+      animation: issueModalUp 0.24s ease forwards;
+    }
+
+    .issue-modal-head {
+      display: grid;
+      grid-template-columns: 120px 1fr auto;
+      gap: 18px;
+      padding: 20px;
+      border-bottom: 1px solid var(--issue-line);
+      align-items: center;
+    }
+
+    .issue-modal-thumb {
+      width: 120px;
+      height: 120px;
+      border-radius: 22px;
+      border: 1px solid #dbe7f8;
+      background: linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 12px;
+    }
+
+    .issue-modal-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .issue-modal-close {
+      align-self: start;
+      border: 0;
+      background: #f8fafc;
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      font-size: 24px;
+      color: #64748b;
+      cursor: pointer;
+    }
+
+    .issue-modal-content {
+      padding: 20px;
+      display: grid;
+      gap: 12px;
+    }
+
+    @keyframes issueFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes issueModalUp {
+      from { opacity: 0; transform: translateY(14px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
     .hidden {
       display: none !important;
     }
@@ -546,6 +747,15 @@
       .issue-list,
       .issue-side-list {
         grid-template-columns: 1fr;
+      }
+
+      .issue-modal-head {
+        grid-template-columns: 1fr;
+      }
+
+      .issue-modal-thumb {
+        width: 96px;
+        height: 96px;
       }
     }
 
@@ -607,7 +817,7 @@
         <div class="issue-hero-grid">
           <div>
             <h1>Clear the issue and keep your order moving.</h1>
-            <p>Review the exact device problem below, complete the fix on your account or device, and submit the update here so our team can re-check your order.</p>
+            <p>Choose the device that needs attention, review the fix steps in the popup, and submit once you have completed it. Nothing changes until you press the resolve button.</p>
           </div>
           <div class="issue-summary-grid">
             <div class="issue-summary-card">
@@ -629,9 +839,9 @@
       <section class="issue-layout">
         <div class="issue-panel">
           <div class="issue-panel-inner">
-            <p class="issue-section-label">Fix The Problem</p>
-            <h2 class="issue-section-title">Issue details</h2>
-            <p class="issue-section-copy">Nothing is changed just by opening this page. The order is only updated after you press the resolve button on the issue you fixed.</p>
+            <p class="issue-section-label">Devices In This Order</p>
+            <h2 class="issue-section-title">Tap a device to fix it</h2>
+            <p class="issue-section-copy">Devices with issues are marked in red. Click a device card to open the fix modal with the exact instructions for that phone.</p>
             <div id="issuesContainer" class="issue-list"></div>
           </div>
         </div>
@@ -674,6 +884,12 @@
       </section>
     </div>
   </main>
+
+  <div id="issueModal" class="issue-modal" aria-hidden="true">
+    <div class="issue-modal-card" role="dialog" aria-modal="true" aria-labelledby="issueModalTitle">
+      <div id="issueModalBody"></div>
+    </div>
+  </div>
 
   <footer class="bg-slate-800 text-white">
     <div class="container mx-auto px-4 py-12">
@@ -738,6 +954,8 @@
       const summaryStatus = document.getElementById('summaryStatus');
       const summaryIssueCount = document.getElementById('summaryIssueCount');
       const trackOrderLink = document.getElementById('trackOrderLink');
+      const issueModal = document.getElementById('issueModal');
+      const issueModalBody = document.getElementById('issueModalBody');
 
       const esc = (value) => String(value == null ? '' : value)
         .replace(/&/g, '&amp;')
@@ -752,6 +970,39 @@
         if (state.deviceKey) params.set('deviceKey', state.deviceKey);
         params.set('fromEmailLink', '1');
         return `https://secondhandcell.com/track-order.html?${params.toString()}`;
+      }
+
+      function hasImageExtension(url) {
+        return /\.(avif|webp|png|jpe?g|gif|svg)(\?.*)?$/i.test(String(url || ''));
+      }
+
+      function buildImageCandidates(imageUrl) {
+        const base = String(imageUrl || '').trim();
+        if (!base) return [];
+        if (hasImageExtension(base)) return [base];
+        return [`${base}.webp`, `${base}.png`, `${base}.jpg`, `${base}.jpeg`];
+      }
+
+      function resolveDeviceThumb(imgEl, imageUrl) {
+        const candidates = buildImageCandidates(imageUrl);
+        const fallback = 'https://placehold.co/160x160/e0e7ff/4338ca?text=%F0%9F%93%B1';
+        if (!imgEl) return;
+        if (!candidates.length) {
+          imgEl.src = fallback;
+          return;
+        }
+
+        let candidateIndex = 0;
+        imgEl.src = candidates[candidateIndex];
+        imgEl.onerror = () => {
+          candidateIndex += 1;
+          if (candidateIndex < candidates.length) {
+            imgEl.src = candidates[candidateIndex];
+            return;
+          }
+          imgEl.onerror = null;
+          imgEl.src = fallback;
+        };
       }
 
       function renderUnlockPanel(issue, idx) {
@@ -843,6 +1094,72 @@
             </div>
           </section>
         `;
+      }
+
+      function renderDeviceCard(device, linkedIssue) {
+        const hasIssue = Boolean(linkedIssue && !linkedIssue.resolved);
+        const actionLabel = hasIssue ? 'Fix issue' : (linkedIssue?.resolved ? 'View details' : 'No issue');
+        const statusLabel = hasIssue ? (linkedIssue.title || 'Issue found') : (linkedIssue?.resolved ? 'Resolved' : 'No issue detected');
+
+        return `
+          <article class="issue-device-card ${hasIssue ? 'has-issue' : ''}" data-device-card="${esc(device.deviceKey)}" data-device-key="${esc(device.deviceKey)}">
+            <div class="issue-device-top">
+              <span class="issue-device-number">Device ${esc(device.deviceNumber || '')}</span>
+              <span class="issue-problem-badge ${hasIssue ? 'has-issue' : ''}">${esc(statusLabel)}</span>
+            </div>
+            <div class="issue-device-thumb">
+              <img data-device-image="${esc(device.deviceKey)}" alt="${esc(device.model || device.deviceLabel || 'Device')}">
+            </div>
+            <div>
+              <p class="issue-device-name">${esc(device.model || device.deviceLabel || 'Device')}</p>
+              ${device.storage ? `<p class="issue-device-storage">${esc(device.storage)}</p>` : ''}
+            </div>
+            <button type="button" class="issue-card-action ${hasIssue ? 'has-issue' : ''}" data-open-issue="${esc(device.deviceKey)}" ${linkedIssue ? '' : 'disabled'}>${esc(actionLabel)}</button>
+          </article>
+        `;
+      }
+
+      function closeIssueModal() {
+        if (!issueModal) return;
+        issueModal.classList.remove('is-visible');
+        issueModal.setAttribute('aria-hidden', 'true');
+        issueModalBody.innerHTML = '';
+      }
+
+      function openIssueModal(issue) {
+        if (!issueModal || !issueModalBody || !issue) return;
+        const idx = Array.isArray(state.issues)
+          ? state.issues.findIndex((entry) => entry.deviceKey === issue.deviceKey)
+          : -1;
+        issueModalBody.innerHTML = `
+          <div class="issue-modal-head">
+            <div class="issue-modal-thumb">
+              <img id="issueModalImage" alt="${esc(issue.model || issue.deviceLabel || 'Device')}">
+            </div>
+            <div>
+              <div class="issue-device-chip">${esc(issue.deviceLabel || 'Device')}</div>
+              <h2 id="issueModalTitle" class="issue-section-title" style="margin-top:10px;">${esc(issue.title || 'Device issue')}</h2>
+              <p class="issue-section-copy" style="margin-top:8px;">${esc(issue.problem || 'Please resolve this issue so we can continue processing your order.')}</p>
+            </div>
+            <button type="button" class="issue-modal-close" aria-label="Close issue details">&times;</button>
+          </div>
+          <div class="issue-modal-content">
+            ${issue.notes ? `
+              <section class="issue-callout">
+                <p class="issue-callout-title">Notes from inspection</p>
+                <p>${esc(issue.notes)}</p>
+              </section>
+            ` : ''}
+            ${renderIssueCard(issue, idx)}
+          </div>
+        `;
+
+        resolveDeviceThumb(document.getElementById('issueModalImage'), issue.imageUrl);
+        issueModal.classList.add('is-visible');
+        issueModal.setAttribute('aria-hidden', 'false');
+        issueModal.querySelector('.issue-modal-close')?.addEventListener('click', closeIssueModal);
+        bindUnlockUi();
+        issueModal.querySelector(`[data-resolve-button="${idx}"]`)?.addEventListener('click', () => submitIssue(issue, idx));
       }
 
       function redirectToConfirmation(issue) {
@@ -969,7 +1286,7 @@
         summaryIssueCount.textContent = String(state.issues ? state.issues.filter((issue) => !issue.resolved).length : 0);
         if (trackOrderLink) trackOrderLink.href = buildTrackOrderHref();
 
-        if (!Array.isArray(state.issues) || !state.issues.length) {
+        if (!Array.isArray(state.devices) || !state.devices.length) {
           issuesContainer.innerHTML = `
             <section class="issue-card">
               <div class="issue-card-body">
@@ -983,14 +1300,62 @@
           return;
         }
 
-        issuesContainer.innerHTML = state.issues.map(renderIssueCard).join('');
-        bindUnlockUi();
-        state.issues.forEach((issue, idx) => {
-          const button = document.querySelector(`[data-resolve-button="${idx}"]`);
-          if (!button || issue.resolved) return;
-          button.addEventListener('click', () => submitIssue(issue, idx));
+        const issuesByDeviceKey = new Map((Array.isArray(state.issues) ? state.issues : []).map((issue) => [issue.deviceKey, issue]));
+        issuesContainer.innerHTML = state.devices.map((device) => renderDeviceCard(device, issuesByDeviceKey.get(device.deviceKey))).join('');
+
+        Array.from(document.querySelectorAll('[data-device-image]')).forEach((imgEl) => {
+          const deviceKey = imgEl.getAttribute('data-device-image');
+          const device = Array.isArray(state.devices)
+            ? state.devices.find((entry) => entry.deviceKey === deviceKey)
+            : null;
+          resolveDeviceThumb(imgEl, device?.imageUrl || '');
         });
+
+        Array.from(document.querySelectorAll('[data-open-issue]')).forEach((button) => {
+          button.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const deviceKey = button.getAttribute('data-open-issue');
+            const issue = Array.isArray(state.issues)
+              ? state.issues.find((entry) => entry.deviceKey === deviceKey)
+              : null;
+            if (!issue) return;
+            openIssueModal(issue);
+          });
+        });
+
+        Array.from(document.querySelectorAll('[data-device-card]')).forEach((card) => {
+          card.addEventListener('click', () => {
+            const deviceKey = card.getAttribute('data-device-key');
+            const issue = Array.isArray(state.issues)
+              ? state.issues.find((entry) => entry.deviceKey === deviceKey)
+              : null;
+            if (!issue) return;
+            openIssueModal(issue);
+          });
+        });
+
+        if (state.deviceKey) {
+          const requestedIssue = Array.isArray(state.issues)
+            ? state.issues.find((entry) => entry.deviceKey === state.deviceKey)
+            : null;
+          if (requestedIssue) {
+            window.requestAnimationFrame(() => openIssueModal(requestedIssue));
+          }
+        }
       }
+
+      issueModal?.addEventListener('click', (event) => {
+        if (event.target === issueModal) {
+          closeIssueModal();
+        }
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && issueModal?.classList.contains('is-visible')) {
+          closeIssueModal();
+        }
+      });
 
       render();
     })();
