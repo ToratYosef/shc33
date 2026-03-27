@@ -5554,6 +5554,36 @@ function shouldPromoteKitStatus(currentStatus, nextStatus) {
   return nextIndex > currentIndex;
 }
 
+function resolveInboundTransitResetStatus(order = {}) {
+  const currentStatus = normalizeTransitStatus(order.status);
+
+  if (currentStatus === 'kit_delivered' || currentStatus === 'delivered_to_us' || currentStatus === 'received') {
+    return currentStatus;
+  }
+
+  if (currentStatus === KIT_TRANSIT_STATUS || currentStatus === 'kit_in_transit' || currentStatus === 'kit_on_the_way_to_us') {
+    return KIT_TRANSIT_STATUS;
+  }
+
+  if (currentStatus === 'kit_sent') {
+    return 'kit_sent';
+  }
+
+  if (order.kitDeliveredAt || order.kitDeliveredToUsAt) {
+    return 'kit_delivered';
+  }
+
+  if (order.kitSentAt || order.outboundTrackingLastSyncedAt || order.outboundTrackingStatus) {
+    return 'kit_sent';
+  }
+
+  if (currentStatus === 'shipping_kit_requested' || currentStatus === 'kit_needs_printing' || currentStatus === 'needs_printing') {
+    return 'needs_printing';
+  }
+
+  return currentStatus || 'needs_printing';
+}
+
 function getTimestampMillis(value) {
   const date = toDate(value);
   return date ? date.getTime() : null;
