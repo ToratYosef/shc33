@@ -9,6 +9,9 @@ const DEFAULT_CARRIER_CODE = 'stamps_com';
 const KIT_TRANSIT_STATUS = 'kit_on_the_way_to_customer';
 const PHONE_TRANSIT_STATUS = 'phone_on_the_way';
 const PHONE_TRANSIT_STATUS_LEGACY = 'phone_on_the_way_to_us';
+const KIT_CUSTOMER_DELIVERED_STATUS = 'kit_delivered_to_customer';
+const KIT_RETURN_TRANSIT_STATUS = 'kit_in_transit';
+const KIT_RETURN_DELIVERED_STATUS = 'kit_delivered';
 
 const TRANSIT_STATUS_CODES = new Set([
     'IT',
@@ -296,13 +299,34 @@ function resolveUspsServiceAndWeightByDeviceCount(deviceCountInput) {
 
 function resolveInboundTransitResetStatus(order = {}) {
     const shippingPreference = String(order?.shippingPreference || '').toLowerCase();
+    const normalizedStatus = String(order?.status || '').toLowerCase();
 
     if (shippingPreference === 'shipping kit requested') {
-        if (order?.kitDeliveredAt) {
-            return 'kit_delivered';
+        if (
+            order?.kitDeliveredToUsAt ||
+            normalizedStatus === KIT_RETURN_DELIVERED_STATUS ||
+            normalizedStatus === 'delivered_to_us'
+        ) {
+            return KIT_RETURN_DELIVERED_STATUS;
         }
 
-        if (order?.kitSentAt) {
+        if (
+            order?.kitDeliveredAt ||
+            normalizedStatus === KIT_CUSTOMER_DELIVERED_STATUS ||
+            normalizedStatus === 'kit_delivered' ||
+            normalizedStatus === KIT_RETURN_TRANSIT_STATUS ||
+            normalizedStatus === 'kit_on_the_way_to_us' ||
+            normalizedStatus === PHONE_TRANSIT_STATUS ||
+            normalizedStatus === PHONE_TRANSIT_STATUS_LEGACY
+        ) {
+            return KIT_CUSTOMER_DELIVERED_STATUS;
+        }
+
+        if (order?.inboundTrackingNumber || order?.trackingNumber) {
+            return KIT_CUSTOMER_DELIVERED_STATUS;
+        }
+
+        if (order?.kitSentAt || normalizedStatus === 'kit_sent' || normalizedStatus === KIT_TRANSIT_STATUS) {
             return 'kit_sent';
         }
 
@@ -405,6 +429,9 @@ function buildTrackingUrl({ trackingNumber, carrierCode, defaultCarrierCode = DE
 }
 
 const INBOUND_TRACKING_STATUSES = new Set([
+    KIT_CUSTOMER_DELIVERED_STATUS,
+    KIT_RETURN_TRANSIT_STATUS,
+    KIT_RETURN_DELIVERED_STATUS,
     'kit_delivered',
     KIT_TRANSIT_STATUS,
     'kit_on_the_way_to_us',
@@ -637,30 +664,29 @@ async function buildKitTrackingUpdate(
         kitTrackingStatus: statusPayload,
     };
 
-    if (normalizedStatus === PHONE_TRANSIT_STATUS_LEGACY) {
-        updatePayload.status = PHONE_TRANSIT_STATUS;
-    }
-
     const shippingPreference = String(order?.shippingPreference || '').toLowerCase();
-    const isShippingKit = shippingPreference === 'shipping kit requested';
+    const isShippingKit =
+        shippingPreference === 'shipping kit requested' ||
+        (hasOutbound && hasInbound) ||
+        normalizedStatus === KIT_CUSTOMER_DELIVERED_STATUS ||
+        normalizedStatus === KIT_RETURN_TRANSIT_STATUS ||
+        normalizedStatus === KIT_RETURN_DELIVERED_STATUS ||
+        normalizedStatus === 'kit_delivered' ||
+        normalizedStatus === 'kit_on_the_way_to_us';
+
+    if (normalizedStatus === PHONE_TRANSIT_STATUS_LEGACY) {
+        updatePayload.status = isShippingKit ? KIT_RETURN_TRANSIT_STATUS : PHONE_TRANSIT_STATUS;
+    }
 
     const hasMovement = inTransit || acceptedWithoutEta;
     const inboundBaseStatus = resolveInboundTransitResetStatus(order);
 
     if (!useInbound) {
         if (delivered) {
-            updatePayload.status = 'kit_delivered';
+            updatePayload.status = KIT_CUSTOMER_DELIVERED_STATUS;
             if (typeof serverTimestamp === 'function') {
                 updatePayload.kitDeliveredAt = serverTimestamp();
                 updatePayload.lastStatusUpdateAt = serverTimestamp();
-            }
-        } else if (hasMovement) {
-            updatePayload.status = KIT_TRANSIT_STATUS;
-            if (typeof serverTimestamp === 'function') {
-                updatePayload.lastStatusUpdateAt = serverTimestamp();
-            }
-            if (!order?.kitSentAt && typeof serverTimestamp === 'function') {
-                updatePayload.kitSentAt = serverTimestamp();
             }
         } else if (normalizedStatus !== 'kit_sent') {
             updatePayload.status = 'kit_sent';
@@ -673,7 +699,7 @@ async function buildKitTrackingUpdate(
         }
     } else {
         if (delivered) {
-            updatePayload.status = 'delivered_to_us';
+            updatePayload.status = isShippingKit ? KIT_RETURN_DELIVERED_STATUS : 'delivered_to_us';
             if (typeof serverTimestamp === 'function') {
                 updatePayload.lastStatusUpdateAt = serverTimestamp();
             }
@@ -689,12 +715,13 @@ async function buildKitTrackingUpdate(
                 updatePayload.autoReceived = true;
             }
         } else if (hasMovement) {
-            updatePayload.status = PHONE_TRANSIT_STATUS;
+            updatePayload.status = isShippingKit ? KIT_RETURN_TRANSIT_STATUS : PHONE_TRANSIT_STATUS;
             if (typeof serverTimestamp === 'function') {
                 updatePayload.lastStatusUpdateAt = serverTimestamp();
             }
         } else if (inboundBaseStatus && inboundBaseStatus !== normalizedTransitStatus) {
             const inboundLockStatuses = new Set([
+                KIT_RETURN_DELIVERED_STATUS,
                 PHONE_TRANSIT_STATUS,
                 PHONE_TRANSIT_STATUS_LEGACY,
                 'delivered_to_us',
