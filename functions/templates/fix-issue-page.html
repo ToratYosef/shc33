@@ -10,6 +10,9 @@
   <link rel="stylesheet" href="https://secondhandcell.com/assets/css/site-chrome.css">
   <script>
     window.SHC_API_BASE_URL = "https://api.secondhandcell.com/server";
+    window.shcIssuePageImageReady = new Promise((resolve) => {
+      window.__shcResolveIssueImageReady = resolve;
+    });
   </script>
   <style>
     :root {
@@ -1076,6 +1079,38 @@
         tryNext();
       }
 
+      async function applyDeviceImage(device, imgEl) {
+        if (!imgEl) return;
+        const directImageUrl = String(device?.imageUrl || '').trim();
+        if (directImageUrl) {
+          resolveImageUrl(directImageUrl, imgEl);
+          return;
+        }
+
+        if (typeof window.shcFetchCatalogImageUrl === 'function') {
+          try {
+            const fetchedImageUrl = await window.shcFetchCatalogImageUrl(device?.brand, device?.model);
+            if (fetchedImageUrl) {
+              resolveImageUrl(fetchedImageUrl, imgEl);
+              return;
+            }
+          } catch (_) {}
+        }
+
+        if (window.shcIssuePageImageReady && typeof window.shcFetchCatalogImageUrl !== 'function') {
+          try {
+            await window.shcIssuePageImageReady;
+            const fetchedImageUrl = await window.shcFetchCatalogImageUrl?.(device?.brand, device?.model);
+            if (fetchedImageUrl) {
+              resolveImageUrl(fetchedImageUrl, imgEl);
+              return;
+            }
+          } catch (_) {}
+        }
+
+        imgEl.src = FALLBACK_DEVICE_IMAGE;
+      }
+
       function renderUnlockPanel(issue, idx) {
         if (!issue.requiresUnlockInfo || issue.resolved) return '';
         return `
@@ -1247,7 +1282,7 @@
           </div>
         `;
 
-        resolveImageUrl(issue.imageUrl, issueModal.querySelector('#issueModalImage'));
+        applyDeviceImage(issue, issueModal.querySelector('#issueModalImage'));
         issueModal.classList.add('is-visible');
         issueModal.setAttribute('aria-hidden', 'false');
         issueModal.querySelector('.issue-modal-close')?.addEventListener('click', closeIssueModal);
@@ -1281,7 +1316,7 @@
             </div>
           </div>
         `;
-        resolveImageUrl(device.imageUrl, issueModal.querySelector('#issueModalImage'));
+        applyDeviceImage(device, issueModal.querySelector('#issueModalImage'));
         issueModal.classList.add('is-visible');
         issueModal.setAttribute('aria-hidden', 'false');
         issueModal.querySelector('.issue-modal-close')?.addEventListener('click', closeIssueModal);
@@ -1444,7 +1479,7 @@
           const device = Array.isArray(state.devices)
             ? state.devices.find((entry) => entry.deviceKey === deviceKey)
             : null;
-          resolveImageUrl(device?.imageUrl || '', imgEl);
+          applyDeviceImage(device, imgEl);
         });
 
         Array.from(document.querySelectorAll('[data-open-issue]')).forEach((button) => {
@@ -1506,6 +1541,7 @@
   </script>
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import {
       browserLocalPersistence,
       createUserWithEmailAndPassword,
@@ -1530,8 +1566,45 @@
     };
 
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    const firestoreDb = getFirestore(app);
     const auth = getAuth(app);
     setPersistence(auth, browserLocalPersistence).catch(() => {});
+    const imageUrlLookupCache = new Map();
+
+    window.shcFetchCatalogImageUrl = async (brandValue, modelValue) => {
+      const brand = String(brandValue || '').trim();
+      const model = String(modelValue || '').trim();
+      if (!brand || !model) return '';
+
+      const cacheKey = `${brand}::${model}`;
+      if (imageUrlLookupCache.has(cacheKey)) {
+        return imageUrlLookupCache.get(cacheKey);
+      }
+
+      const candidates = [model];
+      const lowered = model.toLowerCase();
+      if (!candidates.includes(lowered)) {
+        candidates.push(lowered);
+      }
+
+      for (const candidate of candidates) {
+        try {
+          const snap = await getDoc(doc(firestoreDb, 'devices', brand, 'models', candidate));
+          if (snap.exists()) {
+            const data = snap.data() || {};
+            const imageUrl = String(data.imageUrl || '').trim();
+            if (imageUrl) {
+              imageUrlLookupCache.set(cacheKey, imageUrl);
+              return imageUrl;
+            }
+          }
+        } catch (_) {}
+      }
+
+      imageUrlLookupCache.set(cacheKey, '');
+      return '';
+    };
+    window.__shcResolveIssueImageReady?.();
 
     const ensureAuthStyle = () => {
       if (document.getElementById("shc-auth-styles")) return;
