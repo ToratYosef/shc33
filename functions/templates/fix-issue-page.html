@@ -275,6 +275,18 @@
       text-align: center;
     }
 
+    .issue-device-problem {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      color: #475569;
+    }
+
+    .issue-device-problem.has-issue {
+      color: #b91c1c;
+    }
+
     .issue-problem-badge {
       display: inline-flex;
       align-items: center;
@@ -972,37 +984,34 @@
         return `https://secondhandcell.com/track-order.html?${params.toString()}`;
       }
 
-      function hasImageExtension(url) {
-        return /\.(avif|webp|png|jpe?g|gif|svg)(\?.*)?$/i.test(String(url || ''));
-      }
+      const FALLBACK_DEVICE_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+      const IMAGE_EXTENSIONS = ['.webp', '.png', '.jpg', '.jpeg'];
 
-      function buildImageCandidates(imageUrl) {
-        const base = String(imageUrl || '').trim();
-        if (!base) return [];
-        if (hasImageExtension(base)) return [base];
-        return [`${base}.webp`, `${base}.png`, `${base}.jpg`, `${base}.jpeg`];
-      }
-
-      function resolveDeviceThumb(imgEl, imageUrl) {
-        const candidates = buildImageCandidates(imageUrl);
-        const fallback = 'https://placehold.co/160x160/e0e7ff/4338ca?text=%F0%9F%93%B1';
+      function resolveImageUrl(imageUrl, imgEl) {
         if (!imgEl) return;
-        if (!candidates.length) {
-          imgEl.src = fallback;
+        const baseUrl = String(imageUrl || '').trim();
+        if (!baseUrl) {
+          imgEl.src = FALLBACK_DEVICE_IMAGE;
           return;
         }
-
-        let candidateIndex = 0;
-        imgEl.src = candidates[candidateIndex];
-        imgEl.onerror = () => {
-          candidateIndex += 1;
-          if (candidateIndex < candidates.length) {
-            imgEl.src = candidates[candidateIndex];
+        if (/\.(webp|png|jpe?g|gif|svg)(\?.*)?$/i.test(baseUrl)) {
+          imgEl.src = baseUrl;
+          return;
+        }
+        const candidates = IMAGE_EXTENSIONS.map((ext) => `${baseUrl}${ext}`);
+        let idx = 0;
+        const tryNext = () => {
+          if (idx >= candidates.length) {
+            imgEl.src = FALLBACK_DEVICE_IMAGE;
             return;
           }
-          imgEl.onerror = null;
-          imgEl.src = fallback;
+          const testImg = new Image();
+          const candidate = candidates[idx];
+          testImg.onload = () => { imgEl.src = candidate; };
+          testImg.onerror = () => { idx += 1; tryNext(); };
+          testImg.src = candidate;
         };
+        tryNext();
       }
 
       function renderUnlockPanel(issue, idx) {
@@ -1047,52 +1056,60 @@
       }
 
       function renderIssueCard(issue, idx) {
-        const primaryOption = Array.isArray(issue.fixOptions) && issue.fixOptions.length
-          ? issue.fixOptions[0]
-          : null;
-
-        const quickSteps = Array.isArray(primaryOption?.steps)
-          ? primaryOption.steps.slice(0, 3)
-          : [];
-
-        const optionsHtml = primaryOption
+        const optionsHtml = Array.isArray(issue.fixOptions) && issue.fixOptions.length
           ? `
-            <section class="issue-option">
-              <p class="issue-callout-title">What to do</p>
-              <h4>${esc(primaryOption.title || 'How to fix')}</h4>
-              ${primaryOption.prerequisite ? `<p>${esc(primaryOption.prerequisite)}</p>` : ''}
-              ${quickSteps.length ? `<ol>${quickSteps.map((step) => `<li>${esc(step)}</li>`).join('')}</ol>` : ''}
-              ${primaryOption.note ? `<p style="margin-top:8px;">${esc(primaryOption.note)}</p>` : ''}
+            <div class="issue-options">
+              ${issue.fixOptions.map((option) => `
+                <section class="issue-option">
+                  <h4>${esc(option.title || 'How to fix')}</h4>
+                  ${option.prerequisite ? `<p>${esc(option.prerequisite)}</p>` : ''}
+                  ${Array.isArray(option.steps) && option.steps.length ? `<ol>${option.steps.map((step) => `<li>${esc(step)}</li>`).join('')}</ol>` : ''}
+                  ${option.note ? `<p style="margin-top:10px;">${esc(option.note)}</p>` : ''}
+                </section>
+              `).join('')}
+            </div>
+          `
+          : '';
+
+        const commonReasonsHtml = Array.isArray(issue.commonReasons) && issue.commonReasons.length
+          ? `
+            <section class="issue-callout why">
+              <p class="issue-callout-title">Common reasons</p>
+              <ul>${issue.commonReasons.map((reason) => `<li>${esc(reason)}</li>`).join('')}</ul>
             </section>
           `
           : '';
 
         return `
-          <section class="issue-card ${issue.resolved ? 'is-resolved' : ''}">
-            <div class="issue-card-head">
-              <div>
-                <div class="issue-device-chip">${esc(issue.deviceLabel || 'Device')}</div>
-                <h3>${esc(issue.title)}</h3>
-              </div>
-              <div class="issue-status-chip ${issue.resolved ? 'resolved' : 'pending'}">${issue.resolved ? 'Resolved' : 'Needs action'}</div>
-            </div>
-            <div class="issue-card-body">
-              <section class="issue-callout problem">
-                <p class="issue-callout-title">Problem</p>
-                <p>${esc(issue.problem || 'Please resolve this issue so we can continue processing your order.')}</p>
+          <div class="issue-card-body">
+            <section class="issue-callout problem">
+              <p class="issue-callout-title">Problem</p>
+              <p>${esc(issue.problem || 'Please resolve this issue so we can continue processing your order.')}</p>
+            </section>
+            ${issue.why ? `
+              <section class="issue-callout why">
+                <p class="issue-callout-title">Why it matters</p>
+                <p>${esc(issue.why)}</p>
               </section>
-              ${issue.notes ? `
-                <section class="issue-callout">
-                  <p class="issue-callout-title">Notes from inspection</p>
-                  <p>${esc(issue.notes)}</p>
-                </section>
-              ` : ''}
-              ${optionsHtml}
-              ${renderUnlockPanel(issue, idx)}
-              <div class="issue-feedback" data-feedback="${idx}"></div>
-              <button class="issue-primary" type="button" data-resolve-button="${idx}" ${issue.resolved ? 'disabled' : ''}>${esc(issue.resolved ? `Resolved: ${issue.resolvedButtonLabel || 'Issue resolved'}` : (issue.resolvedButtonLabel || 'Issue resolved'))}</button>
-            </div>
-          </section>
+            ` : ''}
+            ${issue.notes ? `
+              <section class="issue-callout">
+                <p class="issue-callout-title">Notes from inspection</p>
+                <p>${esc(issue.notes)}</p>
+              </section>
+            ` : ''}
+            ${commonReasonsHtml}
+            ${optionsHtml}
+            ${issue.afterComplete ? `
+              <section class="issue-callout after">
+                <p class="issue-callout-title">After you finish</p>
+                <p>${esc(issue.afterComplete)}</p>
+              </section>
+            ` : ''}
+            ${renderUnlockPanel(issue, idx)}
+            <div class="issue-feedback" data-feedback="${idx}"></div>
+            <button class="issue-primary" type="button" data-resolve-button="${idx}" ${issue.resolved ? 'disabled' : ''}>${esc(issue.resolved ? `Resolved: ${issue.resolvedButtonLabel || 'Issue resolved'}` : (issue.resolvedButtonLabel || 'Issue resolved'))}</button>
+          </div>
         `;
       }
 
@@ -1113,6 +1130,7 @@
             <div>
               <p class="issue-device-name">${esc(device.model || device.deviceLabel || 'Device')}</p>
               ${device.storage ? `<p class="issue-device-storage">${esc(device.storage)}</p>` : ''}
+              <p class="issue-device-problem ${hasIssue ? 'has-issue' : ''}">${esc(statusLabel)}</p>
             </div>
             <button type="button" class="issue-card-action ${hasIssue ? 'has-issue' : ''}" data-open-issue="${esc(device.deviceKey)}" ${linkedIssue ? '' : 'disabled'}>${esc(actionLabel)}</button>
           </article>
@@ -1154,7 +1172,7 @@
           </div>
         `;
 
-        resolveDeviceThumb(document.getElementById('issueModalImage'), issue.imageUrl);
+        resolveImageUrl(issueModal.querySelector('#issueModalImage'), issue.imageUrl);
         issueModal.classList.add('is-visible');
         issueModal.setAttribute('aria-hidden', 'false');
         issueModal.querySelector('.issue-modal-close')?.addEventListener('click', closeIssueModal);
@@ -1308,7 +1326,7 @@
           const device = Array.isArray(state.devices)
             ? state.devices.find((entry) => entry.deviceKey === deviceKey)
             : null;
-          resolveDeviceThumb(imgEl, device?.imageUrl || '');
+          resolveImageUrl(device?.imageUrl || '', imgEl);
         });
 
         Array.from(document.querySelectorAll('[data-open-issue]')).forEach((button) => {
@@ -1335,14 +1353,6 @@
           });
         });
 
-        if (state.deviceKey) {
-          const requestedIssue = Array.isArray(state.issues)
-            ? state.issues.find((entry) => entry.deviceKey === state.deviceKey)
-            : null;
-          if (requestedIssue) {
-            window.requestAnimationFrame(() => openIssueModal(requestedIssue));
-          }
-        }
       }
 
       issueModal?.addEventListener('click', (event) => {
