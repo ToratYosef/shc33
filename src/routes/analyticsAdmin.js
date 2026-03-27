@@ -6,6 +6,10 @@ const {
   listEventsInRange,
   listSessionsInRange,
 } = require('../services/analyticsStore');
+const {
+  listVisitorCsvFiles,
+  readAllVisitorCsvFiles,
+} = require('../services/visitorCsv');
 
 const router = express.Router();
 router.use(adminAuth);
@@ -116,6 +120,29 @@ router.get('/sessions/:id', async (req, res, next) => {
     });
 
     return res.json({ session, events: timeline });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get('/visitor-csvs', async (req, res, next) => {
+  try {
+    const includeRows = String(req.query.include_rows || 'true') === 'true';
+    if (!includeRows) {
+      return res.json({ files: listVisitorCsvFiles() });
+    }
+
+    const files = readAllVisitorCsvFiles();
+    const rows = files.flatMap((file) => (
+      Array.isArray(file.rows)
+        ? file.rows.map((row) => ({ ...row, __file: file.name }))
+        : []
+    ));
+
+    return res.json({
+      files: files.map(({ rows: _rows, ...rest }) => rest),
+      rows,
+    });
   } catch (error) {
     return next(error);
   }

@@ -75,6 +75,112 @@ function getVisitorCsvPath(dateKey) {
   return path.join(EXPORT_DIR, `visitor-log-${dateKey}.csv`);
 }
 
+function parseCsvText(text) {
+  const rows = [];
+  let current = '';
+  let row = [];
+  let inQuotes = false;
+
+  const pushField = () => {
+    row.push(current);
+    current = '';
+  };
+  const pushRow = () => {
+    if (row.length === 1 && row[0] === '') {
+      row = [];
+      return;
+    }
+    rows.push(row);
+    row = [];
+  };
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === ',' && !inQuotes) {
+      pushField();
+      continue;
+    }
+
+    if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && next === '\n') i += 1;
+      pushField();
+      pushRow();
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (current.length || row.length) {
+    pushField();
+    pushRow();
+  }
+
+  if (!rows.length) return [];
+  const header = rows[0].map((value) => String(value || '').trim());
+  return rows.slice(1).map((values) => {
+    const mapped = {};
+    header.forEach((key, index) => {
+      mapped[key] = values[index] ?? '';
+    });
+    return mapped;
+  });
+}
+
+function listVisitorCsvFiles() {
+  if (!fs.existsSync(EXPORT_DIR)) {
+    return [];
+  }
+
+  return fs.readdirSync(EXPORT_DIR)
+    .filter((name) => /^visitor-log-\d{4}-\d{2}-\d{2}\.csv$/i.test(name))
+    .sort((a, b) => b.localeCompare(a))
+    .map((name) => {
+      const filePath = path.join(EXPORT_DIR, name);
+      const stat = fs.statSync(filePath);
+      return {
+        name,
+        filePath,
+        size: stat.size,
+        modifiedAt: stat.mtime.toISOString(),
+      };
+    });
+}
+
+function readVisitorCsvFile(name) {
+  const safeName = path.basename(String(name || '').trim());
+  if (!/^visitor-log-\d{4}-\d{2}-\d{2}\.csv$/i.test(safeName)) {
+    throw new Error('invalid_file_name');
+  }
+
+  const filePath = path.join(EXPORT_DIR, safeName);
+  const text = fs.readFileSync(filePath, 'utf8');
+  return {
+    name: safeName,
+    filePath,
+    rows: parseCsvText(text),
+  };
+}
+
+function readAllVisitorCsvFiles() {
+  return listVisitorCsvFiles().map((file) => ({
+    ...file,
+    rows: readVisitorCsvFile(file.name).rows,
+  }));
+}
+
 function buildVisitorCsvRow(row) {
   const client = parseClientContext(row.landing_extra);
   const uaMeta = inferUserAgentMetadata(row.user_agent);
@@ -170,6 +276,10 @@ module.exports = {
   exportDailyVisitorCsv,
   getDateKeyForTimeZone,
   getVisitorCsvPath,
+  listVisitorCsvFiles,
   localDateBounds,
+  parseCsvText,
+  readAllVisitorCsvFiles,
+  readVisitorCsvFile,
   EXPORT_DIR,
 };
