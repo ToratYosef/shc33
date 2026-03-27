@@ -570,6 +570,7 @@
           <p class="logo-tagline">Turn Your Old <span>Phone Into Cash!</span></p>
         </a>
       </div>
+
       <nav class="header-auth-nav" aria-label="Account navigation">
         <div id="authStatusContainer" class="site-header__auth-wrapper">
           <a href="#" id="loginNavBtn" class="site-header__login">Login/Sign Up</a>
@@ -671,9 +672,9 @@
             <h3 class="text-xl font-bold mb-4">Quick Links</h3>
             <ul class="space-y-2">
               <li><a href="https://secondhandcell.com/index.html" class="text-slate-400 hover:text-white transition duration-300">Home</a></li>
-              <li><a href="https://secondhandcell.com/privacy.html" class="text-slate-400 hover:text-white transition duration-300">Privacy Policy</a></li>
-              <li><a href="https://secondhandcell.com/terms.html" class="text-slate-400 hover:text-white transition duration-300">Terms &amp; Conditions</a></li>
-              <li><a href="https://secondhandcell.com/support.html" class="text-slate-400 hover:text-white transition duration-300">Support</a></li>
+              <li><a href="#" id="aboutUsLink" class="text-slate-400 hover:text-white transition duration-300">About Us</a></li>
+              <li><a href="#" id="privacyPolicyLink" class="text-slate-400 hover:text-white transition duration-300">Privacy Policy</a></li>
+              <li><a href="#" id="termsAndConditionsLinkFooter" class="text-slate-400 hover:text-white transition duration-300">Terms &amp; Conditions</a></li>
             </ul>
           </div>
           <div>
@@ -1055,8 +1056,142 @@
         .shc-auth-dropdown a, .shc-auth-dropdown button { width: 100%; display: block; text-align: left; padding: 10px 12px; border-radius: 10px; color: #0f172a; font-weight: 600; border: none; background: transparent; cursor: pointer; }
         .shc-auth-dropdown a:hover, .shc-auth-dropdown button:hover { background: #f1f5f9; }
         .shc-monogram { cursor: pointer !important; user-select: none; pointer-events: auto !important; }
+        .shc-auth-google img { width: 18px; height: 18px; }
+        .shc-policy-modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 16px; background: rgba(15,23,42,0.7); z-index: 2100; }
+        .shc-policy-modal.is-visible { display: flex; }
+        .shc-policy-card { width: min(840px, 100%); max-height: min(86vh, 760px); background: #fff; border-radius: 20px; padding: 26px; box-shadow: 0 30px 80px -45px rgba(15,23,42,0.75); overflow: hidden; position: relative; }
+        .shc-policy-close { position: absolute; top: 12px; right: 12px; border: none; background: transparent; color: #94a3b8; font-size: 24px; line-height: 1; cursor: pointer; }
+        .shc-policy-content { overflow-y: auto; max-height: calc(86vh - 72px); padding-right: 4px; color: #334155; }
+        .shc-policy-content h2 { margin: 0 0 12px; color: #0f172a; font-size: 1.7rem; font-weight: 800; }
+        .shc-policy-content h3 { margin: 20px 0 8px; color: #0f172a; font-size: 1.1rem; font-weight: 700; }
+        .shc-policy-content p, .shc-policy-content li { line-height: 1.6; }
+        .shc-policy-content ul { margin: 0 0 14px; padding-left: 20px; }
       `;
       document.head.appendChild(style);
+    };
+
+    const ensureInfoModals = () => {
+      const modalDefinitions = [
+        {
+          id: "aboutUsModal",
+          heading: "About Us",
+          content: `
+            <p>SecondHandCell helps people turn used tech into fast, fair cash with transparent pricing and prepaid shipping.</p>
+            <h3>What makes us different</h3>
+            <ul>
+              <li>Simple online quotes and a clear inspection process.</li>
+              <li>Secure handling, certified data wiping, and legal compliance checks.</li>
+              <li>Real customer feedback and support at <a href="mailto:sales@secondhandcell.com">sales@secondhandcell.com</a>.</li>
+            </ul>
+            <p>See full customer reviews on our Trust page and Trustpilot profile.</p>
+          `,
+        },
+        {
+          id: "privacyPolicyModal",
+          heading: "Privacy Policy",
+          content: `
+            <p><strong>Summary from our Privacy Policy:</strong> we collect contact details, transaction/device data, payout details, communications, and technical information needed to provide our service.</p>
+            <h3>How we use your information</h3>
+            <ul>
+              <li>To provide quotes, process orders, ship kits, and send payouts.</li>
+              <li>To support account access, customer service, fraud prevention, and compliance.</li>
+              <li>To send optional marketing communications you can opt out of anytime.</li>
+            </ul>
+            <h3>Your choices</h3>
+            <p>You can request updates, deletion, or privacy support by emailing <a href="mailto:sales@secondhandcell.com">sales@secondhandcell.com</a>.</p>
+            <p><a href="https://secondhandcell.com/privacy.html">Read the full Privacy Policy</a>.</p>
+          `,
+        },
+        {
+          id: "termsAndConditionsModal",
+          heading: "Terms & Conditions",
+          content: `
+            <p><strong>Summary from our Terms:</strong> by using our services, you confirm you are eligible and authorized to sell the device you submit.</p>
+            <h3>Important terms</h3>
+            <ul>
+              <li>Quotes are preliminary and finalized after device inspection.</li>
+              <li>Devices must not be lost, stolen, blacklisted, or subject to outstanding financing.</li>
+              <li>Risk of loss remains with the sender until carrier acceptance/scan according to our shipping terms.</li>
+              <li>We may update terms over time, and continued service use indicates acceptance.</li>
+            </ul>
+            <p><a href="https://secondhandcell.com/terms.html">Read the full Terms & Conditions</a>.</p>
+          `,
+        },
+      ];
+
+      modalDefinitions.forEach(({ id, heading, content }) => {
+        if (document.getElementById(id)) return;
+        const modal = document.createElement("div");
+        modal.id = id;
+        modal.className = "shc-policy-modal";
+        modal.setAttribute("aria-hidden", "true");
+        modal.innerHTML = `
+          <div class="shc-policy-card" role="dialog" aria-modal="true" aria-label="${heading}">
+            <button type="button" class="shc-policy-close" aria-label="Close ${heading}">&times;</button>
+            <div class="shc-policy-content">
+              <h2>${heading}</h2>
+              ${content}
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      });
+    };
+
+    const bindInfoModals = () => {
+      ensureAuthStyle();
+      ensureInfoModals();
+      const linkMap = [
+        ["aboutUsLink", "aboutUsModal"],
+        ["privacyPolicyLink", "privacyPolicyModal"],
+        ["termsAndConditionsLink", "termsAndConditionsModal"],
+        ["termsAndConditionsLinkFooter", "termsAndConditionsModal"],
+      ];
+
+      const open = (modal) => {
+        if (!modal) return;
+        modal.style.display = "flex";
+        modal.classList.add("is-visible");
+        modal.setAttribute("aria-hidden", "false");
+      };
+
+      const close = (modal) => {
+        if (!modal) return;
+        modal.classList.remove("is-visible");
+        modal.style.display = "none";
+        modal.setAttribute("aria-hidden", "true");
+      };
+
+      linkMap.forEach(([linkId, modalId]) => {
+        const link = document.getElementById(linkId);
+        const modal = document.getElementById(modalId);
+        if (!link || !modal || link.dataset.shcModalBound === "1") return;
+        link.dataset.shcModalBound = "1";
+        link.addEventListener("click", (event) => {
+          event.preventDefault();
+          open(modal);
+        });
+      });
+
+      ["aboutUsModal", "privacyPolicyModal", "termsAndConditionsModal"].forEach((modalId) => {
+        const modal = document.getElementById(modalId);
+        if (!modal || modal.dataset.shcModalCloseBound === "1") return;
+        modal.dataset.shcModalCloseBound = "1";
+        modal.querySelectorAll(".shc-policy-close, .close-modal-btn").forEach((btn) => {
+          btn.addEventListener("click", () => close(modal));
+        });
+        modal.addEventListener("click", (event) => {
+          if (event.target === modal) close(modal);
+        });
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        ["aboutUsModal", "privacyPolicyModal", "termsAndConditionsModal"].forEach((modalId) => {
+          const modal = document.getElementById(modalId);
+          if (modal?.classList.contains("is-visible")) close(modal);
+        });
+      });
     };
 
     const createAuthModal = () => {
@@ -1078,7 +1213,7 @@
           </div>
           <div id="authMessage" class="shc-auth-message" role="alert"></div>
           <form id="loginForm" class="shc-auth-form is-visible" novalidate>
-            <button type="button" id="googleLoginBtn" class="shc-auth-google">Login with Google</button>
+            <button type="button" id="googleLoginBtn" class="shc-auth-google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google icon"/>Login with Google</button>
             <div class="shc-auth-or"><span>or</span></div>
             <input type="email" id="loginEmail" class="shc-auth-field" placeholder="Email address" autocomplete="email" required />
             <input type="password" id="loginPassword" class="shc-auth-field" placeholder="Password" autocomplete="current-password" required />
@@ -1086,12 +1221,13 @@
             <p class="shc-auth-meta">Forgot your password? <a href="#" id="forgotPasswordLink" class="shc-auth-link">Reset it</a></p>
           </form>
           <form id="signupForm" class="shc-auth-form" novalidate>
-            <button type="button" id="googleSignupBtn" class="shc-auth-google">Sign up with Google</button>
+            <button type="button" id="googleSignupBtn" class="shc-auth-google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google icon"/>Sign up with Google</button>
             <div class="shc-auth-or"><span>or</span></div>
             <input type="text" id="signupName" class="shc-auth-field" placeholder="Full name" autocomplete="name" required />
             <input type="email" id="signupEmail" class="shc-auth-field" placeholder="Email address" autocomplete="email" required />
             <input type="password" id="signupPassword" class="shc-auth-field" placeholder="Password (min 6 characters)" autocomplete="new-password" required />
             <button type="submit" class="shc-auth-primary">Create Account</button>
+            <p class="shc-auth-meta">Already have an account? <a href="#" id="switchToLogin" class="shc-auth-link">Login</a></p>
           </form>
         </div>
       `;
@@ -1117,6 +1253,8 @@
       document.getElementById("loginForm")?.classList.toggle("is-visible", isLogin);
       document.getElementById("signupForm")?.classList.toggle("is-visible", !isLogin);
     };
+
+    bindInfoModals();
 
     const modal = createAuthModal();
     const authMessage = document.getElementById("authMessage");
@@ -1155,6 +1293,10 @@
 
     document.getElementById("loginTabBtn")?.addEventListener("click", () => setActiveTab(true));
     document.getElementById("signupTabBtn")?.addEventListener("click", () => setActiveTab(false));
+    document.getElementById("switchToLogin")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      setActiveTab(true);
+    });
     modal.querySelector(".shc-auth-close")?.addEventListener("click", () => toggleModal(false));
     modal.addEventListener("click", (event) => {
       if (event.target === modal) toggleModal(false);
