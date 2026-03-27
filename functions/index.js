@@ -25,6 +25,7 @@ const {
   resolveUspsServiceAndWeightByDeviceCount,
 } = require('./helpers/shipengine');
 const { isStatusPastReceived, isBalanceEmailStatus } = require('./helpers/order-status');
+const { filterOrdersForBulkVoidCandidates } = require('./helpers/bulk-void');
 const { getShipStationCredentials } = require('./services/shipstation');
 const wholesaleRouter = require('./routes/wholesale'); // <-- wholesale.js is loaded here
 const createEmailsRouter = require('./routes/emails');
@@ -8032,6 +8033,9 @@ async function runAdminBulkVoidJob({
   mode = 'aged',
   minDays = ADMIN_BULK_VOID_MIN_DAYS_DEFAULT,
   maxOrders = ADMIN_BULK_VOID_MAX_PER_RUN,
+  orderIds = null,
+  allowedStatuses = [],
+  onlyStatus = null,
 } = {}) {
   const shipengineKey = getShipEngineApiKey();
   if (!shipengineKey) {
@@ -8045,8 +8049,18 @@ async function runAdminBulkVoidJob({
   let totalVoidedLabelCount = 0;
 
   let candidates = [];
+  const cleanedOrderIds = Array.isArray(orderIds)
+    ? Array.from(new Set(orderIds.map((value) => String(value || '').trim()).filter(Boolean)))
+    : [];
 
-  if (mode === 'test') {
+  if (cleanedOrderIds.length) {
+    const snapshots = await Promise.all(
+      cleanedOrderIds.map((orderId) => ordersCollection.doc(orderId).get())
+    );
+    candidates = snapshots
+      .filter((snapshot) => snapshot.exists)
+      .map((snapshot) => ({ id: snapshot.id, ...snapshot.data() }));
+  } else if (mode === 'test') {
     candidates = await collectTestOrderCandidates(ADMIN_BULK_VOID_QUERY_LIMIT);
   } else {
     const agedSnapshot = await ordersCollection
@@ -8055,6 +8069,12 @@ async function runAdminBulkVoidJob({
       .get();
     candidates = agedSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   }
+
+  candidates = filterOrdersForBulkVoidCandidates(candidates, {
+    orderIds: cleanedOrderIds,
+    allowedStatuses,
+    onlyStatus,
+  });
 
   const totalCandidates = candidates.length;
   candidates = candidates.slice(0, normalizedMaxOrders);
@@ -8190,7 +8210,14 @@ app.post('/orders/admin/bulk-void-aged', async (req, res) => {
       ? parsedLimit
       : ADMIN_BULK_VOID_MAX_PER_RUN;
 
-    const payload = await runAdminBulkVoidJob({ mode: 'aged', minDays, maxOrders: limit });
+    const payload = await runAdminBulkVoidJob({
+      mode: 'aged',
+      minDays,
+      maxOrders: limit,
+      orderIds: req.body?.orderIds,
+      allowedStatuses: req.body?.allowedStatuses,
+      onlyStatus: req.body?.onlyStatus || req.body?.status,
+    });
     res.json(payload);
   } catch (error) {
     console.error('Admin bulk aged void failed:', error);
@@ -8205,7 +8232,13 @@ app.post('/orders/admin/bulk-void-test-orders', async (req, res) => {
       ? parsedLimit
       : ADMIN_BULK_VOID_MAX_PER_RUN;
 
-    const payload = await runAdminBulkVoidJob({ mode: 'test', maxOrders: limit });
+    const payload = await runAdminBulkVoidJob({
+      mode: 'test',
+      maxOrders: limit,
+      orderIds: req.body?.orderIds,
+      allowedStatuses: req.body?.allowedStatuses,
+      onlyStatus: req.body?.onlyStatus || req.body?.status,
+    });
     res.json(payload);
   } catch (error) {
     console.error('Admin bulk test-order void failed:', error);
@@ -10381,3 +10414,4 @@ exports.refreshTrackingBulkKit = functions.runWith({ timeoutSeconds: 540, memory
 
 exports.refreshTrackingByRequestBody = refreshTrackingByRequestBody;
 exports.runBulkKitRefresh = runBulkKitRefresh;
+exports.filterOrdersForBulkVoidCandidates = filterOrdersForBulkVoidCandidates;

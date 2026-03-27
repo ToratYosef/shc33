@@ -688,7 +688,7 @@ function createOrdersRouter({
 
   function buildShippingLabelEmail(order, { carrierName, labelDownloadUrl, trackingNumber }) {
     const shippingInfo = order?.shippingInfo || {};
-    const trackStatusLink = `https://secondhandcell.com/track-order.html?orderId=${encodeURIComponent(order.id)}&fromEmailLink=1`;
+    const trackStatusLink = buildTrackOrderUrl(order.id, shippingInfo.email, { fromEmailLink: '1' });
 
     return {
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
@@ -702,6 +702,20 @@ function createOrdersRouter({
         .replace(/\*\*TRACK_STATUS_LINK\*\*/g, trackStatusLink)
         .replace(/\*\*CARRIER_NAME\*\*/g, carrierName),
     };
+  }
+
+  function buildTrackOrderUrl(orderId, email, extraParams = {}) {
+    const params = new URLSearchParams({
+      orderId: String(orderId || '').trim(),
+      ...extraParams,
+    });
+
+    const trimmedEmail = String(email || '').trim();
+    if (trimmedEmail) {
+      params.set('email', trimmedEmail);
+    }
+
+    return `https://secondhandcell.com/track-order.html?${params.toString()}`;
   }
 
 
@@ -1897,7 +1911,7 @@ function createOrdersRouter({
         normalizedShippingPreference === SHIPPING_PREFERENCE.KIT
           ? 'shipping_kit_requested'
           : 'order_pending';
-      const trackOrderUrl = `https://secondhandcell.com/track-order.html?orderId=${encodeURIComponent(orderId)}&fromEmailLink=1`;
+      const trackOrderUrl = buildTrackOrderUrl(orderId, orderData?.shippingInfo?.email, { fromEmailLink: '1' });
       const trackStatusButtonHtml = `
         <div style="text-align:center; margin-top:18px;">
           <a href="${trackOrderUrl}" class="button-link" style="background-color:#2563eb;">Track your status here</a>

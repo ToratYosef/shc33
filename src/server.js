@@ -21,6 +21,7 @@ const adminUsersRouter = require('./routes/adminUsers');
 const supportRouter = require('./routes/support');
 const analyticsRouter = require('./routes/analytics');
 const analyticsAdminRouter = require('./routes/analyticsAdmin');
+const { exportDailyVisitorCsv } = require('./services/visitorCsv');
 const { notFoundHandler, errorHandler } = require('./utils/errors');
 
 const {
@@ -51,10 +52,15 @@ const repricerScheduleMinute = 30;
 const maintenanceScheduleTimezone = process.env.MAINTENANCE_SCHEDULE_TZ || 'America/New_York';
 const maintenanceScheduleHours = new Set([8, 17]);
 const maintenanceScheduleMinute = 0;
+const visitorExportScheduleTimezone = process.env.VISITOR_CSV_TIMEZONE || 'America/New_York';
+const visitorExportScheduleHour = Number(process.env.VISITOR_CSV_EXPORT_HOUR || 23);
+const visitorExportScheduleMinute = Number(process.env.VISITOR_CSV_EXPORT_MINUTE || 59);
 let repricerRunInFlight = null;
 let lastScheduledRunDateKey = '';
 let maintenanceRunInFlight = null;
 let lastMaintenanceRunSlotKey = '';
+let visitorExportRunInFlight = null;
+let lastVisitorExportDateKey = '';
 
 function getZonedDateParts(date, timeZone) {
   const formatter = new Intl.DateTimeFormat('en-US', {
@@ -251,6 +257,61 @@ function startMaintenanceTwiceDailyScheduler() {
 
   maybeRunScheduledMaintenanceSweep();
   setInterval(maybeRunScheduledMaintenanceSweep, 30 * 1000);
+}
+
+async function runDailyVisitorExport(dateKey, trigger = 'manual') {
+  if (visitorExportRunInFlight) {
+    return visitorExportRunInFlight;
+  }
+
+  visitorExportRunInFlight = exportDailyVisitorCsv(dateKey, {
+    timeZone: visitorExportScheduleTimezone,
+  }).then((result) => {
+    console.log(
+      `[visitor-csv] ok trigger=${trigger} date=${result.dateKey} rows=${result.rowCount} file=${result.filePath}`
+    );
+    return result;
+  }).catch((error) => {
+    console.error(`[visitor-csv] failed trigger=${trigger} date=${dateKey}:`, error?.message || error);
+    throw error;
+  }).finally(() => {
+    visitorExportRunInFlight = null;
+  });
+
+  return visitorExportRunInFlight;
+}
+
+function maybeRunScheduledVisitorExport() {
+  const now = new Date();
+  const zonedNow = getZonedDateParts(now, visitorExportScheduleTimezone);
+  const isScheduledMinute =
+    zonedNow.hour === visitorExportScheduleHour &&
+    zonedNow.minute === visitorExportScheduleMinute;
+
+  if (!isScheduledMinute) {
+    return;
+  }
+
+  if (lastVisitorExportDateKey === zonedNow.dateKey) {
+    return;
+  }
+
+  lastVisitorExportDateKey = zonedNow.dateKey;
+  runDailyVisitorExport(zonedNow.dateKey, `daily-${visitorExportScheduleTimezone}-${zonedNow.dateKey}`)
+    .catch(() => {});
+}
+
+function startDailyVisitorExportScheduler() {
+  if (isServerless) {
+    return;
+  }
+
+  console.log(
+    `[visitor-csv] enabled: daily at ${String(visitorExportScheduleHour).padStart(2, '0')}:${String(visitorExportScheduleMinute).padStart(2, '0')} ${visitorExportScheduleTimezone}`
+  );
+
+  maybeRunScheduledVisitorExport();
+  setInterval(maybeRunScheduledVisitorExport, 30 * 1000);
 }
 
 function parseCsvLine(line) {
@@ -2510,6 +2571,7 @@ const adminExactPaths = new Set([
 ]);
 const adminPrefixPaths = [
   '/repricer',
+  '/orders/admin',
   '/orders/needs-printing',
   '/merge-print',
   '/labels/print/queue',
@@ -2602,6 +2664,7 @@ if (!isServerless && require.main === module) {
     console.log(`API server listening on port ${port}`);
     startRepricerDailyScheduler();
     startMaintenanceTwiceDailyScheduler();
+    startDailyVisitorExportScheduler();
   });
 }
 

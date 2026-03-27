@@ -5,6 +5,7 @@ const analyticsRateLimit = require('../middleware/rateLimit');
 const { getClientIp, maskIp } = require('../utils/ip');
 const { deriveSource } = require('../utils/source');
 const { lookupGeo } = require('../geo/maxmind');
+const { inferUserAgentMetadata } = require('../utils/userAgent');
 
 const router = express.Router();
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
@@ -22,6 +23,13 @@ function parseEventTs(value) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return null;
   return parsed;
+}
+
+function coerceEventTimestamp(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return new Date(value);
+  }
+  return parseEventTs(value);
 }
 
 function parsePage(urlValue) {
@@ -48,14 +56,96 @@ function validatePayload(payload) {
   const allowedTypes = new Set(['pageview', 'click', 'conversion', 'heartbeat']);
   for (const event of payload.events) {
     if (!event || typeof event !== 'object') return 'event must be object';
-    if (!allowedTypes.has(event.event_type)) return 'invalid event_type';
-    if (event.ts && !parseEventTs(event.ts)) return 'invalid event ts';
-    if (event.page_url && !clampString(event.page_url, 2048)) return 'invalid page_url';
+    const eventType = clampString(event.event_type || event.type, 40);
+    if (!allowedTypes.has(eventType)) return 'invalid event_type';
+    if (event.ts && !coerceEventTimestamp(event.ts)) return 'invalid event ts';
+    const pageUrl = event.page_url || event.url;
+    if (pageUrl && !clampString(pageUrl, 2048)) return 'invalid page_url';
     if (event.referrer && !clampString(event.referrer, 2048)) return 'invalid referrer';
     if (event.element && typeof event.element !== 'object') return 'element must be object';
     if (event.extra && typeof event.extra !== 'object') return 'extra must be object';
   }
   return null;
+}
+
+function normalizeClientContext(extra = {}) {
+  const raw = extra && typeof extra === 'object' && extra.client && typeof extra.client === 'object'
+    ? extra.client
+    : {};
+
+  return {
+    browser: clampString(raw.browser, 120),
+    os: clampString(raw.os, 120),
+    deviceType: clampString(raw.deviceType, 60),
+    deviceName: clampString(raw.deviceName, 180),
+    language: clampString(raw.language, 32),
+    timezone: clampString(raw.timezone, 120),
+    platform: clampString(raw.platform, 120),
+    screenWidth: Number.isFinite(Number(raw.screenWidth)) ? Number(raw.screenWidth) : null,
+    screenHeight: Number.isFinite(Number(raw.screenHeight)) ? Number(raw.screenHeight) : null,
+    viewportWidth: Number.isFinite(Number(raw.viewportWidth)) ? Number(raw.viewportWidth) : null,
+    viewportHeight: Number.isFinite(Number(raw.viewportHeight)) ? Number(raw.viewportHeight) : null,
+    cookieEnabled: typeof raw.cookieEnabled === 'boolean' ? raw.cookieEnabled : null,
+    touchPoints: Number.isFinite(Number(raw.touchPoints)) ? Number(raw.touchPoints) : null,
+    hardwareConcurrency: Number.isFinite(Number(raw.hardwareConcurrency)) ? Number(raw.hardwareConcurrency) : null,
+    deviceMemory: Number.isFinite(Number(raw.deviceMemory)) ? Number(raw.deviceMemory) : null,
+  };
+}
+
+function normalizeEvent(event) {
+  const eventType = clampString(event.event_type || event.type, 40);
+  const pageUrl = clampString(event.page_url || event.url, 2048);
+  const path = clampString(event.path, 512);
+  const title = clampString(event.title, 512);
+  const referrer = clampString(event.referrer, 2048);
+  const extra = event.extra && typeof event.extra === 'object'
+    ? { ...event.extra }
+    : {};
+
+  const client = normalizeClientContext(extra);
+  if (Object.values(client).some((value) => value !== null)) {
+    extra.client = client;
+  }
+  if (title) {
+    extra.title = title;
+  }
+
+  return {
+    event_type: eventType,
+    ts: coerceEventTimestamp(event.ts),
+    page_url: pageUrl,
+    path,
+    referrer,
+    element: event.element && typeof event.element === 'object' ? event.element : null,
+    extra,
+  };
+}
+
+function buildLogContext({ sessionId, clientIp, geo, userAgent, event }) {
+  const uaMeta = inferUserAgentMetadata(userAgent);
+  const client = normalizeClientContext(event.extra || {});
+  const location = [geo.city, geo.region, geo.country].filter(Boolean).join(', ') || 'unknown';
+  const deviceName = client.deviceName || uaMeta.deviceName || 'unknown';
+  const deviceType = client.deviceType || uaMeta.deviceType || 'unknown';
+  const browser = client.browser || uaMeta.browser || 'unknown';
+  const os = client.os || uaMeta.os || 'unknown';
+  const screen = client.screenWidth && client.screenHeight
+    ? `${client.screenWidth}x${client.screenHeight}`
+    : 'unknown';
+
+  return [
+    `[visitor] session=${sessionId}`,
+    `type=${event.event_type}`,
+    `path=${event.path || 'unknown'}`,
+    `ip=${clientIp || 'unknown'}`,
+    `location=${location}`,
+    `device=${deviceName}`,
+    `deviceType=${deviceType}`,
+    `browser=${browser}`,
+    `os=${os}`,
+    `screen=${screen}`,
+    `bot=${uaMeta.isBot ? 'yes' : 'no'}`,
+  ].join(' ');
 }
 
 async function resolveServerSession(client, cookieSessionId) {
@@ -109,7 +199,7 @@ async function ingest(req, res, payload) {
   const clientIp = getClientIp(req);
   req.analyticsClientIp = clientIp;
   const ipMasked = maskIp(clientIp);
-  const storeFullIp = String(process.env.ANALYTICS_STORE_FULL_IP || 'false').toLowerCase() === 'true';
+  const storeFullIp = String(process.env.ANALYTICS_STORE_FULL_IP || 'true').toLowerCase() === 'true';
   const geo = await lookupGeo(clientIp);
 
   const db = await pool.connect();
@@ -117,9 +207,11 @@ async function ingest(req, res, payload) {
     await db.query('BEGIN');
     const serverSessionId = await resolveServerSession(db, cookieSessionId);
 
-    const firstEvent = payload.events[0];
+    const normalizedEvents = payload.events.map(normalizeEvent);
+    const firstEvent = normalizedEvents[0];
     const firstParsed = parsePage(firstEvent.page_url);
     const sourceMeta = deriveSource({ pageUrl: firstEvent.page_url, referrer: firstEvent.referrer });
+    const userAgent = clampString(req.headers['user-agent'], 1000);
 
     await db.query(
       `INSERT INTO analytics_sessions (
@@ -139,7 +231,7 @@ async function ingest(req, res, payload) {
         clampString(firstEvent.referrer, 2048),
         sourceMeta.source,
         JSON.stringify(sourceMeta.utm || {}),
-        clampString(req.headers['user-agent'], 1000),
+        userAgent,
         ipMasked,
         storeFullIp ? clientIp : null,
         geo.country,
@@ -150,8 +242,8 @@ async function ingest(req, res, payload) {
 
     let converted = false;
     let conversionTime = null;
-    for (const event of payload.events) {
-      const parsedTs = parseEventTs(event.ts);
+    for (const event of normalizedEvents) {
+      const parsedTs = event.ts;
       const parsedPage = parsePage(event.page_url);
       const referrer = clampString(event.referrer, 2048);
 
@@ -164,13 +256,26 @@ async function ingest(req, res, payload) {
           parsedTs,
           event.event_type,
           parsedPage.pageUrl,
-          parsedPage.path,
+          event.path || parsedPage.path,
           parsedPage.query,
           referrer,
           JSON.stringify(event.element || null),
           JSON.stringify(event.extra || null),
         ]
       );
+
+      if (event.event_type === 'pageview' || event.event_type === 'conversion') {
+        console.log(buildLogContext({
+          sessionId: serverSessionId,
+          clientIp,
+          geo,
+          userAgent,
+          event: {
+            ...event,
+            path: event.path || parsedPage.path,
+          },
+        }));
+      }
 
       if (!converted && isConversion(event.event_type, parsedPage.path)) {
         converted = true;
@@ -213,7 +318,7 @@ router.post('/heartbeat', originGuard, analyticsRateLimit, async (req, res, next
     const event = {
       event_type: 'heartbeat',
       ts: body.ts,
-      page_url: body.page_url,
+      page_url: body.page_url || body.url,
       referrer: body.referrer,
       extra: body.extra,
     };
