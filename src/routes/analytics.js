@@ -1,11 +1,15 @@
 const express = require('express');
-const pool = require('../db/pool');
 const originGuard = require('../middleware/originGuard');
 const analyticsRateLimit = require('../middleware/rateLimit');
 const { getClientIp, maskIp } = require('../utils/ip');
 const { deriveSource } = require('../utils/source');
 const { lookupGeo } = require('../geo/maxmind');
 const { inferUserAgentMetadata } = require('../utils/userAgent');
+const {
+  addSessionEvent,
+  resolveServerSession,
+  setSession,
+} = require('../services/analyticsStore');
 
 const router = express.Router();
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
@@ -148,43 +152,6 @@ function buildLogContext({ sessionId, clientIp, geo, userAgent, event }) {
   ].join(' ');
 }
 
-async function resolveServerSession(client, cookieSessionId) {
-  const rows = (await client.query(
-    `SELECT session_id, last_seen
-       FROM analytics_sessions
-      WHERE session_id = $1 OR session_id LIKE $2`,
-    [cookieSessionId, `${cookieSessionId}:%`]
-  )).rows;
-
-  if (!rows.length) {
-    return cookieSessionId;
-  }
-
-  let maxSuffix = 1;
-  let latest = rows[0];
-  for (const row of rows) {
-    if (new Date(row.last_seen).getTime() > new Date(latest.last_seen).getTime()) {
-      latest = row;
-    }
-
-    if (row.session_id === cookieSessionId) {
-      maxSuffix = Math.max(maxSuffix, 1);
-    } else if (row.session_id.startsWith(`${cookieSessionId}:`)) {
-      const suffix = Number(row.session_id.split(':').pop());
-      if (Number.isInteger(suffix)) {
-        maxSuffix = Math.max(maxSuffix, suffix);
-      }
-    }
-  }
-
-  const isTimedOut = Date.now() - new Date(latest.last_seen).getTime() > SESSION_TIMEOUT_MS;
-  if (!isTimedOut) {
-    return latest.session_id;
-  }
-
-  return `${cookieSessionId}:${maxSuffix + 1}`;
-}
-
 function isConversion(eventType, path) {
   return eventType === 'conversion' || path === '/order-submittedpage.html';
 }
@@ -201,107 +168,81 @@ async function ingest(req, res, payload) {
   const ipMasked = maskIp(clientIp);
   const storeFullIp = String(process.env.ANALYTICS_STORE_FULL_IP || 'true').toLowerCase() === 'true';
   const geo = await lookupGeo(clientIp);
+  const normalizedEvents = payload.events.map(normalizeEvent);
+  const firstEvent = normalizedEvents[0];
+  const firstParsed = parsePage(firstEvent.page_url);
+  const sourceMeta = deriveSource({ pageUrl: firstEvent.page_url, referrer: firstEvent.referrer });
+  const userAgent = clampString(req.headers['user-agent'], 1000);
+  const sessionInfo = await resolveServerSession(cookieSessionId, SESSION_TIMEOUT_MS);
+  const serverSessionId = sessionInfo.sessionId;
 
-  const db = await pool.connect();
-  try {
-    await db.query('BEGIN');
-    const serverSessionId = await resolveServerSession(db, cookieSessionId);
+  await setSession(serverSessionId, {
+    session_id: serverSessionId,
+    root_session_id: cookieSessionId,
+    session_index: sessionInfo.sessionIndex,
+    first_seen: firstEvent.ts || new Date(),
+    last_seen: normalizedEvents[normalizedEvents.length - 1]?.ts || new Date(),
+    landing_url: firstParsed.pageUrl,
+    landing_path: firstParsed.path,
+    landing_query: firstParsed.query,
+    referrer: clampString(firstEvent.referrer, 2048),
+    source: sourceMeta.source,
+    utm: sourceMeta.utm || {},
+    user_agent: userAgent,
+    ip_masked: ipMasked,
+    ip_full: storeFullIp ? clientIp : null,
+    country: geo.country || null,
+    region: geo.region || null,
+    city: geo.city || null,
+    landing_extra: firstEvent.extra || null,
+  });
 
-    const normalizedEvents = payload.events.map(normalizeEvent);
-    const firstEvent = normalizedEvents[0];
-    const firstParsed = parsePage(firstEvent.page_url);
-    const sourceMeta = deriveSource({ pageUrl: firstEvent.page_url, referrer: firstEvent.referrer });
-    const userAgent = clampString(req.headers['user-agent'], 1000);
+  let converted = false;
+  let conversionTime = null;
+  for (const [index, event] of normalizedEvents.entries()) {
+    const parsedPage = parsePage(event.page_url);
 
-    await db.query(
-      `INSERT INTO analytics_sessions (
-        session_id, first_seen, last_seen, landing_url, landing_path, landing_query,
-        referrer, source, utm, user_agent, ip_masked, ip_full, country, region, city
-      ) VALUES ($1, NOW(), NOW(), $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13)
-      ON CONFLICT (session_id)
-      DO UPDATE SET
-        last_seen = NOW(),
-        user_agent = COALESCE(EXCLUDED.user_agent, analytics_sessions.user_agent),
-        referrer = COALESCE(analytics_sessions.referrer, EXCLUDED.referrer)`,
-      [
-        serverSessionId,
-        firstParsed.pageUrl,
-        firstParsed.path,
-        firstParsed.query,
-        clampString(firstEvent.referrer, 2048),
-        sourceMeta.source,
-        JSON.stringify(sourceMeta.utm || {}),
+    await addSessionEvent(serverSessionId, {
+      session_id: serverSessionId,
+      ts: event.ts,
+      event_type: event.event_type,
+      page_url: parsedPage.pageUrl,
+      path: event.path || parsedPage.path,
+      query: parsedPage.query,
+      referrer: clampString(event.referrer, 2048),
+      element: event.element || null,
+      extra: event.extra || null,
+      seq: index + 1,
+    });
+
+    if (event.event_type === 'pageview' || event.event_type === 'conversion') {
+      console.log(buildLogContext({
+        sessionId: serverSessionId,
+        clientIp,
+        geo,
         userAgent,
-        ipMasked,
-        storeFullIp ? clientIp : null,
-        geo.country,
-        geo.region,
-        geo.city,
-      ]
-    );
-
-    let converted = false;
-    let conversionTime = null;
-    for (const event of normalizedEvents) {
-      const parsedTs = event.ts;
-      const parsedPage = parsePage(event.page_url);
-      const referrer = clampString(event.referrer, 2048);
-
-      await db.query(
-        `INSERT INTO analytics_events
-          (session_id, ts, event_type, page_url, path, query, referrer, element, extra)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb)`,
-        [
-          serverSessionId,
-          parsedTs,
-          event.event_type,
-          parsedPage.pageUrl,
-          event.path || parsedPage.path,
-          parsedPage.query,
-          referrer,
-          JSON.stringify(event.element || null),
-          JSON.stringify(event.extra || null),
-        ]
-      );
-
-      if (event.event_type === 'pageview' || event.event_type === 'conversion') {
-        console.log(buildLogContext({
-          sessionId: serverSessionId,
-          clientIp,
-          geo,
-          userAgent,
-          event: {
-            ...event,
-            path: event.path || parsedPage.path,
-          },
-        }));
-      }
-
-      if (!converted && isConversion(event.event_type, parsedPage.path)) {
-        converted = true;
-        conversionTime = parsedTs;
-      }
+        event: {
+          ...event,
+          path: event.path || parsedPage.path,
+        },
+      }));
     }
 
-    if (converted) {
-      await db.query(
-        `UPDATE analytics_sessions
-            SET converted = true,
-                conversion_time = COALESCE(conversion_time, $2)
-          WHERE session_id = $1`,
-        [serverSessionId, conversionTime]
-      );
+    if (!converted && isConversion(event.event_type, parsedPage.path)) {
+      converted = true;
+      conversionTime = event.ts;
     }
-
-    await db.query('COMMIT');
-    res.set('X-Analytics-Session', serverSessionId);
-    return res.status(202).json({ ok: true, session_id: serverSessionId });
-  } catch (error) {
-    await db.query('ROLLBACK');
-    throw error;
-  } finally {
-    db.release();
   }
+
+  await setSession(serverSessionId, {
+    last_seen: normalizedEvents[normalizedEvents.length - 1]?.ts || new Date(),
+    converted,
+    conversion_time: conversionTime || null,
+    event_count: normalizedEvents.length,
+  });
+
+  res.set('X-Analytics-Session', serverSessionId);
+  return res.status(202).json({ ok: true, session_id: serverSessionId });
 }
 
 router.post('/collect', originGuard, analyticsRateLimit, async (req, res, next) => {
