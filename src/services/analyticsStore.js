@@ -68,6 +68,7 @@ async function resolveServerSession(cookieSessionId, sessionTimeoutMs) {
     return {
       sessionId: cookieSessionId,
       sessionIndex: 1,
+      isNewSession: true,
     };
   }
 
@@ -87,12 +88,14 @@ async function resolveServerSession(cookieSessionId, sessionTimeoutMs) {
     return {
       sessionId: latest.session_id,
       sessionIndex: latest.session_index || 1,
+      isNewSession: false,
     };
   }
 
   return {
     sessionId: `${cookieSessionId}:${maxIndex + 1}`,
     sessionIndex: maxIndex + 1,
+    isNewSession: true,
   };
 }
 

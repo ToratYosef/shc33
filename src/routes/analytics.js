@@ -5,6 +5,7 @@ const { getClientIp, maskIp } = require('../utils/ip');
 const { deriveSource } = require('../utils/source');
 const { lookupGeo } = require('../geo/maxmind');
 const { inferUserAgentMetadata } = require('../utils/userAgent');
+const { appendVisitorCsvRow } = require('../services/visitorCsv');
 const {
   addSessionEvent,
   resolveServerSession,
@@ -175,13 +176,15 @@ async function ingest(req, res, payload) {
   const userAgent = clampString(req.headers['user-agent'], 1000);
   const sessionInfo = await resolveServerSession(cookieSessionId, SESSION_TIMEOUT_MS);
   const serverSessionId = sessionInfo.sessionId;
+  const firstSeenAt = firstEvent.ts || new Date();
+  const lastSeenAt = normalizedEvents[normalizedEvents.length - 1]?.ts || new Date();
 
   await setSession(serverSessionId, {
     session_id: serverSessionId,
     root_session_id: cookieSessionId,
     session_index: sessionInfo.sessionIndex,
-    first_seen: firstEvent.ts || new Date(),
-    last_seen: normalizedEvents[normalizedEvents.length - 1]?.ts || new Date(),
+    first_seen: firstSeenAt,
+    last_seen: lastSeenAt,
     landing_url: firstParsed.pageUrl,
     landing_path: firstParsed.path,
     landing_query: firstParsed.query,
@@ -196,6 +199,22 @@ async function ingest(req, res, payload) {
     city: geo.city || null,
     landing_extra: firstEvent.extra || null,
   });
+
+  if (sessionInfo.isNewSession) {
+    appendVisitorCsvRow({
+      session_id: serverSessionId,
+      first_seen: firstSeenAt,
+      ip_masked: ipMasked,
+      ip_full: storeFullIp ? clientIp : null,
+      country: geo.country || null,
+      region: geo.region || null,
+      city: geo.city || null,
+      source: sourceMeta.source,
+      landing_path: firstParsed.path,
+      user_agent: userAgent,
+      landing_extra: firstEvent.extra || null,
+    });
+  }
 
   let converted = false;
   let conversionTime = null;
@@ -235,7 +254,7 @@ async function ingest(req, res, payload) {
   }
 
   await setSession(serverSessionId, {
-    last_seen: normalizedEvents[normalizedEvents.length - 1]?.ts || new Date(),
+    last_seen: lastSeenAt,
     converted,
     conversion_time: conversionTime || null,
     event_count: normalizedEvents.length,

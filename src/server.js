@@ -21,7 +21,7 @@ const adminUsersRouter = require('./routes/adminUsers');
 const supportRouter = require('./routes/support');
 const analyticsRouter = require('./routes/analytics');
 const analyticsAdminRouter = require('./routes/analyticsAdmin');
-const { exportDailyVisitorCsv } = require('./services/visitorCsv');
+const { ensureDailyVisitorCsv, getDateKeyForTimeZone } = require('./services/visitorCsv');
 const { notFoundHandler, errorHandler } = require('./utils/errors');
 
 const {
@@ -52,15 +52,12 @@ const repricerScheduleMinute = 30;
 const maintenanceScheduleTimezone = process.env.MAINTENANCE_SCHEDULE_TZ || 'America/New_York';
 const maintenanceScheduleHours = new Set([8, 17]);
 const maintenanceScheduleMinute = 0;
-const visitorExportScheduleTimezone = process.env.VISITOR_CSV_TIMEZONE || 'America/New_York';
-const visitorExportScheduleHour = Number(process.env.VISITOR_CSV_EXPORT_HOUR || 23);
-const visitorExportScheduleMinute = Number(process.env.VISITOR_CSV_EXPORT_MINUTE || 59);
+const visitorCsvTimezone = process.env.VISITOR_CSV_TIMEZONE || 'America/New_York';
 let repricerRunInFlight = null;
 let lastScheduledRunDateKey = '';
 let maintenanceRunInFlight = null;
 let lastMaintenanceRunSlotKey = '';
-let visitorExportRunInFlight = null;
-let lastVisitorExportDateKey = '';
+let lastVisitorCsvDateKey = '';
 
 function getZonedDateParts(date, timeZone) {
   const formatter = new Intl.DateTimeFormat('en-US', {
@@ -259,59 +256,25 @@ function startMaintenanceTwiceDailyScheduler() {
   setInterval(maybeRunScheduledMaintenanceSweep, 30 * 1000);
 }
 
-async function runDailyVisitorExport(dateKey, trigger = 'manual') {
-  if (visitorExportRunInFlight) {
-    return visitorExportRunInFlight;
-  }
-
-  visitorExportRunInFlight = exportDailyVisitorCsv(dateKey, {
-    timeZone: visitorExportScheduleTimezone,
-  }).then((result) => {
-    console.log(
-      `[visitor-csv] ok trigger=${trigger} date=${result.dateKey} rows=${result.rowCount} file=${result.filePath}`
-    );
-    return result;
-  }).catch((error) => {
-    console.error(`[visitor-csv] failed trigger=${trigger} date=${dateKey}:`, error?.message || error);
-    throw error;
-  }).finally(() => {
-    visitorExportRunInFlight = null;
-  });
-
-  return visitorExportRunInFlight;
-}
-
-function maybeRunScheduledVisitorExport() {
-  const now = new Date();
-  const zonedNow = getZonedDateParts(now, visitorExportScheduleTimezone);
-  const isScheduledMinute =
-    zonedNow.hour === visitorExportScheduleHour &&
-    zonedNow.minute === visitorExportScheduleMinute;
-
-  if (!isScheduledMinute) {
+function ensureCurrentVisitorCsvFile(trigger = 'startup') {
+  const dateKey = getDateKeyForTimeZone(new Date(), visitorCsvTimezone);
+  if (lastVisitorCsvDateKey === dateKey) {
     return;
   }
 
-  if (lastVisitorExportDateKey === zonedNow.dateKey) {
-    return;
-  }
-
-  lastVisitorExportDateKey = zonedNow.dateKey;
-  runDailyVisitorExport(zonedNow.dateKey, `daily-${visitorExportScheduleTimezone}-${zonedNow.dateKey}`)
-    .catch(() => {});
+  lastVisitorCsvDateKey = dateKey;
+  const result = ensureDailyVisitorCsv(dateKey, { timeZone: visitorCsvTimezone });
+  console.log(`[visitor-csv] ready trigger=${trigger} date=${result.dateKey} file=${result.filePath}`);
 }
 
-function startDailyVisitorExportScheduler() {
+function startLiveVisitorCsvScheduler() {
   if (isServerless) {
     return;
   }
 
-  console.log(
-    `[visitor-csv] enabled: daily at ${String(visitorExportScheduleHour).padStart(2, '0')}:${String(visitorExportScheduleMinute).padStart(2, '0')} ${visitorExportScheduleTimezone}`
-  );
-
-  maybeRunScheduledVisitorExport();
-  setInterval(maybeRunScheduledVisitorExport, 30 * 1000);
+  console.log(`[visitor-csv] enabled: live daily file in ${visitorCsvTimezone}`);
+  ensureCurrentVisitorCsvFile('startup');
+  setInterval(() => ensureCurrentVisitorCsvFile('rollover-check'), 30 * 1000);
 }
 
 function parseCsvLine(line) {
@@ -2666,7 +2629,7 @@ if (!isServerless && require.main === module) {
     console.log(`API server listening on port ${port}`);
     startRepricerDailyScheduler();
     startMaintenanceTwiceDailyScheduler();
-    startDailyVisitorExportScheduler();
+    startLiveVisitorCsvScheduler();
   });
 }
 
