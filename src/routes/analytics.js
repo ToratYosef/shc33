@@ -59,7 +59,7 @@ function validatePayload(payload) {
   if (!Array.isArray(payload.events) || payload.events.length < 1 || payload.events.length > 25) {
     return 'events must be array length 1..25';
   }
-  const allowedTypes = new Set(['pageview', 'click', 'conversion', 'heartbeat', 'input']);
+  const allowedTypes = new Set(['pageview', 'click', 'conversion', 'heartbeat', 'input', 'leave']);
   for (const event of payload.events) {
     if (!event || typeof event !== 'object') return 'event must be object';
     const eventType = clampString(event.event_type || event.type, 40);
@@ -255,7 +255,7 @@ async function ingest(req, res, payload) {
       seq: index + 1,
     });
 
-    if (event.event_type === 'pageview' || event.event_type === 'conversion' || event.event_type === 'click' || event.event_type === 'input') {
+    if (event.event_type === 'pageview' || event.event_type === 'conversion' || event.event_type === 'click' || event.event_type === 'input' || event.event_type === 'leave') {
       console.log(buildLogContext({
         sessionId: serverSessionId,
         clientIp,
