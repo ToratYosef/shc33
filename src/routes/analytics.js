@@ -158,7 +158,7 @@ function buildLogContext({ sessionId, clientIp, geo, userAgent, event }) {
 }
 
 function isConversion(eventType, path) {
-  return eventType === 'conversion' || path === '/order-submittedpage.html';
+  return path === '/order-submitted.html' || path === '/order-submittedpage.html';
 }
 
 async function ingest(req, res, payload) {
