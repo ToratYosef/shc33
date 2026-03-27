@@ -665,6 +665,8 @@ app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 app.use('/analytics', analyticsRouter);
 app.use('/analytics/admin', analyticsAdminRouter);
+app.use('/server/analytics', analyticsRouter);
+app.use('/server/analytics/admin', analyticsAdminRouter);
 
 app.get('/api/orders/:orderId/issue-resolved', (req, res) => {
   const orderId = String(req.params.orderId || '').trim();
