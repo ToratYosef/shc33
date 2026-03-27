@@ -392,6 +392,8 @@ function createOrdersRouter({
     const model = item?.modelName || item?.deviceName || item?.model || order?.modelName || order?.device || order?.deviceName || 'Device';
     const storage = item?.storage || item?.capacity || order?.storage || '';
     const brand = item?.brand || order?.brand || '';
+    const deviceSlug = item?.deviceSlug || item?.slug || '';
+    const modelSlug = item?.model || item?.deviceCode || '';
     const imageUrl =
       item?.imageUrl
       || item?.image
@@ -406,6 +408,8 @@ function createOrdersRouter({
     return {
       deviceNumber,
       brand,
+      deviceSlug,
+      modelSlug,
       model,
       storage,
       imageUrl,
@@ -3426,6 +3430,8 @@ function createOrdersRouter({
           afterComplete: copy.afterComplete || '',
           resolvedButtonLabel: resolvedButtonLabels[issue.reason] || 'Issue resolved',
           brand: deviceInfo.brand,
+          deviceSlug: deviceInfo.deviceSlug,
+          modelSlug: deviceInfo.modelSlug,
           model: deviceInfo.model,
           storage: deviceInfo.storage,
           imageUrl: deviceInfo.imageUrl || '',
@@ -3450,6 +3456,8 @@ function createOrdersRouter({
           model: deviceInfo.model,
           storage: deviceInfo.storage,
           brand: deviceInfo.brand,
+          deviceSlug: deviceInfo.deviceSlug,
+          modelSlug: deviceInfo.modelSlug,
           imageUrl: deviceInfo.imageUrl || '',
           hasIssue: unresolvedCount > 0,
           resolvedCount,

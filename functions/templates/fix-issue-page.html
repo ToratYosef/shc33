@@ -1051,64 +1051,170 @@
 
       const FALLBACK_DEVICE_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
       const IMAGE_EXTENSIONS = ['.webp', '.png', '.jpg', '.jpeg'];
-
-      function resolveImageUrl(imageUrl, imgEl) {
-        if (!imgEl) return;
-        const baseUrl = String(imageUrl || '').trim();
-        if (!baseUrl) {
-          imgEl.src = FALLBACK_DEVICE_IMAGE;
-          return;
-        }
-        if (/\.(webp|png|jpe?g|gif|svg)(\?.*)?$/i.test(baseUrl)) {
-          imgEl.src = baseUrl;
-          return;
-        }
-        const candidates = IMAGE_EXTENSIONS.map((ext) => `${baseUrl}${ext}`);
-        let idx = 0;
-        const tryNext = () => {
-          if (idx >= candidates.length) {
-            imgEl.src = FALLBACK_DEVICE_IMAGE;
-            return;
-          }
-          const testImg = new Image();
-          const candidate = candidates[idx];
-          testImg.onload = () => { imgEl.src = candidate; };
-          testImg.onerror = () => { idx += 1; tryNext(); };
-          testImg.src = candidate;
+      const imageUrlResolutionCache = new Map();
+      const hasImageExtension = (url) => /\.(png|jpe?g|webp)(\?.*)?$/i.test(url || '');
+      const normalizeBrandFolder = (brandValue) => {
+        const brand = String(brandValue || '').trim().toLowerCase();
+        if (!brand) return '';
+        if (brand.includes('apple') || brand.includes('iphone')) return 'iphone';
+        if (brand.includes('samsung')) return 'samsung';
+        if (brand.includes('google') || brand.includes('pixel')) return 'google';
+        if (brand.includes('ipad')) return 'ipad';
+        return '';
+      };
+      const slugifyModel = (value) => String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      const normalizeIphoneToken = (value) => String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\+/g, ' plus ')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const mapIphoneAssetSlug = (modelValue) => {
+        const normalizedModel = normalizeIphoneToken(modelValue);
+        if (!normalizedModel) return '';
+        const iphoneModelMap = {
+          'iphone x': 'ix',
+          'iphone xs': 'ixs',
+          'iphone xs max': 'ixsm',
+          'iphone se 2': 'ise2',
+          'iphone se 2nd generation': 'ise2',
+          'iphone se 3': 'ise3',
+          'iphone se 3rd generation': 'ise3',
+          'iphone 11': 'i11',
+          'iphone 11 pro': 'i11p',
+          'iphone 11 pro max': 'i11pm',
+          'iphone 12': 'i12',
+          'iphone 12 mini': 'i12m',
+          'iphone 12 pro': 'i12p',
+          'iphone 12 pro max': 'i12pm',
+          'iphone 13': 'i13',
+          'iphone 13 mini': 'i13m',
+          'iphone 13 pro': 'i13p',
+          'iphone 13 pro max': 'i13pm',
+          'iphone 14': 'i14',
+          'iphone 14 plus': 'i14pl',
+          'iphone 14 pro': 'i14p',
+          'iphone 14 pro max': 'i14pm',
+          'iphone 15': 'i15',
+          'iphone 15 plus': 'i15pl',
+          'iphone 15 pro': 'i15p',
+          'iphone 15 pro max': 'i15pm',
+          'iphone 16': 'i16',
+          'iphone 16e': 'i16e',
+          'iphone 16 plus': 'i16pl',
+          'iphone 16 pro': 'i16p',
+          'iphone 16 pro max': 'i16pm',
+          'iphone 17 pro max': 'i17pm'
         };
-        tryNext();
-      }
+        if (iphoneModelMap[normalizedModel]) return iphoneModelMap[normalizedModel];
+        return '';
+      };
+      const buildImageBaseCandidates = (item = {}) => {
+        const candidates = [];
+        const pushCandidate = (candidate) => {
+          const normalized = String(candidate || '').trim();
+          if (!normalized || candidates.includes(normalized)) return;
+          candidates.push(normalized);
+        };
+        pushCandidate(item?.imageUrl);
+
+        const folder = normalizeBrandFolder(item?.brand);
+        const iphoneAssetSlug = folder === 'iphone'
+          ? mapIphoneAssetSlug(item?.model || item?.modelName || item?.deviceLabel)
+          : '';
+        if (iphoneAssetSlug) {
+          pushCandidate(`https://cdn.secondhandcell.com/images/iphone/assets/${iphoneAssetSlug}`);
+        }
+        const possibleSlugs = [
+          item?.deviceSlug,
+          item?.slug,
+          item?.modelSlug,
+          item?.model,
+          slugifyModel(item?.model),
+          slugifyModel(item?.deviceLabel)
+        ];
+        if (folder) {
+          possibleSlugs.forEach((slugValue) => {
+            const slug = String(slugValue || '').trim().toLowerCase();
+            if (!slug) return;
+            pushCandidate(`https://cdn.secondhandcell.com/images/${folder}/assets/${slug}`);
+          });
+        }
+        return candidates;
+      };
+      const resolveDeviceImageUrl = async (item = {}) => {
+        const baseCandidates = buildImageBaseCandidates(item);
+        if (!baseCandidates.length) return FALLBACK_DEVICE_IMAGE;
+
+        for (const baseCandidate of baseCandidates) {
+          if (hasImageExtension(baseCandidate)) {
+            return baseCandidate;
+          }
+          if (imageUrlResolutionCache.has(baseCandidate)) {
+            const cached = imageUrlResolutionCache.get(baseCandidate);
+            if (cached && cached !== FALLBACK_DEVICE_IMAGE) return cached;
+            continue;
+          }
+          const extensionCandidates = IMAGE_EXTENSIONS.map((ext) => `${baseCandidate}${ext}`);
+          const resolvedUrl = await new Promise((resolve) => {
+            let index = 0;
+            const tryNext = () => {
+              if (index >= extensionCandidates.length) {
+                resolve(FALLBACK_DEVICE_IMAGE);
+                return;
+              }
+              const probe = new Image();
+              const candidate = extensionCandidates[index];
+              probe.onload = () => resolve(candidate);
+              probe.onerror = () => {
+                index += 1;
+                tryNext();
+              };
+              probe.src = candidate;
+            };
+            tryNext();
+          });
+          imageUrlResolutionCache.set(baseCandidate, resolvedUrl);
+          if (resolvedUrl && resolvedUrl !== FALLBACK_DEVICE_IMAGE) {
+            return resolvedUrl;
+          }
+        }
+        return FALLBACK_DEVICE_IMAGE;
+      };
 
       async function applyDeviceImage(device, imgEl) {
         if (!imgEl) return;
         const directImageUrl = String(device?.imageUrl || '').trim();
         if (directImageUrl) {
-          resolveImageUrl(directImageUrl, imgEl);
+          const resolvedDirect = await resolveDeviceImageUrl({ ...device, imageUrl: directImageUrl });
+          imgEl.src = resolvedDirect;
           return;
         }
 
+        let hydratedDevice = device;
         if (typeof window.shcFetchCatalogImageUrl === 'function') {
           try {
             const fetchedImageUrl = await window.shcFetchCatalogImageUrl(device?.brand, device?.model);
             if (fetchedImageUrl) {
-              resolveImageUrl(fetchedImageUrl, imgEl);
-              return;
+              hydratedDevice = { ...device, imageUrl: fetchedImageUrl };
             }
           } catch (_) {}
-        }
-
-        if (window.shcIssuePageImageReady && typeof window.shcFetchCatalogImageUrl !== 'function') {
+        } else if (window.shcIssuePageImageReady) {
           try {
             await window.shcIssuePageImageReady;
             const fetchedImageUrl = await window.shcFetchCatalogImageUrl?.(device?.brand, device?.model);
             if (fetchedImageUrl) {
-              resolveImageUrl(fetchedImageUrl, imgEl);
-              return;
+              hydratedDevice = { ...device, imageUrl: fetchedImageUrl };
             }
           } catch (_) {}
         }
 
-        imgEl.src = FALLBACK_DEVICE_IMAGE;
+        imgEl.src = await resolveDeviceImageUrl(hydratedDevice);
       }
 
       function renderUnlockPanel(issue, idx) {
