@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resolve Device Issue | SecondHandCell</title>
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="icon" href="https://secondhandcell.com/favicon/favicon.ico">
+  <link rel="stylesheet" href="https://secondhandcell.com/assets/css/site-chrome.css">
+  <script>
+    window.SHC_API_BASE_URL = "https://api.secondhandcell.com/server";
+  </script>
+  <style>
+    :root {
+      --issue-bg: #f5f7fb;
+      --issue-card: #ffffff;
+      --issue-line: #d7e1f0;
+      --issue-text: #0f172a;
+      --issue-muted: #556277;
+      --issue-brand: #0f766e;
+      --issue-brand-strong: #115e59;
+      --issue-brand-soft: #dff7f3;
+      --issue-indigo: #2563eb;
+      --issue-indigo-soft: #edf4ff;
+      --issue-warning: #a16207;
+      --issue-warning-soft: #fff7df;
+      --issue-shadow: 0 28px 60px -40px rgba(15, 23, 42, 0.24);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 28%),
+        radial-gradient(circle at top right, rgba(15, 118, 110, 0.10), transparent 30%),
+        linear-gradient(180deg, #f8fbff 0%, var(--issue-bg) 100%);
+      color: var(--issue-text);
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    main {
+      flex: 1 0 auto;
+    }
+
+    .issue-shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 40px 20px 72px;
+    }
+
+    .issue-hero {
+      position: relative;
+      overflow: hidden;
+      border-radius: 28px;
+      padding: 34px;
+      color: #fff;
+      background:
+        linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(37, 99, 235, 0.9) 54%, rgba(15, 118, 110, 0.86) 100%);
+      box-shadow: 0 34px 84px -44px rgba(15, 23, 42, 0.5);
+    }
+
+    .issue-hero::after {
+      content: "";
+      position: absolute;
+      right: -26px;
+      bottom: -34px;
+      width: 220px;
+      height: 220px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      filter: blur(6px);
+    }
+
+    .issue-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: rgba(255, 255, 255, 0.82);
+    }
+
+    .issue-hero-grid {
+      position: relative;
+      z-index: 1;
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 18px;
+      align-items: end;
+    }
+
+    .issue-hero h1 {
+      margin: 0 0 14px;
+      font-size: clamp(34px, 5vw, 54px);
+      line-height: 0.98;
+      letter-spacing: -0.05em;
+    }
+
+    .issue-hero p {
+      margin: 0;
+      max-width: 720px;
+      font-size: 17px;
+      line-height: 1.72;
+      color: rgba(255, 255, 255, 0.88);
+    }
+
+    .issue-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .issue-summary-card {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 22px;
+      padding: 16px 18px;
+      backdrop-filter: blur(12px);
+    }
+
+    .issue-summary-label {
+      margin: 0 0 8px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    .issue-summary-value {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
+      word-break: break-word;
+    }
+
+    .issue-layout {
+      margin-top: 22px;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .issue-panel {
+      background: var(--issue-card);
+      border: 1px solid var(--issue-line);
+      border-radius: 26px;
+      box-shadow: var(--issue-shadow);
+      overflow: hidden;
+    }
+
+    .issue-panel-inner {
+      padding: 26px;
+    }
+
+    .issue-section-label {
+      margin: 0 0 8px;
+      color: var(--issue-brand);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .issue-section-title {
+      margin: 0;
+      font-size: 30px;
+      letter-spacing: -0.04em;
+    }
+
+    .issue-section-copy {
+      margin: 10px 0 0;
+      color: var(--issue-muted);
+      line-height: 1.72;
+      font-size: 15px;
+    }
+
+    .issue-list {
+      margin-top: 22px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .issue-card {
+      border: 1px solid var(--issue-line);
+      border-radius: 22px;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+      overflow: hidden;
+    }
+
+    .issue-card.is-resolved {
+      opacity: 0.78;
+      background: linear-gradient(180deg, #f5fff8 0%, #ffffff 100%);
+    }
+
+    .issue-card-head {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--issue-line);
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    .issue-card-head h3 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      letter-spacing: -0.03em;
+    }
+
+    .issue-device-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid #cfe0ff;
+      background: var(--issue-indigo-soft);
+      color: #1d4ed8;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .issue-status-chip {
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+
+    .issue-status-chip.pending {
+      background: var(--issue-warning-soft);
+      color: var(--issue-warning);
+    }
+
+    .issue-status-chip.resolved {
+      background: var(--issue-brand-soft);
+      color: var(--issue-brand-strong);
+    }
+
+    .issue-card-body {
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .issue-callout {
+      border: 1px solid var(--issue-line);
+      border-radius: 18px;
+      padding: 16px 18px;
+      background: #f9fbff;
+    }
+
+    .issue-callout.problem {
+      background: #fff8ea;
+      border-color: #f3dab3;
+    }
+
+    .issue-callout.why {
+      background: #f4f8ff;
+      border-color: #d5e4ff;
+    }
+
+    .issue-callout.after {
+      background: #eefbf8;
+      border-color: #bfe9df;
+    }
+
+    .issue-callout-title {
+      margin: 0 0 6px;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--issue-muted);
+    }
+
+    .issue-callout p,
+    .issue-callout ul,
+    .issue-callout ol {
+      margin: 0;
+      line-height: 1.68;
+      font-size: 15px;
+      color: #1f2937;
+    }
+
+    .issue-callout ul,
+    .issue-callout ol {
+      padding-left: 18px;
+    }
+
+    .issue-options {
+      display: grid;
+      gap: 12px;
+    }
+
+    .issue-option {
+      border: 1px solid var(--issue-line);
+      border-radius: 18px;
+      padding: 16px 18px;
+      background: #ffffff;
+    }
+
+    .issue-option h4 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .issue-option p,
+    .issue-option ol {
+      margin: 0;
+      color: var(--issue-muted);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .issue-option ol {
+      padding-left: 18px;
+      margin-top: 10px;
+    }
+
+    .unlock-panel {
+      border: 1px dashed #a5b4fc;
+      border-radius: 18px;
+      padding: 16px 18px;
+      background: #f6f7ff;
+      display: none;
+      gap: 12px;
+    }
+
+    .unlock-panel.is-visible {
+      display: grid;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .field label {
+      font-size: 13px;
+      font-weight: 800;
+      color: #334155;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 14px;
+      padding: 13px 14px;
+      font: inherit;
+      background: #fff;
+      color: var(--issue-text);
+    }
+
+    .field input:focus,
+    .field select:focus {
+      outline: none;
+      border-color: var(--issue-indigo);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
+
+    .unlock-pane {
+      display: none;
+    }
+
+    .unlock-pane.is-visible {
+      display: block;
+    }
+
+    .pattern-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      max-width: 220px;
+    }
+
+    .pattern-dot {
+      aspect-ratio: 1;
+      border: 0;
+      border-radius: 999px;
+      background: #c7d2fe;
+      color: #312e81;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.16s ease, background 0.16s ease;
+    }
+
+    .pattern-dot.active {
+      background: #4338ca;
+      color: #fff;
+      transform: scale(1.06);
+    }
+
+    .pattern-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      color: var(--issue-muted);
+      font-size: 14px;
+    }
+
+    .issue-feedback {
+      min-height: 20px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .issue-feedback.error {
+      color: #b91c1c;
+    }
+
+    .issue-feedback.success {
+      color: var(--issue-brand-strong);
+    }
+
+    .issue-primary,
+    .issue-secondary,
+    .issue-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border-radius: 16px;
+      padding: 14px 18px;
+      font: inherit;
+      font-weight: 800;
+      text-decoration: none;
+      transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+      cursor: pointer;
+    }
+
+    .issue-primary {
+      width: 100%;
+      border: 0;
+      color: #fff;
+      background: linear-gradient(135deg, var(--issue-brand) 0%, var(--issue-indigo) 100%);
+      box-shadow: 0 18px 36px -24px rgba(37, 99, 235, 0.55);
+    }
+
+    .issue-secondary,
+    .issue-link {
+      border: 1px solid var(--issue-line);
+      background: #fff;
+      color: var(--issue-text);
+    }
+
+    .issue-primary:hover,
+    .issue-secondary:hover,
+    .issue-link:hover {
+      transform: translateY(-1px);
+    }
+
+    .issue-primary:disabled {
+      opacity: 0.58;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .issue-side-list {
+      margin-top: 22px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .issue-side-item {
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 14px;
+      align-items: start;
+      border: 1px solid var(--issue-line);
+      border-radius: 18px;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+      padding: 16px;
+    }
+
+    .issue-side-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--issue-brand-soft);
+      color: var(--issue-brand-strong);
+      font-size: 18px;
+    }
+
+    .issue-side-item h3 {
+      margin: 0 0 6px;
+      font-size: 16px;
+    }
+
+    .issue-side-item p {
+      margin: 0;
+      color: var(--issue-muted);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .issue-quick-links {
+      margin-top: 22px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 980px) {
+      .issue-hero-grid,
+      .issue-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .issue-summary-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .issue-shell {
+        padding: 28px 14px 56px;
+      }
+
+      .issue-hero,
+      .issue-panel-inner {
+        padding: 22px;
+      }
+
+      .issue-card-head {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header site-header--mobile-compact relative" data-site-header>
+    <div class="site-header__inner site-header__inner--centered">
+      <div class="logo-container-left">
+        <a href="https://secondhandcell.com/" class="logo-link" aria-label="SecondHandCell home">
+          <img src="https://cdn.secondhandcell.com/images/assets/logo.webp" alt="SecondHandCell Logo" class="logo-image" width="320" height="320" fetchpriority="high" decoding="async" onerror="this.onerror=null;this.src='https://placehold.co/200x64/ffffff/1e293b?text=SecondHandCell';">
+        </a>
+      </div>
+      <div class="logo-text-container-center">
+        <a href="https://secondhandcell.com/" aria-label="Go to homepage" class="inline-flex flex-col items-center no-underline">
+          <div class="logo-wordmark">
+            <span class="logo-wordmark__primary">Second</span><span class="logo-wordmark__accent">HandCell</span>
+          </div>
+          <p class="logo-tagline">Turn Your Old <span>Phone Into Cash!</span></p>
+        </a>
+      </div>
+      <nav class="header-auth-nav" aria-label="Account navigation">
+        <div id="authStatusContainer" class="site-header__auth-wrapper">
+          <a href="#" id="loginNavBtn" class="site-header__login">Login/Sign Up</a>
+          <div id="userMonogram" class="user-monogram hidden"></div>
+          <div id="authDropdown" class="auth-dropdown hidden">
+            <a href="https://secondhandcell.com/my-account.html" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">My Account</a>
+            <a href="https://secondhandcell.com/track-order.html" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Track an Order</a>
+            <button id="logoutBtn" class="btn-red-logout">Sign Out</button>
+          </div>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="issue-shell">
+      <section class="issue-hero">
+        <div class="issue-eyebrow">Order Issue Resolution</div>
+        <div class="issue-hero-grid">
+          <div>
+            <h1>Clear the issue and keep your order moving.</h1>
+            <p>Review the exact device problem below, complete the fix on your account or device, and submit the update here so our team can re-check your order.</p>
+          </div>
+          <div class="issue-summary-grid">
+            <div class="issue-summary-card">
+              <p class="issue-summary-label">Order</p>
+              <p class="issue-summary-value" id="summaryOrderId">--</p>
+            </div>
+            <div class="issue-summary-card">
+              <p class="issue-summary-label">Status</p>
+              <p class="issue-summary-value" id="summaryStatus">--</p>
+            </div>
+            <div class="issue-summary-card">
+              <p class="issue-summary-label">Open Issues</p>
+              <p class="issue-summary-value" id="summaryIssueCount">--</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="issue-layout">
+        <div class="issue-panel">
+          <div class="issue-panel-inner">
+            <p class="issue-section-label">Fix The Problem</p>
+            <h2 class="issue-section-title">Issue details</h2>
+            <p class="issue-section-copy">Nothing is changed just by opening this page. The order is only updated after you press the resolve button on the issue you fixed.</p>
+            <div id="issuesContainer" class="issue-list"></div>
+          </div>
+        </div>
+
+        <div class="issue-panel">
+          <div class="issue-panel-inner">
+            <p class="issue-section-label">What Happens Next</p>
+            <h2 class="issue-section-title">After you submit</h2>
+            <p class="issue-section-copy">Once we receive your update, we re-run the device check and continue processing if everything clears.</p>
+            <div class="issue-side-list">
+              <div class="issue-side-item">
+                <div class="issue-side-icon">1</div>
+                <div>
+                  <h3>We verify the fix</h3>
+                  <p>Our team checks the IMEI, activation lock, carrier balance, blacklist, or unlock information against the order.</p>
+                </div>
+              </div>
+              <div class="issue-side-item">
+                <div class="issue-side-icon">2</div>
+                <div>
+                  <h3>We update your order</h3>
+                  <p>If the issue is fully resolved, your order moves back into processing and payout review.</p>
+                </div>
+              </div>
+              <div class="issue-side-item">
+                <div class="issue-side-icon">3</div>
+                <div>
+                  <h3>You can track progress</h3>
+                  <p>Use the track-order page to follow status updates after you submit the fix.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="issue-quick-links">
+              <a id="trackOrderLink" class="issue-link" href="https://secondhandcell.com/track-order.html">Track your order</a>
+              <a class="issue-secondary" href="https://secondhandcell.com/support.html">Contact support</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="bg-slate-800 text-white">
+    <div class="container mx-auto px-4 py-12">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-8">
+          <div>
+            <h3 class="text-xl font-bold mb-4">SecondHandCell</h3>
+            <p class="text-slate-400">Your trusted partner for selling used tech. Quick quotes, fair prices, and hassle-free service.</p>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold mb-4">Quick Links</h3>
+            <ul class="space-y-2">
+              <li><a href="https://secondhandcell.com/index.html" class="text-slate-400 hover:text-white transition duration-300">Home</a></li>
+              <li><a href="https://secondhandcell.com/privacy.html" class="text-slate-400 hover:text-white transition duration-300">Privacy Policy</a></li>
+              <li><a href="https://secondhandcell.com/terms.html" class="text-slate-400 hover:text-white transition duration-300">Terms &amp; Conditions</a></li>
+              <li><a href="https://secondhandcell.com/support.html" class="text-slate-400 hover:text-white transition duration-300">Support</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold mb-4">Contact Us</h3>
+            <p class="text-slate-400">Email: sales@secondhandcell.com</p>
+          </div>
+        </div>
+        <div class="bg-slate-700 p-6 rounded-lg">
+          <h3 class="text-xl font-bold mb-2 text-white">Stay Updated</h3>
+          <p class="text-slate-300 mb-4">Sign up for updates, price increases, and more!</p>
+          <form id="footerEmailSignupForm" class="flex flex-col sm:flex-row gap-2">
+            <input type="email" id="footerEmail" placeholder="Enter your email" class="w-full flex-grow border border-slate-400 bg-slate-800 text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700">Sign Up</button>
+          </form>
+          <div id="footerSignupMessage" class="mt-3 text-sm text-center"></div>
+        </div>
+      </div>
+      <div class="bg-slate-800 text-white p-6 rounded-xl shadow-lg mt-8 text-center border-2 border-red-600">
+        <p class="text-lg font-bold">IMPORTANT NOTICE</p>
+        <p class="mt-2 text-sm md:text-base">We do not purchase blacklisted or lost/stolen devices. All devices are verified through a legal compliance check.</p>
+      </div>
+      <div class="mt-8">
+        <div class="flex flex-wrap items-center justify-center gap-6 sm:flex-row sm:justify-center sm:gap-8 lg:justify-start">
+          <a href="https://www.sellcell.com/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center">
+            <img src="https://cdn.secondhandcell.com/images/assets/sellcell.webp" width="150" height="107" alt="SellCell Accredited Buyer" loading="lazy" class="h-20 w-auto object-contain">
+          </a>
+          <a href="https://www.trustpilot.com/evaluate/secondhandcell.com" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center">
+            <img src="https://secondhandcell.com/assets/stars-4.5.svg" alt="Trustpilot 5 star rating" loading="lazy" class="h-12 w-auto object-contain">
+          </a>
+        </div>
+      </div>
+      <div class="border-t border-slate-700 mt-8 pt-6 text-center text-slate-400 text-sm">
+        <p>&copy; 2025 SecondHandCell. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    window.__FIX_ISSUE_PAGE_DATA__ = __FIX_ISSUE_PAGE_DATA__;
+  </script>
+  <script>
+    (function () {
+      const state = window.__FIX_ISSUE_PAGE_DATA__ || {};
+      const issuesContainer = document.getElementById('issuesContainer');
+      const summaryOrderId = document.getElementById('summaryOrderId');
+      const summaryStatus = document.getElementById('summaryStatus');
+      const summaryIssueCount = document.getElementById('summaryIssueCount');
+      const trackOrderLink = document.getElementById('trackOrderLink');
+
+      const esc = (value) => String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+      function buildTrackOrderHref() {
+        const params = new URLSearchParams({ orderId: state.orderId || '' });
+        if (state.customerEmail) params.set('email', state.customerEmail);
+        if (state.deviceKey) params.set('deviceKey', state.deviceKey);
+        params.set('fromEmailLink', '1');
+        return `https://secondhandcell.com/track-order.html?${params.toString()}`;
+      }
+
+      function renderUnlockPanel(issue, idx) {
+        if (!issue.requiresUnlockInfo || issue.resolved) return '';
+        return `
+          <div class="unlock-panel" data-unlock-panel="${idx}">
+            <div class="field">
+              <label for="unlock-method-${idx}">Unlock method</label>
+              <select id="unlock-method-${idx}" data-unlock-method="${idx}">
+                <option value="">Select method</option>
+                <option value="pin">PIN</option>
+                <option value="password">Password</option>
+                <option value="pattern">Pattern</option>
+              </select>
+            </div>
+            <div class="unlock-pane" data-unlock-pane="${idx}" data-pane-type="pin">
+              <div class="field">
+                <label for="unlock-pin-${idx}">PIN</label>
+                <input id="unlock-pin-${idx}" type="text" data-unlock-value="${idx}" data-value-type="pin" autocomplete="off" placeholder="Enter PIN">
+              </div>
+            </div>
+            <div class="unlock-pane" data-unlock-pane="${idx}" data-pane-type="password">
+              <div class="field">
+                <label for="unlock-password-${idx}">Password</label>
+                <input id="unlock-password-${idx}" type="text" data-unlock-value="${idx}" data-value-type="password" autocomplete="off" placeholder="Enter password">
+              </div>
+            </div>
+            <div class="unlock-pane" data-unlock-pane="${idx}" data-pane-type="pattern">
+              <div class="field">
+                <label>Pattern</label>
+                <div class="pattern-grid">
+                  ${Array.from({ length: 9 }, (_, dotIndex) => `<button class="pattern-dot" type="button" data-pattern-dot="${idx}" data-dot-id="${dotIndex + 1}">${dotIndex + 1}</button>`).join('')}
+                </div>
+              </div>
+              <div class="pattern-meta">
+                <span data-pattern-display="${idx}">No pattern selected</span>
+                <button class="issue-secondary" type="button" data-pattern-clear="${idx}">Clear pattern</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderIssueCard(issue, idx) {
+        const optionsHtml = Array.isArray(issue.fixOptions) && issue.fixOptions.length
+          ? `
+            <div class="issue-options">
+              ${issue.fixOptions.map((option) => `
+                <section class="issue-option">
+                  <h4>${esc(option.title || 'How to fix')}</h4>
+                  ${option.prerequisite ? `<p>${esc(option.prerequisite)}</p>` : ''}
+                  ${Array.isArray(option.steps) && option.steps.length ? `<ol>${option.steps.map((step) => `<li>${esc(step)}</li>`).join('')}</ol>` : ''}
+                  ${option.note ? `<p style="margin-top:10px;">${esc(option.note)}</p>` : ''}
+                </section>
+              `).join('')}
+            </div>
+          `
+          : '';
+
+        const commonReasonsHtml = Array.isArray(issue.commonReasons) && issue.commonReasons.length
+          ? `
+            <section class="issue-callout why">
+              <p class="issue-callout-title">Common reasons</p>
+              <ul>${issue.commonReasons.map((reason) => `<li>${esc(reason)}</li>`).join('')}</ul>
+            </section>
+          `
+          : '';
+
+        return `
+          <section class="issue-card ${issue.resolved ? 'is-resolved' : ''}">
+            <div class="issue-card-head">
+              <div>
+                <div class="issue-device-chip">${esc(issue.deviceLabel || 'Device')}</div>
+                <h3>${esc(issue.title)}</h3>
+              </div>
+              <div class="issue-status-chip ${issue.resolved ? 'resolved' : 'pending'}">${issue.resolved ? 'Resolved' : 'Needs action'}</div>
+            </div>
+            <div class="issue-card-body">
+              <section class="issue-callout problem">
+                <p class="issue-callout-title">Problem</p>
+                <p>${esc(issue.problem || 'Please resolve this issue so we can continue processing your order.')}</p>
+              </section>
+              ${issue.why ? `
+                <section class="issue-callout why">
+                  <p class="issue-callout-title">Why it matters</p>
+                  <p>${esc(issue.why)}</p>
+                </section>
+              ` : ''}
+              ${issue.notes ? `
+                <section class="issue-callout">
+                  <p class="issue-callout-title">Notes from inspection</p>
+                  <p>${esc(issue.notes)}</p>
+                </section>
+              ` : ''}
+              ${commonReasonsHtml}
+              ${optionsHtml}
+              ${issue.afterComplete ? `
+                <section class="issue-callout after">
+                  <p class="issue-callout-title">After you finish</p>
+                  <p>${esc(issue.afterComplete)}</p>
+                </section>
+              ` : ''}
+              ${renderUnlockPanel(issue, idx)}
+              <div class="issue-feedback" data-feedback="${idx}"></div>
+              <button class="issue-primary" type="button" data-resolve-button="${idx}" ${issue.resolved ? 'disabled' : ''}>${esc(issue.resolved ? `Resolved: ${issue.resolvedButtonLabel || 'Issue resolved'}` : (issue.resolvedButtonLabel || 'Issue resolved'))}</button>
+            </div>
+          </section>
+        `;
+      }
+
+      function redirectToConfirmation(issue) {
+        const params = new URLSearchParams({
+          orderId: state.orderId || '',
+          deviceKey: issue.deviceKey || '',
+          deviceLabel: issue.deviceLabel || 'Device',
+        });
+        window.location.href = `https://secondhandcell.com/issue-resolved-confirmation.html?${params.toString()}`;
+      }
+
+      function collectUnlockPayload(idx) {
+        const methodSelect = document.querySelector(`[data-unlock-method="${idx}"]`);
+        if (!methodSelect) return { ok: true, payload: {} };
+
+        const method = methodSelect.value;
+        if (!method) {
+          return { ok: false, error: 'Select the unlock method first.' };
+        }
+
+        if (method === 'pattern') {
+          const activeDots = Array.from(document.querySelectorAll(`[data-pattern-dot="${idx}"].active`))
+            .map((button) => Number(button.getAttribute('data-dot-id')))
+            .filter((value) => Number.isFinite(value));
+          if (!activeDots.length) {
+            return { ok: false, error: 'Enter the unlock pattern before submitting.' };
+          }
+          return { ok: true, payload: { unlockMethod: method, unlockPatternPath: activeDots } };
+        }
+
+        const valueInput = document.querySelector(`[data-unlock-value="${idx}"][data-value-type="${method}"]`);
+        const value = valueInput ? valueInput.value.trim() : '';
+        if (!value) {
+          return { ok: false, error: `Enter the ${method} before submitting.` };
+        }
+
+        return { ok: true, payload: { unlockMethod: method, unlockValue: value } };
+      }
+
+      async function submitIssue(issue, idx) {
+        const feedback = document.querySelector(`[data-feedback="${idx}"]`);
+        const button = document.querySelector(`[data-resolve-button="${idx}"]`);
+        feedback.className = 'issue-feedback';
+        feedback.textContent = '';
+
+        const unlock = collectUnlockPayload(idx);
+        if (!unlock.ok) {
+          feedback.className = 'issue-feedback error';
+          feedback.textContent = unlock.error;
+          return;
+        }
+
+        button.disabled = true;
+        button.textContent = 'Submitting...';
+
+        try {
+          const response = await fetch(state.confirmUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              reason: issue.reason,
+              action: 'resolve',
+              deviceKey: issue.deviceKey,
+              ...unlock.payload,
+            }),
+          });
+
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(payload.error || 'Unable to submit the update.');
+          }
+
+          feedback.className = 'issue-feedback success';
+          feedback.textContent = 'Issue submitted. Redirecting...';
+          redirectToConfirmation(issue);
+        } catch (error) {
+          feedback.className = 'issue-feedback error';
+          feedback.textContent = error.message || 'Unable to submit the update.';
+          button.disabled = false;
+          button.textContent = issue.resolvedButtonLabel || 'Issue resolved';
+        }
+      }
+
+      function bindUnlockUi() {
+        Array.from(document.querySelectorAll('[data-unlock-method]')).forEach((select) => {
+          const idx = select.getAttribute('data-unlock-method');
+          const panel = document.querySelector(`[data-unlock-panel="${idx}"]`);
+          if (panel) panel.classList.add('is-visible');
+
+          select.addEventListener('change', () => {
+            const value = select.value;
+            Array.from(document.querySelectorAll(`[data-unlock-pane="${idx}"]`)).forEach((pane) => {
+              pane.classList.toggle('is-visible', pane.getAttribute('data-pane-type') === value);
+            });
+          });
+        });
+
+        Array.from(document.querySelectorAll('[data-pattern-dot]')).forEach((button) => {
+          button.addEventListener('click', () => {
+            button.classList.toggle('active');
+            const idx = button.getAttribute('data-pattern-dot');
+            const active = Array.from(document.querySelectorAll(`[data-pattern-dot="${idx}"].active`))
+              .map((item) => item.getAttribute('data-dot-id'));
+            const display = document.querySelector(`[data-pattern-display="${idx}"]`);
+            if (display) {
+              display.textContent = active.length ? `Pattern: ${active.join(' → ')}` : 'No pattern selected';
+            }
+          });
+        });
+
+        Array.from(document.querySelectorAll('[data-pattern-clear]')).forEach((button) => {
+          button.addEventListener('click', () => {
+            const idx = button.getAttribute('data-pattern-clear');
+            Array.from(document.querySelectorAll(`[data-pattern-dot="${idx}"]`)).forEach((dot) => dot.classList.remove('active'));
+            const display = document.querySelector(`[data-pattern-display="${idx}"]`);
+            if (display) display.textContent = 'No pattern selected';
+          });
+        });
+      }
+
+      function render() {
+        summaryOrderId.textContent = state.orderId ? `#${state.orderId}` : 'Unknown';
+        summaryStatus.textContent = state.hasIssues ? 'Needs attention' : 'All clear';
+        summaryIssueCount.textContent = String(state.issues ? state.issues.filter((issue) => !issue.resolved).length : 0);
+        if (trackOrderLink) trackOrderLink.href = buildTrackOrderHref();
+
+        if (!Array.isArray(state.issues) || !state.issues.length) {
+          issuesContainer.innerHTML = `
+            <section class="issue-card">
+              <div class="issue-card-body">
+                <section class="issue-callout after">
+                  <p class="issue-callout-title">All clear</p>
+                  <p>We do not see any remaining issues on this order right now. If you still need help, use the support link on this page.</p>
+                </section>
+              </div>
+            </section>
+          `;
+          return;
+        }
+
+        issuesContainer.innerHTML = state.issues.map(renderIssueCard).join('');
+        bindUnlockUi();
+        state.issues.forEach((issue, idx) => {
+          const button = document.querySelector(`[data-resolve-button="${idx}"]`);
+          if (!button || issue.resolved) return;
+          button.addEventListener('click', () => submitIssue(issue, idx));
+        });
+      }
+
+      render();
+    })();
+  </script>
+  <script type="module">
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import {
+      browserLocalPersistence,
+      createUserWithEmailAndPassword,
+      getAuth,
+      GoogleAuthProvider,
+      onAuthStateChanged,
+      sendPasswordResetEmail,
+      setPersistence,
+      signInWithEmailAndPassword,
+      signInWithPopup,
+      signOut,
+      updateProfile,
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAmUGWbpbJIWLrBMJpZb8iMpFt-uc24J0k",
+      authDomain: "auth.secondhandcell.com",
+      projectId: "buyback-a0f05",
+      storageBucket: "buyback-a0f05.firebasestorage.app",
+      messagingSenderId: "876430429098",
+      appId: "1:876430429098:web:f6dd64b1960d90461979d3",
+    };
+
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    setPersistence(auth, browserLocalPersistence).catch(() => {});
+
+    const ensureAuthStyle = () => {
+      if (document.getElementById("shc-auth-styles")) return;
+      const style = document.createElement("style");
+      style.id = "shc-auth-styles";
+      style.textContent = `
+        .shc-auth-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: none; align-items: center; justify-content: center; padding: 18px; z-index: 2000; overflow-y: auto; }
+        .shc-auth-modal.is-visible { display: flex; }
+        .shc-auth-card { width: min(520px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 30px 80px -40px rgba(15,23,42,0.6); padding: 28px; position: relative; }
+        .shc-auth-close { position: absolute; top: 12px; right: 12px; background: transparent; border: none; color: #94a3b8; font-size: 22px; cursor: pointer; }
+        .shc-auth-tabs { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin: 16px 0 12px; }
+        .shc-auth-tab { padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0; background: #f8fafc; font-weight: 700; color: #475569; cursor: pointer; }
+        .shc-auth-tab.is-active { border-color: #5b21b6; color: #111827; box-shadow: 0 5px 18px -12px rgba(91,33,182,0.6); }
+        .shc-auth-field { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid #cbd5e1; margin-bottom: 12px; font-size: 15px; }
+        .shc-auth-primary { width: 100%; padding: 13px 16px; border-radius: 14px; border: none; background: linear-gradient(120deg,#5b21b6,#2563eb); color: #fff; font-weight: 800; cursor: pointer; box-shadow: 0 20px 40px -28px rgba(37,99,235,0.9); }
+        .shc-auth-google { width: 100%; padding: 12px 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 10px; font-weight: 700; color: #0f172a; cursor: pointer; }
+        .shc-auth-or { display: flex; align-items: center; gap: 10px; margin: 14px 0; color: #94a3b8; font-size: 14px; }
+        .shc-auth-or::before, .shc-auth-or::after { content: ""; flex: 1; height: 1px; background: #e2e8f0; }
+        .shc-auth-meta { text-align: center; font-size: 14px; color: #475569; margin-top: 10px; }
+        .shc-auth-link { color: #2563eb; font-weight: 700; text-decoration: none; }
+        .shc-auth-message { display: none; margin-top: 8px; padding: 10px 12px; border-radius: 12px; font-weight: 600; font-size: 14px; }
+        .shc-auth-message.is-visible { display: block; }
+        .shc-auth-message.is-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecdd3; }
+        .shc-auth-message.is-success { background: #ecfdf3; color: #15803d; border: 1px solid #bbf7d0; }
+        .shc-auth-form { display: none; }
+        .shc-auth-form.is-visible { display: block; }
+        .shc-auth-dropdown { position: absolute; top: calc(100% + 8px); right: 0; background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 30px 80px -48px rgba(15,23,42,0.55); padding: 10px; min-width: 180px; display: none; z-index: 10000; }
+        .shc-auth-dropdown.is-visible { display: block; }
+        .shc-auth-dropdown a, .shc-auth-dropdown button { width: 100%; display: block; text-align: left; padding: 10px 12px; border-radius: 10px; color: #0f172a; font-weight: 600; border: none; background: transparent; cursor: pointer; }
+        .shc-auth-dropdown a:hover, .shc-auth-dropdown button:hover { background: #f1f5f9; }
+        .shc-monogram { cursor: pointer !important; user-select: none; pointer-events: auto !important; }
+      `;
+      document.head.appendChild(style);
+    };
+
+    const createAuthModal = () => {
+      if (document.getElementById("loginModal")) return document.getElementById("loginModal");
+      ensureAuthStyle();
+      const overlay = document.createElement("div");
+      overlay.id = "loginModal";
+      overlay.className = "shc-auth-modal";
+      overlay.innerHTML = `
+        <div class="shc-auth-card" role="dialog" aria-modal="true" aria-labelledby="shc-auth-title">
+          <button class="shc-auth-close" type="button" aria-label="Close authentication modal">&times;</button>
+          <div class="shc-auth-header">
+            <p class="shc-auth-title" id="shc-auth-title" style="font-size:24px;font-weight:800;color:#0f172a;margin:0;">Your SecondHandCell Account</p>
+            <p class="shc-auth-subtitle" style="margin:6px 0 0;color:#475569;font-weight:500;">Sign in or create an account to manage your orders.</p>
+          </div>
+          <div class="shc-auth-tabs" role="tablist">
+            <button class="shc-auth-tab is-active" id="loginTabBtn" type="button">Login</button>
+            <button class="shc-auth-tab" id="signupTabBtn" type="button">Sign Up</button>
+          </div>
+          <div id="authMessage" class="shc-auth-message" role="alert"></div>
+          <form id="loginForm" class="shc-auth-form is-visible" novalidate>
+            <button type="button" id="googleLoginBtn" class="shc-auth-google">Login with Google</button>
+            <div class="shc-auth-or"><span>or</span></div>
+            <input type="email" id="loginEmail" class="shc-auth-field" placeholder="Email address" autocomplete="email" required />
+            <input type="password" id="loginPassword" class="shc-auth-field" placeholder="Password" autocomplete="current-password" required />
+            <button type="submit" class="shc-auth-primary">Login</button>
+            <p class="shc-auth-meta">Forgot your password? <a href="#" id="forgotPasswordLink" class="shc-auth-link">Reset it</a></p>
+          </form>
+          <form id="signupForm" class="shc-auth-form" novalidate>
+            <button type="button" id="googleSignupBtn" class="shc-auth-google">Sign up with Google</button>
+            <div class="shc-auth-or"><span>or</span></div>
+            <input type="text" id="signupName" class="shc-auth-field" placeholder="Full name" autocomplete="name" required />
+            <input type="email" id="signupEmail" class="shc-auth-field" placeholder="Email address" autocomplete="email" required />
+            <input type="password" id="signupPassword" class="shc-auth-field" placeholder="Password (min 6 characters)" autocomplete="new-password" required />
+            <button type="submit" class="shc-auth-primary">Create Account</button>
+          </form>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      return overlay;
+    };
+
+    const showMessage = (messageEl, message, isError = false) => {
+      messageEl.textContent = message;
+      messageEl.classList.add("is-visible");
+      messageEl.classList.toggle("is-error", isError);
+      messageEl.classList.toggle("is-success", !isError);
+    };
+
+    const clearMessage = (messageEl) => {
+      messageEl.textContent = "";
+      messageEl.classList.remove("is-visible", "is-error", "is-success");
+    };
+
+    const setActiveTab = (isLogin) => {
+      document.getElementById("loginTabBtn")?.classList.toggle("is-active", isLogin);
+      document.getElementById("signupTabBtn")?.classList.toggle("is-active", !isLogin);
+      document.getElementById("loginForm")?.classList.toggle("is-visible", isLogin);
+      document.getElementById("signupForm")?.classList.toggle("is-visible", !isLogin);
+    };
+
+    const modal = createAuthModal();
+    const authMessage = document.getElementById("authMessage");
+    const loginNavBtn = document.getElementById("loginNavBtn");
+    const userMonogram = document.getElementById("userMonogram");
+    const authDropdown = document.getElementById("authDropdown");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const provider = new GoogleAuthProvider();
+
+    const toggleModal = (visible) => {
+      modal.classList.toggle("is-visible", visible);
+      modal.style.display = visible ? "flex" : "none";
+    };
+
+    const getInitial = (user) => {
+      if (user?.displayName) return user.displayName.trim().charAt(0).toUpperCase();
+      if (user?.email) return user.email.trim().charAt(0).toUpperCase();
+      return "U";
+    };
+
+    onAuthStateChanged(auth, (user) => {
+      if (loginNavBtn) loginNavBtn.classList.toggle("hidden", !!user);
+      if (userMonogram) {
+        userMonogram.textContent = getInitial(user);
+        userMonogram.classList.toggle("hidden", !user);
+      }
+      if (!user && authDropdown) authDropdown.classList.remove("is-visible");
+    });
+
+    loginNavBtn?.addEventListener("click", (event) => {
+      event.preventDefault();
+      clearMessage(authMessage);
+      setActiveTab(true);
+      toggleModal(true);
+    });
+
+    document.getElementById("loginTabBtn")?.addEventListener("click", () => setActiveTab(true));
+    document.getElementById("signupTabBtn")?.addEventListener("click", () => setActiveTab(false));
+    modal.querySelector(".shc-auth-close")?.addEventListener("click", () => toggleModal(false));
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) toggleModal(false);
+    });
+
+    userMonogram?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      authDropdown?.classList.toggle("is-visible");
+    }, true);
+
+    document.addEventListener("click", (event) => {
+      if (!authDropdown || !userMonogram) return;
+      if (!authDropdown.contains(event.target) && !userMonogram.contains(event.target)) {
+        authDropdown.classList.remove("is-visible");
+      }
+    });
+
+    const handleAuthError = (error) => showMessage(authMessage, error?.message || "Something went wrong. Please try again.", true);
+
+    document.getElementById("loginForm")?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      clearMessage(authMessage);
+      try {
+        await signInWithEmailAndPassword(
+          auth,
+          document.getElementById("loginEmail").value.trim(),
+          document.getElementById("loginPassword").value
+        );
+        showMessage(authMessage, "Welcome back!");
+        setTimeout(() => toggleModal(false), 500);
+      } catch (error) {
+        handleAuthError(error);
+      }
+    });
+
+    document.getElementById("signupForm")?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      clearMessage(authMessage);
+      try {
+        const credentials = await createUserWithEmailAndPassword(
+          auth,
+          document.getElementById("signupEmail").value.trim(),
+          document.getElementById("signupPassword").value
+        );
+        const name = document.getElementById("signupName").value.trim();
+        if (credentials.user && name) {
+          await updateProfile(credentials.user, { displayName: name });
+        }
+        showMessage(authMessage, "Account created.");
+        setTimeout(() => toggleModal(false), 500);
+      } catch (error) {
+        handleAuthError(error);
+      }
+    });
+
+    document.getElementById("forgotPasswordLink")?.addEventListener("click", async (event) => {
+      event.preventDefault();
+      clearMessage(authMessage);
+      try {
+        await sendPasswordResetEmail(auth, document.getElementById("loginEmail").value.trim());
+        showMessage(authMessage, "Password reset sent.");
+      } catch (error) {
+        handleAuthError(error);
+      }
+    });
+
+    const handleGoogle = async () => {
+      clearMessage(authMessage);
+      try {
+        await signInWithPopup(auth, provider);
+        showMessage(authMessage, "Signed in with Google.");
+        setTimeout(() => toggleModal(false), 500);
+      } catch (error) {
+        handleAuthError(error);
+      }
+    };
+
+    document.getElementById("googleLoginBtn")?.addEventListener("click", handleGoogle);
+    document.getElementById("googleSignupBtn")?.addEventListener("click", handleGoogle);
+    logoutBtn?.addEventListener("click", async () => {
+      try {
+        await signOut(auth);
+        authDropdown?.classList.remove("is-visible");
+      } catch (error) {
+        handleAuthError(error);
+      }
+    });
+  </script>
+  <script src="https://secondhandcell.com/assets/js/policy-modals.js" defer></script>
+  <script src="https://secondhandcell.com/assets/js/page-tracker.js" defer></script>
+</body>
+</html>
