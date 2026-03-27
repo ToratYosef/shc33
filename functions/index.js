@@ -6325,7 +6325,6 @@ const emailsRouter = createEmailsRouter({
   sendMultipleTestEmails,
   CONDITION_EMAIL_TEMPLATES,
   CONDITION_EMAIL_FROM_ADDRESS,
-  CONDITION_EMAIL_BCC_RECIPIENTS,
   buildConditionEmail,
   ordersCollection,
   updateOrderBoth,
