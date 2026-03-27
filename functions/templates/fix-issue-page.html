@@ -6,6 +6,7 @@
   <title>Resolve Device Issue | SecondHandCell</title>
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" href="https://secondhandcell.com/favicon/favicon.ico">
+  <link rel="stylesheet" href="https://secondhandcell.com/assets/css/tailwind.css">
   <link rel="stylesheet" href="https://secondhandcell.com/assets/css/site-chrome.css">
   <script>
     window.SHC_API_BASE_URL = "https://api.secondhandcell.com/server";
@@ -36,6 +37,7 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      overflow-x: hidden;
       background:
         radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 28%),
         radial-gradient(circle at top right, rgba(15, 118, 110, 0.10), transparent 30%),
@@ -49,16 +51,16 @@
     }
 
     .issue-shell {
-      max-width: 1180px;
+      max-width: 1040px;
       margin: 0 auto;
-      padding: 40px 20px 72px;
+      padding: 28px 18px 56px;
     }
 
     .issue-hero {
       position: relative;
       overflow: hidden;
-      border-radius: 28px;
-      padding: 34px;
+      border-radius: 24px;
+      padding: 26px;
       color: #fff;
       background:
         linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(37, 99, 235, 0.9) 54%, rgba(15, 118, 110, 0.86) 100%);
@@ -70,8 +72,8 @@
       position: absolute;
       right: -26px;
       bottom: -34px;
-      width: 220px;
-      height: 220px;
+      width: 180px;
+      height: 180px;
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.08);
       filter: blur(6px);
@@ -94,39 +96,39 @@
     .issue-hero-grid {
       position: relative;
       z-index: 1;
-      margin-top: 18px;
+      margin-top: 14px;
       display: grid;
-      grid-template-columns: 1.2fr 0.8fr;
-      gap: 18px;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 14px;
       align-items: end;
     }
 
     .issue-hero h1 {
       margin: 0 0 14px;
-      font-size: clamp(34px, 5vw, 54px);
-      line-height: 0.98;
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.02;
       letter-spacing: -0.05em;
     }
 
     .issue-hero p {
       margin: 0;
-      max-width: 720px;
-      font-size: 17px;
-      line-height: 1.72;
+      max-width: 620px;
+      font-size: 15px;
+      line-height: 1.65;
       color: rgba(255, 255, 255, 0.88);
     }
 
     .issue-summary-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
+      gap: 10px;
     }
 
     .issue-summary-card {
       background: rgba(255, 255, 255, 0.12);
       border: 1px solid rgba(255, 255, 255, 0.16);
-      border-radius: 22px;
-      padding: 16px 18px;
+      border-radius: 18px;
+      padding: 14px 16px;
       backdrop-filter: blur(12px);
     }
 
@@ -141,29 +143,29 @@
 
     .issue-summary-value {
       margin: 0;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 800;
       word-break: break-word;
     }
 
     .issue-layout {
-      margin-top: 22px;
+      margin-top: 18px;
       display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 18px;
+      grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+      gap: 14px;
       align-items: start;
     }
 
     .issue-panel {
       background: var(--issue-card);
       border: 1px solid var(--issue-line);
-      border-radius: 26px;
+      border-radius: 22px;
       box-shadow: var(--issue-shadow);
       overflow: hidden;
     }
 
     .issue-panel-inner {
-      padding: 26px;
+      padding: 22px;
     }
 
     .issue-section-label {
@@ -177,26 +179,26 @@
 
     .issue-section-title {
       margin: 0;
-      font-size: 30px;
+      font-size: 24px;
       letter-spacing: -0.04em;
     }
 
     .issue-section-copy {
       margin: 10px 0 0;
       color: var(--issue-muted);
-      line-height: 1.72;
-      font-size: 15px;
+      line-height: 1.65;
+      font-size: 14px;
     }
 
     .issue-list {
-      margin-top: 22px;
+      margin-top: 18px;
       display: grid;
-      gap: 16px;
+      gap: 14px;
     }
 
     .issue-card {
       border: 1px solid var(--issue-line);
-      border-radius: 22px;
+      border-radius: 18px;
       background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
       overflow: hidden;
     }
@@ -207,17 +209,17 @@
     }
 
     .issue-card-head {
-      padding: 18px 20px;
+      padding: 16px 18px;
       border-bottom: 1px solid var(--issue-line);
       display: flex;
       justify-content: space-between;
-      gap: 14px;
+      gap: 12px;
       align-items: flex-start;
     }
 
     .issue-card-head h3 {
       margin: 0 0 8px;
-      font-size: 22px;
+      font-size: 19px;
       letter-spacing: -0.03em;
     }
 
@@ -255,15 +257,15 @@
     }
 
     .issue-card-body {
-      padding: 20px;
+      padding: 18px;
       display: grid;
-      gap: 14px;
+      gap: 12px;
     }
 
     .issue-callout {
       border: 1px solid var(--issue-line);
-      border-radius: 18px;
-      padding: 16px 18px;
+      border-radius: 16px;
+      padding: 14px 16px;
       background: #f9fbff;
     }
 
@@ -295,8 +297,8 @@
     .issue-callout ul,
     .issue-callout ol {
       margin: 0;
-      line-height: 1.68;
-      font-size: 15px;
+      line-height: 1.6;
+      font-size: 14px;
       color: #1f2937;
     }
 
@@ -312,8 +314,8 @@
 
     .issue-option {
       border: 1px solid var(--issue-line);
-      border-radius: 18px;
-      padding: 16px 18px;
+      border-radius: 16px;
+      padding: 14px 16px;
       background: #ffffff;
     }
 
@@ -439,8 +441,8 @@
       align-items: center;
       justify-content: center;
       gap: 10px;
-      border-radius: 16px;
-      padding: 14px 18px;
+      border-radius: 14px;
+      padding: 12px 16px;
       font: inherit;
       font-weight: 800;
       text-decoration: none;
@@ -477,7 +479,7 @@
     }
 
     .issue-side-list {
-      margin-top: 22px;
+      margin-top: 18px;
       display: grid;
       gap: 12px;
     }
@@ -485,12 +487,12 @@
     .issue-side-item {
       display: grid;
       grid-template-columns: 42px 1fr;
-      gap: 14px;
+      gap: 12px;
       align-items: start;
       border: 1px solid var(--issue-line);
-      border-radius: 18px;
+      border-radius: 16px;
       background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
-      padding: 16px;
+      padding: 14px;
     }
 
     .issue-side-icon {
@@ -518,9 +520,9 @@
     }
 
     .issue-quick-links {
-      margin-top: 22px;
+      margin-top: 18px;
       display: grid;
-      gap: 12px;
+      gap: 10px;
     }
 
     .hidden {
@@ -540,12 +542,12 @@
 
     @media (max-width: 680px) {
       .issue-shell {
-        padding: 28px 14px 56px;
+        padding: 20px 12px 42px;
       }
 
       .issue-hero,
       .issue-panel-inner {
-        padding: 22px;
+        padding: 18px;
       }
 
       .issue-card-head {
