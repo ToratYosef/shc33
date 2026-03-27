@@ -567,6 +567,27 @@
       color: var(--issue-brand-strong);
     }
 
+    .issue-deadline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+      margin-bottom: 16px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .issue-deadline.expired {
+      background: #fef2f2;
+      border-color: #fecaca;
+      color: #b91c1c;
+    }
+
     .issue-primary,
     .issue-secondary,
     .issue-link {
@@ -761,11 +782,25 @@
       background: #f8fafc;
       border-color: #dbe2ea;
       color: #64748b;
+      cursor: default;
     }
 
     .issue-choice-button.is-resolved .issue-choice-title,
     .issue-choice-button.is-resolved .issue-choice-meta {
       color: #64748b;
+    }
+
+    .issue-choice-button.is-expired {
+      background: #f8fafc;
+      border-color: #e2e8f0;
+      color: #94a3b8;
+      cursor: not-allowed;
+      opacity: 0.82;
+    }
+
+    .issue-choice-button.is-expired .issue-choice-title,
+    .issue-choice-button.is-expired .issue-choice-meta {
+      color: #94a3b8;
     }
 
     .issue-choice-check {
@@ -1033,6 +1068,7 @@
       const trackOrderLink = document.getElementById('trackOrderLink');
       const issueModal = document.getElementById('issueModal');
       const issueModalBody = document.getElementById('issueModalBody');
+      let issueDeadlineTimer = null;
 
       const esc = (value) => String(value == null ? '' : value)
         .replace(/&/g, '&amp;')
@@ -1259,6 +1295,7 @@
       }
 
       function renderIssueCard(issue, idx) {
+        const isExpired = Boolean(issue.responseExpired);
         const optionsHtml = Array.isArray(issue.fixOptions) && issue.fixOptions.length
           ? `
             <div class="issue-options">
@@ -1285,6 +1322,11 @@
 
         return `
           <div class="issue-card-body">
+            ${Number.isFinite(issue.responseDueAtMillis) ? `
+              <section class="issue-deadline ${isExpired ? 'expired' : ''}">
+                <span data-deadline-countdown="${idx}">${isExpired ? 'Response window expired' : 'Time left to respond: --'}</span>
+              </section>
+            ` : ''}
             <section class="issue-callout problem">
               <p class="issue-callout-title">Problem</p>
               <p>${esc(issue.problem || 'Please resolve this issue so we can continue processing your order.')}</p>
@@ -1311,7 +1353,7 @@
             ` : ''}
             ${renderUnlockPanel(issue, idx)}
             <div class="issue-feedback" data-feedback="${idx}"></div>
-            <button class="issue-primary" type="button" data-resolve-button="${idx}" ${issue.resolved ? 'disabled' : ''}>${esc(issue.resolved ? `Resolved: ${issue.resolvedButtonLabel || 'Issue resolved'}` : (issue.resolvedButtonLabel || 'Issue resolved'))}</button>
+            <button class="issue-primary" type="button" data-resolve-button="${idx}" ${issue.resolved || isExpired ? 'disabled' : ''}>${esc(issue.resolved ? `Resolved: ${issue.resolvedButtonLabel || 'Issue resolved'}` : (isExpired ? 'Response window expired' : (issue.resolvedButtonLabel || 'Issue resolved')))}</button>
           </div>
         `;
       }
@@ -1355,9 +1397,56 @@
 
       function closeIssueModal() {
         if (!issueModal) return;
+        if (issueDeadlineTimer) {
+          window.clearInterval(issueDeadlineTimer);
+          issueDeadlineTimer = null;
+        }
         issueModal.classList.remove('is-visible');
         issueModal.setAttribute('aria-hidden', 'true');
         issueModalBody.innerHTML = '';
+      }
+
+      function formatRemainingTime(ms) {
+        if (!Number.isFinite(ms) || ms <= 0) return '0m';
+        const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+        const days = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor((totalSeconds % 86400) / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+        if (hours > 0) return `${hours}h ${minutes}m`;
+        return `${minutes}m`;
+      }
+
+      function bindIssueDeadline(issue, idx) {
+        if (issueDeadlineTimer) {
+          window.clearInterval(issueDeadlineTimer);
+          issueDeadlineTimer = null;
+        }
+        const countdownEl = document.querySelector(`[data-deadline-countdown="${idx}"]`);
+        const button = document.querySelector(`[data-resolve-button="${idx}"]`);
+        if (!countdownEl || !button || !Number.isFinite(issue?.responseDueAtMillis)) {
+          return;
+        }
+
+        const updateCountdown = () => {
+          const remainingMs = issue.responseDueAtMillis - Date.now();
+          const expired = issue.responseExpired || remainingMs <= 0;
+          if (expired) {
+            countdownEl.textContent = 'Response window expired';
+            countdownEl.parentElement?.classList.add('expired');
+            button.disabled = true;
+            button.textContent = 'Response window expired';
+            if (issueDeadlineTimer) {
+              window.clearInterval(issueDeadlineTimer);
+              issueDeadlineTimer = null;
+            }
+            return;
+          }
+          countdownEl.textContent = `Time left to respond: ${formatRemainingTime(remainingMs)}`;
+        };
+
+        updateCountdown();
+        issueDeadlineTimer = window.setInterval(updateCountdown, 1000);
       }
 
       function openIssueModal(issue) {
@@ -1394,6 +1483,7 @@
         issueModal.querySelector('.issue-modal-close')?.addEventListener('click', closeIssueModal);
         bindUnlockUi();
         issueModal.querySelector(`[data-resolve-button="${idx}"]`)?.addEventListener('click', () => submitIssue(issue, idx));
+        bindIssueDeadline(issue, idx);
       }
 
       function openIssueChooser(device) {
@@ -1414,9 +1504,9 @@
           <div class="issue-modal-content">
             <div class="issue-choice-list">
               ${issueChoices.map((issue) => `
-                <button type="button" class="issue-choice-button ${issue.resolved ? 'is-resolved' : ''}" data-open-specific-issue="${esc(issue.reason)}">
+                <button type="button" class="issue-choice-button ${issue.resolved ? 'is-resolved' : ''} ${issue.responseExpired ? 'is-expired' : ''}" data-open-specific-issue="${esc(issue.reason)}" ${issue.resolved || issue.responseExpired ? 'disabled' : ''}>
                   <span class="issue-choice-title">${issue.resolved ? '<span class="issue-choice-check">✓</span>' : ''}${esc(issue.title)}</span>
-                  <span class="issue-choice-meta">${issue.resolved ? 'Resolved' : 'Pending fix'}</span>
+                  <span class="issue-choice-meta">${issue.resolved ? 'Resolved' : (issue.responseExpired ? 'Response window expired' : 'Pending fix')}</span>
                 </button>
               `).join('')}
             </div>
@@ -1481,6 +1571,12 @@
         const button = document.querySelector(`[data-resolve-button="${idx}"]`);
         feedback.className = 'issue-feedback';
         feedback.textContent = '';
+
+        if (issue.responseExpired) {
+          feedback.className = 'issue-feedback error';
+          feedback.textContent = 'The response window for this issue has expired.';
+          return;
+        }
 
         const unlock = collectUnlockPayload(idx);
         if (!unlock.ok) {

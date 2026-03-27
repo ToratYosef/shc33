@@ -850,6 +850,22 @@ function toTitleCase(value) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function issueTimestampToMillis(value) {
+  if (value == null) return null;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value > 1e12 ? value : value * 1000;
+  }
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  if (typeof value?.toMillis === 'function') return value.toMillis();
+  if (typeof value?.seconds === 'number') return value.seconds * 1000;
+  if (typeof value?._seconds === 'number') return value._seconds * 1000;
+  if (typeof value?.toDate === 'function') return value.toDate().getTime();
+  return null;
+}
+
 const ISSUE_COPY = {
   fmi_active: {
     title: 'iCloud / FMI ON',
@@ -997,6 +1013,7 @@ const ISSUE_COPY = {
 };
 
 function buildIssueList(order) {
+  const responseWindowMs = 7 * 24 * 60 * 60 * 1000;
   const issues = [];
   const qcIssuesByDevice = order?.qcIssuesByDevice;
 
@@ -1012,11 +1029,20 @@ function buildIssueList(order) {
         if (!reason) {
           return;
         }
+        const issueMarkedAtMillis =
+          issueTimestampToMillis(issue.updatedAt) ||
+          issueTimestampToMillis(issue.createdAt) ||
+          issueTimestampToMillis(issue.emailSentAt) ||
+          issueTimestampToMillis(order?.lastCustomerEmailSentAt) ||
+          issueTimestampToMillis(order?.lastConditionEmailSentAt);
         issues.push({
           deviceKey,
           reason,
           resolved: Boolean(issue.resolved) || Boolean(issue.resolvedAt),
           notes: issue.notes || '',
+          updatedAt: issue.updatedAt || issue.createdAt || issue.emailSentAt || null,
+          issueMarkedAtMillis,
+          responseDueAtMillis: Number.isFinite(issueMarkedAtMillis) ? issueMarkedAtMillis + responseWindowMs : null,
         });
       });
     });
@@ -1033,6 +1059,11 @@ function buildIssueList(order) {
         reason: fallbackReason,
         resolved: false,
         notes: order?.lastConditionEmailNotes || '',
+        updatedAt: order?.lastConditionEmailSentAt || null,
+        issueMarkedAtMillis: issueTimestampToMillis(order?.lastConditionEmailSentAt),
+        responseDueAtMillis: Number.isFinite(issueTimestampToMillis(order?.lastConditionEmailSentAt))
+          ? issueTimestampToMillis(order?.lastConditionEmailSentAt) + responseWindowMs
+          : null,
       });
     }
   }
@@ -5054,7 +5085,7 @@ function buildEmailLayout({
   bodyHtml = "",
   accentColor = "#16a34a",
   includeTrustpilot = true,
-  footerText = "Need help? Reply to this email or call (347) 688-0662.",
+  footerText = "Need help? Reply to this email.",
   includeCountdownNotice = false,
 } = {}) {
   const headingSection = title

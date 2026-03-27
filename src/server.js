@@ -494,6 +494,22 @@ const ISSUE_COPY = {
 };
 
 function buildIssueList(order) {
+  const responseWindowMs = 7 * 24 * 60 * 60 * 1000;
+  const toMillis = (value) => {
+    if (value == null) return null;
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value > 1e12 ? value : value * 1000;
+    }
+    if (typeof value === 'string') {
+      const parsed = Date.parse(value);
+      return Number.isNaN(parsed) ? null : parsed;
+    }
+    if (typeof value?.toMillis === 'function') return value.toMillis();
+    if (typeof value?.seconds === 'number') return value.seconds * 1000;
+    if (typeof value?._seconds === 'number') return value._seconds * 1000;
+    if (typeof value?.toDate === 'function') return value.toDate().getTime();
+    return null;
+  };
   const issues = [];
   const qcIssuesByDevice = order?.qcIssuesByDevice;
 
@@ -509,11 +525,20 @@ function buildIssueList(order) {
         if (!reason) {
           return;
         }
+        const issueMarkedAtMillis =
+          toMillis(issue.updatedAt) ||
+          toMillis(issue.createdAt) ||
+          toMillis(issue.emailSentAt) ||
+          toMillis(order?.lastCustomerEmailSentAt) ||
+          toMillis(order?.lastConditionEmailSentAt);
         issues.push({
           deviceKey,
           reason,
           resolved: Boolean(issue.resolved) || Boolean(issue.resolvedAt),
           notes: issue.notes || '',
+          updatedAt: issue.updatedAt || issue.createdAt || issue.emailSentAt || null,
+          issueMarkedAtMillis,
+          responseDueAtMillis: Number.isFinite(issueMarkedAtMillis) ? issueMarkedAtMillis + responseWindowMs : null,
         });
       });
     });
@@ -530,6 +555,11 @@ function buildIssueList(order) {
         reason: fallbackReason,
         resolved: false,
         notes: order?.lastConditionEmailNotes || '',
+        updatedAt: order?.lastConditionEmailSentAt || null,
+        issueMarkedAtMillis: toMillis(order?.lastConditionEmailSentAt),
+        responseDueAtMillis: Number.isFinite(toMillis(order?.lastConditionEmailSentAt))
+          ? toMillis(order?.lastConditionEmailSentAt) + responseWindowMs
+          : null,
       });
     }
   }
@@ -650,13 +680,6 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     if (!orderId) {
       return res.status(400).send('Order ID is required.');
     }
-
-    const redirectUrl = new URL(`https://api.secondhandcell.com/server/orders/${encodeURIComponent(orderId)}/issue-resolved`);
-    const redirectDeviceKey = req.query.deviceKey ? String(req.query.deviceKey).trim() : '';
-    if (redirectDeviceKey) {
-      redirectUrl.searchParams.set('deviceKey', redirectDeviceKey);
-    }
-    return res.redirect(302, redirectUrl.toString());
 
     const order = await getOrderByIdFromFirestore(orderId);
     if (!order) {
@@ -2301,6 +2324,22 @@ app.post('/fix-issue/:orderId/confirm', async (req, res) => {
     const order = await getOrderByIdFromFirestore(orderId);
     if (!order) {
       return res.status(404).json({ error: 'Order not found.' });
+    }
+
+    const currentIssue = order?.qcIssuesByDevice?.[deviceKey]?.[reason] || null;
+    const responseStartRaw =
+      currentIssue?.updatedAt ||
+      currentIssue?.createdAt ||
+      currentIssue?.emailSentAt ||
+      order?.lastConditionEmailSentAt ||
+      order?.lastCustomerEmailSentAt ||
+      null;
+    const responseStartMs = responseStartRaw ? Date.parse(String(responseStartRaw)) : null;
+    const responseWindowMs = 7 * 24 * 60 * 60 * 1000;
+    if (Number.isFinite(responseStartMs) && (Date.now() - responseStartMs) > responseWindowMs) {
+      return res.status(410).json({
+        error: 'The response window for this issue has expired. This issue can no longer be resolved from this page.',
+      });
     }
 
     const updatePayload = {};
