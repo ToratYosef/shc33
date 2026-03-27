@@ -215,6 +215,66 @@ function buildPackageList({ boxCount, weightPerBox, dimensions }) {
     }));
 }
 
+function normalizeCurrencyAmount(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+        return null;
+    }
+    return Math.round((numeric + Number.EPSILON) * 100) / 100;
+}
+
+function resolveOrderReferenceId(orderId, orderData = {}) {
+    return (
+        orderData.referenceId ||
+        orderData.reference_id ||
+        orderData.orderNumber ||
+        orderData.orderNo ||
+        orderData.id ||
+        orderId
+    );
+}
+
+function resolveCompletedOrderValue(orderData = {}) {
+    const candidates = [
+        orderData.totals && orderData.totals.finalTotal,
+        orderData.totals && orderData.totals.offerTotal,
+        orderData.stripe && orderData.stripe.amountReceived && Number(orderData.stripe.amountReceived) / 100,
+        orderData.payment && orderData.payment.totalAmount,
+    ];
+    for (const candidate of candidates) {
+        const normalized = normalizeCurrencyAmount(candidate);
+        if (normalized !== null) {
+            return normalized;
+        }
+    }
+    return null;
+}
+
+function isCompletedOrderStatus(orderData = {}) {
+    const status = String(orderData.status || '').trim().toLowerCase();
+    const paymentStatus = String(orderData.paymentStatus || '').trim().toLowerCase();
+    return status === 'completed' || paymentStatus === 'succeeded';
+}
+
+function buildCashMyCellTrackingData(orderId, orderData = {}) {
+    const referenceId = resolveOrderReferenceId(orderId, orderData);
+    const orderValue = resolveCompletedOrderValue(orderData);
+    const isCompleted = isCompletedOrderStatus(orderData);
+    return {
+        orderId,
+        status: orderData.status || null,
+        isCompleted,
+        orderValue,
+        referenceId,
+        cashMyCell: {
+            orderValue,
+            referenceId,
+            isCompleted,
+            status: isCompleted ? 'completed' : (orderData.status || null),
+        },
+    };
+}
+
 async function estimateShippingRate(shipping, packages) {
     const key = getShipEngineKey();
     if (!key || !shipping || shipping.preference === 'pickup') {
@@ -527,14 +587,67 @@ router.post('/stripe-webhook', express.raw({ type: 'application/json' }), async 
 
                 if (order_id) {
                     const orderRef = ordersCollection.doc(order_id);
-                    await orderRef.set({
-                        status: 'completed',
-                        statusDisplay: 'Completed',
-                        completedAt: now,
-                        paymentStatus: 'succeeded',
-                        stripe: paymentUpdate
-                    }, { merge: true });
-                    console.log(`Wholesale Order ${order_id} marked as completed.`);
+                    const completionResult = await db.runTransaction(async (transaction) => {
+                        const orderSnap = await transaction.get(orderRef);
+                        if (!orderSnap.exists) {
+                            return {
+                                exists: false,
+                                alreadyCompletedBefore: false,
+                                orderValueUsedForTracking: normalizeCurrencyAmount((paymentIntent.amount_received || 0) / 100),
+                                referenceIdUsedForTracking: order_id,
+                            };
+                        }
+
+                        const existingOrder = orderSnap.data() || {};
+                        const alreadyCompletedBefore = isCompletedOrderStatus(existingOrder);
+                        const mergedOrder = {
+                            ...existingOrder,
+                            status: 'completed',
+                            paymentStatus: 'succeeded',
+                            stripe: {
+                                ...(existingOrder.stripe || {}),
+                                ...paymentUpdate,
+                            },
+                            id: existingOrder.id || order_id,
+                        };
+                        const trackingData = buildCashMyCellTrackingData(order_id, mergedOrder);
+
+                        const updatePayload = {
+                            status: 'completed',
+                            statusDisplay: 'Completed',
+                            paymentStatus: 'succeeded',
+                            stripe: paymentUpdate,
+                            cashMyCellTracking: trackingData.cashMyCell,
+                            completionLastProcessedAt: now,
+                            completionLastPaymentIntentId: paymentIntent.id,
+                        };
+
+                        if (!alreadyCompletedBefore) {
+                            updatePayload.completedAt = now;
+                            updatePayload.completionProcessedAt = now;
+                            updatePayload.completionProcessedBy = 'stripe_webhook';
+                        }
+
+                        transaction.set(orderRef, updatePayload, { merge: true });
+
+                        return {
+                            exists: true,
+                            alreadyCompletedBefore,
+                            orderValueUsedForTracking: trackingData.cashMyCell.orderValue,
+                            referenceIdUsedForTracking: trackingData.cashMyCell.referenceId,
+                        };
+                    });
+
+                    if (!completionResult.exists) {
+                        console.warn(`[WHOLESALE_COMPLETION] order_not_found orderId=${order_id} paymentIntentId=${paymentIntent.id}`);
+                    } else {
+                        console.log(
+                            `[WHOLESALE_COMPLETION] orderId=${order_id} paymentIntentId=${paymentIntent.id} ` +
+                            `orderMarkedCompleted=true alreadyCompletedBefore=${completionResult.alreadyCompletedBefore} ` +
+                            `orderTotalUsedForTracking=${completionResult.orderValueUsedForTracking ?? 'null'} ` +
+                            `referenceIdUsedForTracking=${completionResult.referenceIdUsedForTracking || 'null'}`
+                        );
+                    }
                 }
 
             } catch (firestoreError) {
@@ -598,6 +711,40 @@ router.post('/stripe-webhook', express.raw({ type: 'application/json' }), async 
     
     // Return a 200 response to Stripe to acknowledge receipt of the event
     res.json({ received: true });
+});
+
+router.get('/orders/:orderId/success-tracking', async (req, res) => {
+    const decoded = await authenticate(req);
+    if (!decoded?.uid) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { orderId } = req.params;
+    if (!orderId) {
+        return res.status(400).json({ error: 'orderId is required' });
+    }
+
+    try {
+        const orderDoc = await ordersCollection.doc(orderId).get();
+        if (!orderDoc.exists) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        const orderData = orderDoc.data() || {};
+        const isOwner = String(orderData.userId || '') === String(decoded.uid || '');
+        const adminUser = await requireAdmin(req);
+        if (!isOwner && !adminUser) {
+            return res.status(403).json({ error: 'Not authorized to access this order' });
+        }
+
+        const trackingData = buildCashMyCellTrackingData(orderId, { id: orderId, ...orderData });
+        res.json({
+            order: trackingData,
+        });
+    } catch (error) {
+        console.error(`Failed to load success tracking data for order ${orderId}:`, error);
+        res.status(500).json({ error: 'Failed to load order success tracking data' });
+    }
 });
 
 router.get('/orders', async (req, res) => {
