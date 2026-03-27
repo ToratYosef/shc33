@@ -3411,7 +3411,9 @@ function createOrdersRouter({
       const pageDevices = Array.from({ length: itemCount }, (_, index) => {
         const deviceKey = buildOrderDeviceKey(orderId, index);
         const deviceInfo = getOrderDeviceInfo(order, deviceKey);
-        const linkedIssue = pageIssues.find((issue) => issue.deviceKey === deviceKey) || null;
+        const linkedIssues = pageIssues.filter((issue) => issue.deviceKey === deviceKey);
+        const unresolvedCount = linkedIssues.filter((issue) => !issue.resolved).length;
+        const resolvedCount = linkedIssues.filter((issue) => issue.resolved).length;
 
         return {
           deviceKey,
@@ -3421,10 +3423,16 @@ function createOrdersRouter({
           storage: deviceInfo.storage,
           brand: deviceInfo.brand,
           imageUrl: deviceInfo.imageUrl || '',
-          hasIssue: Boolean(linkedIssue && !linkedIssue.resolved),
-          resolved: Boolean(linkedIssue?.resolved),
-          problemLabel: linkedIssue ? (linkedIssue.title || toTitleCase(linkedIssue.reason)) : 'No issue detected',
-          problemReason: linkedIssue?.reason || '',
+          hasIssue: unresolvedCount > 0,
+          resolvedCount,
+          unresolvedCount,
+          totalIssueCount: linkedIssues.length,
+          issueSummaries: linkedIssues.map((issue) => ({
+            deviceKey: issue.deviceKey,
+            reason: issue.reason,
+            title: issue.title || toTitleCase(issue.reason),
+            resolved: Boolean(issue.resolved),
+          })),
         };
       });
 

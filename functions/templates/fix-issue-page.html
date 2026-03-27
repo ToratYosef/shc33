@@ -732,6 +732,42 @@
       gap: 12px;
     }
 
+    .issue-choice-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .issue-choice-button {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--issue-line);
+      border-radius: 16px;
+      background: #fff;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+
+    .issue-choice-button:hover {
+      border-color: #93c5fd;
+      box-shadow: 0 12px 28px -24px rgba(37, 99, 235, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .issue-choice-title {
+      display: block;
+      font-size: 14px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .issue-choice-meta {
+      display: block;
+      margin-top: 4px;
+      font-size: 12px;
+      color: #64748b;
+    }
+
     @keyframes issueFadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -1114,9 +1150,22 @@
       }
 
       function renderDeviceCard(device, linkedIssue) {
-        const hasIssue = Boolean(linkedIssue && !linkedIssue.resolved);
-        const actionLabel = hasIssue ? 'Fix issue' : (linkedIssue?.resolved ? 'View details' : 'No issue');
-        const statusLabel = hasIssue ? (linkedIssue.title || 'Issue found') : (linkedIssue?.resolved ? 'Resolved' : 'No issue detected');
+        const unresolvedCount = Number(device?.unresolvedCount || 0);
+        const resolvedCount = Number(device?.resolvedCount || 0);
+        const totalIssueCount = Number(device?.totalIssueCount || 0);
+        const hasIssue = unresolvedCount > 0;
+        const actionLabel = totalIssueCount > 1 ? 'Choose issue' : (hasIssue ? 'Fix issue' : (totalIssueCount === 1 ? 'View details' : 'No issue'));
+        let statusLabel = 'No issue detected';
+        if (totalIssueCount > 1) {
+          statusLabel = `${resolvedCount}/${totalIssueCount} resolved`;
+          if (unresolvedCount > 0) {
+            statusLabel += ` • ${unresolvedCount} pending`;
+          }
+        } else if (hasIssue) {
+          statusLabel = linkedIssue?.title || device?.issueSummaries?.[0]?.title || 'Issue found';
+        } else if (totalIssueCount === 1 && resolvedCount === 1) {
+          statusLabel = 'Resolved';
+        }
 
         return `
           <article class="issue-device-card ${hasIssue ? 'has-issue' : ''}" data-device-card="${esc(device.deviceKey)}" data-device-key="${esc(device.deviceKey)}">
@@ -1132,7 +1181,7 @@
               ${device.storage ? `<p class="issue-device-storage">${esc(device.storage)}</p>` : ''}
               <p class="issue-device-problem ${hasIssue ? 'has-issue' : ''}">${esc(statusLabel)}</p>
             </div>
-            <button type="button" class="issue-card-action ${hasIssue ? 'has-issue' : ''}" data-open-issue="${esc(device.deviceKey)}" ${linkedIssue ? '' : 'disabled'}>${esc(actionLabel)}</button>
+            <button type="button" class="issue-card-action ${hasIssue ? 'has-issue' : ''}" data-open-issue="${esc(device.deviceKey)}" ${totalIssueCount ? '' : 'disabled'}>${esc(actionLabel)}</button>
           </article>
         `;
       }
@@ -1172,12 +1221,55 @@
           </div>
         `;
 
-        resolveImageUrl(issueModal.querySelector('#issueModalImage'), issue.imageUrl);
+        resolveImageUrl(issue.imageUrl, issueModal.querySelector('#issueModalImage'));
         issueModal.classList.add('is-visible');
         issueModal.setAttribute('aria-hidden', 'false');
         issueModal.querySelector('.issue-modal-close')?.addEventListener('click', closeIssueModal);
         bindUnlockUi();
         issueModal.querySelector(`[data-resolve-button="${idx}"]`)?.addEventListener('click', () => submitIssue(issue, idx));
+      }
+
+      function openIssueChooser(device) {
+        if (!issueModal || !issueModalBody || !device) return;
+        const issueChoices = Array.isArray(device.issueSummaries) ? device.issueSummaries : [];
+        issueModalBody.innerHTML = `
+          <div class="issue-modal-head">
+            <div class="issue-modal-thumb">
+              <img id="issueModalImage" alt="${esc(device.model || device.deviceLabel || 'Device')}">
+            </div>
+            <div>
+              <div class="issue-device-chip">${esc(device.deviceLabel || 'Device')}</div>
+              <h2 id="issueModalTitle" class="issue-section-title" style="margin-top:10px;">Choose an issue to fix</h2>
+              <p class="issue-section-copy" style="margin-top:8px;">This device has multiple issue checks attached to it. Pick the issue you want to review or resolve.</p>
+            </div>
+            <button type="button" class="issue-modal-close" aria-label="Close issue details">&times;</button>
+          </div>
+          <div class="issue-modal-content">
+            <div class="issue-choice-list">
+              ${issueChoices.map((issue) => `
+                <button type="button" class="issue-choice-button" data-open-specific-issue="${esc(issue.reason)}">
+                  <span class="issue-choice-title">${esc(issue.title)}</span>
+                  <span class="issue-choice-meta">${issue.resolved ? 'Resolved' : 'Pending fix'}</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        `;
+        resolveImageUrl(device.imageUrl, issueModal.querySelector('#issueModalImage'));
+        issueModal.classList.add('is-visible');
+        issueModal.setAttribute('aria-hidden', 'false');
+        issueModal.querySelector('.issue-modal-close')?.addEventListener('click', closeIssueModal);
+        Array.from(issueModal.querySelectorAll('[data-open-specific-issue]')).forEach((button) => {
+          button.addEventListener('click', () => {
+            const reason = button.getAttribute('data-open-specific-issue');
+            const issue = Array.isArray(state.issues)
+              ? state.issues.find((entry) => entry.deviceKey === device.deviceKey && entry.reason === reason)
+              : null;
+            if (issue) {
+              openIssueModal(issue);
+            }
+          });
+        });
       }
 
       function redirectToConfirmation(issue) {
@@ -1334,6 +1426,14 @@
             event.preventDefault();
             event.stopPropagation();
             const deviceKey = button.getAttribute('data-open-issue');
+            const device = Array.isArray(state.devices)
+              ? state.devices.find((entry) => entry.deviceKey === deviceKey)
+              : null;
+            if (!device || !device.totalIssueCount) return;
+            if (device.totalIssueCount > 1) {
+              openIssueChooser(device);
+              return;
+            }
             const issue = Array.isArray(state.issues)
               ? state.issues.find((entry) => entry.deviceKey === deviceKey)
               : null;
@@ -1345,6 +1445,14 @@
         Array.from(document.querySelectorAll('[data-device-card]')).forEach((card) => {
           card.addEventListener('click', () => {
             const deviceKey = card.getAttribute('data-device-key');
+            const device = Array.isArray(state.devices)
+              ? state.devices.find((entry) => entry.deviceKey === deviceKey)
+              : null;
+            if (!device || !device.totalIssueCount) return;
+            if (device.totalIssueCount > 1) {
+              openIssueChooser(device);
+              return;
+            }
             const issue = Array.isArray(state.issues)
               ? state.issues.find((entry) => entry.deviceKey === deviceKey)
               : null;
