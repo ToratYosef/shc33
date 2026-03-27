@@ -129,6 +129,8 @@ function normalizeEvent(event) {
 function buildLogContext({ sessionId, clientIp, geo, userAgent, event }) {
   const uaMeta = inferUserAgentMetadata(userAgent);
   const client = normalizeClientContext(event.extra || {});
+  const source = clampString(event.extra?.source, 120) || 'unknown';
+  const referrer = clampString(event.referrer, 512) || 'none';
   const location = [geo.city, geo.region, geo.country].filter(Boolean).join(', ') || 'unknown';
   const deviceName = client.deviceName || uaMeta.deviceName || 'unknown';
   const deviceType = client.deviceType || uaMeta.deviceType || 'unknown';
@@ -142,6 +144,8 @@ function buildLogContext({ sessionId, clientIp, geo, userAgent, event }) {
     `[visitor] session=${sessionId}`,
     `type=${event.event_type}`,
     `path=${event.path || 'unknown'}`,
+    `source=${source}`,
+    `referrer=${referrer}`,
     `ip=${clientIp || 'unknown'}`,
     `location=${location}`,
     `device=${deviceName}`,
