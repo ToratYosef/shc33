@@ -51,16 +51,16 @@
     }
 
     .issue-shell {
-      max-width: 1040px;
+      max-width: 1180px;
       margin: 0 auto;
-      padding: 28px 18px 56px;
+      padding: 24px 16px 44px;
     }
 
     .issue-hero {
       position: relative;
       overflow: hidden;
-      border-radius: 24px;
-      padding: 26px;
+      border-radius: 20px;
+      padding: 22px;
       color: #fff;
       background:
         linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(37, 99, 235, 0.9) 54%, rgba(15, 118, 110, 0.86) 100%);
@@ -98,23 +98,23 @@
       z-index: 1;
       margin-top: 14px;
       display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
-      gap: 14px;
+      grid-template-columns: 1.35fr 0.65fr;
+      gap: 12px;
       align-items: end;
     }
 
     .issue-hero h1 {
       margin: 0 0 14px;
-      font-size: clamp(28px, 4vw, 42px);
-      line-height: 1.02;
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.06;
       letter-spacing: -0.05em;
     }
 
     .issue-hero p {
       margin: 0;
-      max-width: 620px;
-      font-size: 15px;
-      line-height: 1.65;
+      max-width: 560px;
+      font-size: 14px;
+      line-height: 1.55;
       color: rgba(255, 255, 255, 0.88);
     }
 
@@ -127,8 +127,8 @@
     .issue-summary-card {
       background: rgba(255, 255, 255, 0.12);
       border: 1px solid rgba(255, 255, 255, 0.16);
-      border-radius: 18px;
-      padding: 14px 16px;
+      border-radius: 16px;
+      padding: 12px 14px;
       backdrop-filter: blur(12px);
     }
 
@@ -143,7 +143,7 @@
 
     .issue-summary-value {
       margin: 0;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 800;
       word-break: break-word;
     }
@@ -151,21 +151,21 @@
     .issue-layout {
       margin-top: 18px;
       display: grid;
-      grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
-      gap: 14px;
+      grid-template-columns: 1fr;
+      gap: 12px;
       align-items: start;
     }
 
     .issue-panel {
       background: var(--issue-card);
       border: 1px solid var(--issue-line);
-      border-radius: 22px;
+      border-radius: 18px;
       box-shadow: var(--issue-shadow);
       overflow: hidden;
     }
 
     .issue-panel-inner {
-      padding: 22px;
+      padding: 18px;
     }
 
     .issue-section-label {
@@ -179,28 +179,30 @@
 
     .issue-section-title {
       margin: 0;
-      font-size: 24px;
+      font-size: 20px;
       letter-spacing: -0.04em;
     }
 
     .issue-section-copy {
       margin: 10px 0 0;
       color: var(--issue-muted);
-      line-height: 1.65;
-      font-size: 14px;
+      line-height: 1.55;
+      font-size: 13px;
     }
 
     .issue-list {
       margin-top: 18px;
       display: grid;
-      gap: 14px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
     }
 
     .issue-card {
       border: 1px solid var(--issue-line);
-      border-radius: 18px;
+      border-radius: 16px;
       background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
       overflow: hidden;
+      height: 100%;
     }
 
     .issue-card.is-resolved {
@@ -209,7 +211,7 @@
     }
 
     .issue-card-head {
-      padding: 16px 18px;
+      padding: 14px 14px 12px;
       border-bottom: 1px solid var(--issue-line);
       display: flex;
       justify-content: space-between;
@@ -218,8 +220,8 @@
     }
 
     .issue-card-head h3 {
-      margin: 0 0 8px;
-      font-size: 19px;
+      margin: 0 0 6px;
+      font-size: 17px;
       letter-spacing: -0.03em;
     }
 
@@ -227,19 +229,19 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 8px 12px;
+      padding: 6px 10px;
       border-radius: 999px;
       border: 1px solid #cfe0ff;
       background: var(--issue-indigo-soft);
       color: #1d4ed8;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 800;
     }
 
     .issue-status-chip {
-      padding: 8px 12px;
+      padding: 6px 10px;
       border-radius: 999px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.08em;
@@ -257,15 +259,15 @@
     }
 
     .issue-card-body {
-      padding: 18px;
+      padding: 14px;
       display: grid;
-      gap: 12px;
+      gap: 10px;
     }
 
     .issue-callout {
       border: 1px solid var(--issue-line);
-      border-radius: 16px;
-      padding: 14px 16px;
+      border-radius: 14px;
+      padding: 12px 13px;
       background: #f9fbff;
     }
 
@@ -285,8 +287,8 @@
     }
 
     .issue-callout-title {
-      margin: 0 0 6px;
-      font-size: 12px;
+      margin: 0 0 5px;
+      font-size: 11px;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.12em;
@@ -297,8 +299,8 @@
     .issue-callout ul,
     .issue-callout ol {
       margin: 0;
-      line-height: 1.6;
-      font-size: 14px;
+      line-height: 1.5;
+      font-size: 13px;
       color: #1f2937;
     }
 
@@ -314,22 +316,22 @@
 
     .issue-option {
       border: 1px solid var(--issue-line);
-      border-radius: 16px;
-      padding: 14px 16px;
+      border-radius: 14px;
+      padding: 12px 13px;
       background: #ffffff;
     }
 
     .issue-option h4 {
-      margin: 0 0 8px;
-      font-size: 16px;
+      margin: 0 0 6px;
+      font-size: 14px;
     }
 
     .issue-option p,
     .issue-option ol {
       margin: 0;
       color: var(--issue-muted);
-      font-size: 14px;
-      line-height: 1.65;
+      font-size: 13px;
+      line-height: 1.5;
     }
 
     .issue-option ol {
@@ -339,11 +341,11 @@
 
     .unlock-panel {
       border: 1px dashed #a5b4fc;
-      border-radius: 18px;
-      padding: 16px 18px;
+      border-radius: 14px;
+      padding: 12px 13px;
       background: #f6f7ff;
       display: none;
-      gap: 12px;
+      gap: 10px;
     }
 
     .unlock-panel.is-visible {
@@ -356,7 +358,7 @@
     }
 
     .field label {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 800;
       color: #334155;
     }
@@ -365,8 +367,8 @@
     .field select {
       width: 100%;
       border: 1px solid #cbd5e1;
-      border-radius: 14px;
-      padding: 13px 14px;
+      border-radius: 12px;
+      padding: 11px 12px;
       font: inherit;
       background: #fff;
       color: var(--issue-text);
@@ -440,11 +442,12 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      border-radius: 14px;
-      padding: 12px 16px;
+      gap: 8px;
+      border-radius: 12px;
+      padding: 10px 14px;
       font: inherit;
-      font-weight: 800;
+      font-weight: 700;
+      font-size: 13px;
       text-decoration: none;
       transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
       cursor: pointer;
@@ -481,42 +484,43 @@
     .issue-side-list {
       margin-top: 18px;
       display: grid;
-      gap: 12px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
     }
 
     .issue-side-item {
       display: grid;
-      grid-template-columns: 42px 1fr;
-      gap: 12px;
+      grid-template-columns: 34px 1fr;
+      gap: 10px;
       align-items: start;
       border: 1px solid var(--issue-line);
-      border-radius: 16px;
+      border-radius: 14px;
       background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
-      padding: 14px;
+      padding: 12px;
     }
 
     .issue-side-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 14px;
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
       background: var(--issue-brand-soft);
       color: var(--issue-brand-strong);
-      font-size: 18px;
+      font-size: 14px;
     }
 
     .issue-side-item h3 {
       margin: 0 0 6px;
-      font-size: 16px;
+      font-size: 14px;
     }
 
     .issue-side-item p {
       margin: 0;
       color: var(--issue-muted);
-      font-size: 14px;
-      line-height: 1.65;
+      font-size: 12px;
+      line-height: 1.45;
     }
 
     .issue-quick-links {
@@ -538,6 +542,11 @@
       .issue-summary-grid {
         grid-template-columns: 1fr;
       }
+
+      .issue-list,
+      .issue-side-list {
+        grid-template-columns: 1fr;
+      }
     }
 
     @media (max-width: 680px) {
@@ -552,6 +561,10 @@
 
       .issue-card-head {
         flex-direction: column;
+      }
+
+      .issue-list {
+        grid-template-columns: 1fr;
       }
     }
   </style>
