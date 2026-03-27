@@ -6,7 +6,6 @@ module.exports = function createEmailsRouter({
   sendMultipleTestEmails,
   CONDITION_EMAIL_TEMPLATES,
   CONDITION_EMAIL_FROM_ADDRESS,
-  CONDITION_EMAIL_BCC_RECIPIENTS,
   buildConditionEmail,
   ordersCollection,
   updateOrderBoth,
@@ -136,10 +135,6 @@ module.exports = function createEmailsRouter({
         html,
         text,
       };
-
-      if (CONDITION_EMAIL_BCC_RECIPIENTS.length) {
-        mailOptions.bcc = CONDITION_EMAIL_BCC_RECIPIENTS;
-      }
 
       await transporter.sendMail(mailOptions);
 
