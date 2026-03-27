@@ -3432,20 +3432,23 @@ transporter.verify(function(error, success) {
 const EMAIL_LOGO_URL =
   "https://cdn.secondhandcell.com/images/assets/logo-white.webp";
 const COUNTDOWN_NOTICE_TEXT =
-  "If we don't hear back, we may finalize your order at 75% less to keep your order moving.";
+  "If we don't hear back about this issue within 7 days, we may automatically finalize your order at 75% less to keep your order moving.";
 const TRUSTPILOT_REVIEW_LINK = "https://www.trustpilot.com/evaluate/secondhandcell.com";
 const TRUSTPILOT_STARS_IMAGE_URL = "https://cdn.trustpilot.net/brand-assets/4.1.0/stars/stars-5.png";
 function buildCountdownNoticeHtml() {
   return `
     <div style="margin-top: 24px; padding: 18px 20px; background-color: #ecfdf5; border-radius: 12px; border: 1px solid #bbf7d0; color: #065f46; font-size: 17px; line-height: 1.6;">
       <strong style="display:block; font-size:18px; margin-bottom:8px;">Friendly reminder</strong>
-      If we don't hear back, we may finalize your device at <strong>75% less</strong> to keep your order moving.
+      If we don't hear back about this issue within <strong>7 days</strong>, we may finalize your device at <strong>75% less</strong> to keep your order moving.
     </div>
   `;
 }
 
-function appendCountdownNotice(text = "") {
+function appendCountdownNotice(text = "", includeNotice = true) {
   const trimmed = text.trim();
+  if (!includeNotice) {
+    return trimmed;
+  }
   if (!trimmed) {
     return COUNTDOWN_NOTICE_TEXT;
   }
@@ -3703,7 +3706,7 @@ function buildConditionEmail(reason, order, notes, deviceKey = null) {
     accentColor: accentColorMap[reason] || "#0ea5e9",
     includeTrustpilot: false,
     bodyHtml,
-    includeCountdownNotice: true,
+    includeCountdownNotice: reason !== "stolen",
   });
 
   const text = appendCountdownNotice(`Hi ${greetingName},
@@ -3719,7 +3722,7 @@ ${stepsText}${noteText}
 Please reply to this email once the issue has been resolved so we can continue processing your payout.
 
 Thank you,
-SecondHandCell Team`);
+SecondHandCell Team`, reason !== "stolen");
 
   return { subject: template.subject, html, text };
 }
@@ -4618,7 +4621,7 @@ const ORDER_PLACED_ADMIN_EMAIL_HTML = buildEmailLayout({
 const BLACKLISTED_EMAIL_HTML = buildEmailLayout({
   title: "Action required: Carrier blacklist detected",
   accentColor: "#dc2626",
-  includeCountdownNotice: true,
+  includeCountdownNotice: false,
   includeTrustpilot: false,
   bodyHtml: `
       <p>Hi **CUSTOMER_NAME**,</p>
