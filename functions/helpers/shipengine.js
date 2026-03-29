@@ -344,6 +344,52 @@ function normalizeCarrierCode(code) {
     return trimmed ? trimmed : null;
 }
 
+function inferCarrierCodeFromTrackingNumber(trackingNumber) {
+    const normalizedTracking = String(trackingNumber || '').trim().toUpperCase();
+    if (!normalizedTracking) {
+        return null;
+    }
+
+    if (normalizedTracking.startsWith('1Z')) {
+        return 'ups';
+    }
+
+    if (/^(92|93|94|95|96|97)\d{20,}$/i.test(normalizedTracking)) {
+        return 'stamps_com';
+    }
+
+    return null;
+}
+
+function inferCarrierCodeFromOrder(order = {}, direction = 'outbound') {
+    const deliveryMethod = String(order?.labelDeliveryMethod || '').trim().toLowerCase();
+    if (deliveryMethod === 'ups') {
+        return 'ups';
+    }
+    if (deliveryMethod === 'usps') {
+        return 'stamps_com';
+    }
+
+    if (direction === 'inbound') {
+        if (order?.shipEngineLabels?.inbound?.downloadUrl || order?.shipEngineLabels?.inbound?.labelDownload?.href) {
+            return 'ups';
+        }
+    } else {
+        if (order?.upsLabelUrl) {
+            return 'ups';
+        }
+        if (order?.uspsLabelUrl) {
+            return 'stamps_com';
+        }
+    }
+
+    const trackingNumber = direction === 'inbound'
+        ? order?.inboundTrackingNumber || order?.trackingNumber
+        : order?.outboundTrackingNumber;
+
+    return inferCarrierCodeFromTrackingNumber(trackingNumber);
+}
+
 function findCarrierCodeInLabels(labels) {
     if (!labels || typeof labels !== 'object') {
         return null;
@@ -407,6 +453,11 @@ function resolveCarrierCode(order = {}, direction = 'outbound', defaultCarrierCo
 
     if (directCandidate) {
         return directCandidate;
+    }
+
+    const inferredCandidate = inferCarrierCodeFromOrder(order, direction);
+    if (inferredCandidate) {
+        return inferredCandidate;
     }
 
     const labelCandidate = findCarrierCodeInLabels(shipEngineLabels);
