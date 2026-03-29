@@ -99,6 +99,27 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+const issueResolvedComponentCache = new Map();
+
+function readIssueResolvedComponent(filename, fallback = '') {
+  const cacheKey = String(filename || '').trim();
+  if (!cacheKey) return fallback;
+  if (issueResolvedComponentCache.has(cacheKey)) {
+    return issueResolvedComponentCache.get(cacheKey);
+  }
+
+  try {
+    const componentPath = path.join(__dirname, '..', 'public', 'components', cacheKey);
+    const html = fs.readFileSync(componentPath, 'utf8');
+    issueResolvedComponentCache.set(cacheKey, html);
+    return html;
+  } catch (error) {
+    console.error(`[issue-resolved] Failed to read component ${cacheKey}:`, error?.message || error);
+    issueResolvedComponentCache.set(cacheKey, fallback);
+    return fallback;
+  }
+}
+
 const repricerScriptPath = path.resolve(__dirname, '..', 'repricer-process', 'run-repricer.js');
 const repricerOutputCsvPath = '/shc33/feed/repricer-output.csv';
 const repricerScheduleTimezone = 'America/New_York';
@@ -978,6 +999,8 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     const hasIssues = visibleIssues.length > 0;
     const orderStatusClass = hasIssues ? '' : 'completed';
     const orderStatusLabel = hasIssues ? 'Needs Attention' : 'All Clear';
+    const issueResolvedHeaderHtml = readIssueResolvedComponent('issue-resolved-header.html');
+    const issueResolvedFooterHtml = readIssueResolvedComponent('issue-resolved-footer.html');
 
     res.status(200).send(`<!doctype html>
 <html lang="en">
@@ -1895,46 +1918,136 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       .shc-auth-dropdown button:hover {
         background: #f1f5f9;
       }
+
+      .issue-footer {
+        background: #0f172a;
+        color: #fff;
+        margin-top: 3rem;
+        border-top: 1px solid rgba(148, 163, 184, 0.16);
+      }
+
+      .issue-footer__shell {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 3rem 1.25rem 2rem;
+      }
+
+      .issue-footer__grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 2rem;
+      }
+
+      .issue-footer__column h3 {
+        margin: 0 0 0.9rem;
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #fff;
+      }
+
+      .issue-footer__column p,
+      .issue-footer__links a {
+        color: #cbd5e1;
+        font-size: 0.97rem;
+        line-height: 1.7;
+      }
+
+      .issue-footer__links {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      .issue-footer__links a,
+      .issue-footer__column a {
+        text-decoration: none;
+        transition: color 0.2s ease;
+      }
+
+      .issue-footer__links a:hover,
+      .issue-footer__column a:hover {
+        color: #fff;
+      }
+
+      .issue-footer__notice {
+        margin-top: 2rem;
+        padding: 1.25rem 1.5rem;
+        border: 1px solid rgba(239, 68, 68, 0.45);
+        background: rgba(127, 29, 29, 0.16);
+        border-radius: 20px;
+        text-align: center;
+      }
+
+      .issue-footer__notice-title {
+        margin: 0 0 0.45rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.85rem;
+        font-weight: 900;
+        color: #fca5a5;
+      }
+
+      .issue-footer__notice p:last-child {
+        margin: 0;
+        color: #e2e8f0;
+        line-height: 1.65;
+      }
+
+      .issue-footer__badges {
+        margin-top: 1.75rem;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 1.25rem 2rem;
+      }
+
+      .issue-footer__badge-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .issue-footer__badge {
+        width: auto;
+        object-fit: contain;
+      }
+
+      .issue-footer__badge--sellcell {
+        height: 70px;
+      }
+
+      .issue-footer__badge--trustpilot {
+        height: 44px;
+      }
+
+      .issue-footer__bottom {
+        margin-top: 2rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid rgba(148, 163, 184, 0.18);
+        text-align: center;
+      }
+
+      .issue-footer__bottom p {
+        margin: 0;
+        color: #94a3b8;
+        font-size: 0.92rem;
+      }
+
+      @media (max-width: 900px) {
+        .issue-footer__grid {
+          grid-template-columns: 1fr;
+        }
+
+        .issue-footer__badges {
+          justify-content: center;
+        }
+      }
     </style>
   </head>
   <body>
-    <header class="site-header site-header--mobile-compact relative" data-site-header>
-      <div class="site-header__inner site-header__inner--centered">
-        <div class="logo-container-left">
-          <a href="https://secondhandcell.com" class="logo-link" aria-label="SecondHandCell home">
-            <img
-              src="https://secondhandcell.com/assets/logo.webp"
-              alt="SecondHandCell Logo"
-              class="logo-image"
-              width="320"
-              height="320"
-              onerror="this.onerror=null;this.src='https://placehold.co/200x64/ffffff/1e293b?text=SecondHandCell';"
-            >
-          </a>
-        </div>
-
-        <div class="logo-text-container-center">
-          <a href="https://secondhandcell.com" aria-label="Go to homepage" class="inline-flex flex-col items-center no-underline">
-            <div class="logo-wordmark">
-              <span class="logo-wordmark__primary">Second</span><span class="logo-wordmark__accent">HandCell</span>
-            </div>
-            <p class="logo-tagline">Turn Your Old <span>Phone Into Cash!</span></p>
-          </a>
-        </div>
-
-        <nav class="header-auth-nav" aria-label="Account navigation">
-          <div id="authStatusContainer" class="site-header__auth-wrapper">
-            <a href="#" id="loginNavBtn" class="site-header__login">Login/Sign Up</a>
-            <div id="userMonogram" class="user-monogram hidden"></div>
-            <div id="authDropdown" class="auth-dropdown hidden">
-              <a href="https://secondhandcell.com/my-account.html" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">My Account</a>
-              <a href="https://secondhandcell.com/track-order.html" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Track an Order</a>
-              <button id="logoutBtn" class="btn-red-logout">Sign Out</button>
-            </div>
-          </div>
-        </nav>
-      </div>
-    </header>
+    ${issueResolvedHeaderHtml}
     
     <main class="main-content">
       <div class="page-header">
@@ -1962,82 +2075,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       </div>
     </main>
     
-    <footer class="bg-slate-800 text-white">
-      <div class="container mx-auto px-4 py-12">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-8">
-            <div>
-              <h3 class="text-xl font-bold mb-4">SecondHandCell</h3>
-              <p class="text-slate-400">Your trusted partner for selling used tech. Quick quotes, fair prices, and hassle-free service.</p>
-            </div>
-
-            <div>
-              <h3 class="text-xl font-bold mb-4">Quick Links</h3>
-              <ul class="space-y-2">
-                <li><a href="https://secondhandcell.com/index.html" class="text-slate-400 hover:text-white transition duration-300">Home</a></li>
-                <li><a href="https://secondhandcell.com/about.html" class="text-slate-400 hover:text-white transition duration-300">About Us</a></li>
-                <li><a href="https://secondhandcell.com/privacy.html" class="text-slate-400 hover:text-white transition duration-300">Privacy Policy</a></li>
-                <li><a href="https://secondhandcell.com/terms.html" class="text-slate-400 hover:text-white transition duration-300">Terms &amp; Conditions</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 class="text-xl font-bold mb-4">Contact Us</h3>
-              <p class="text-slate-400">Email: support@secondhandcell.com</p>
-            </div>
-          </div>
-
-          <div class="bg-slate-700 p-6 rounded-lg">
-            <h3 class="text-xl font-bold mb-2 text-white">Stay Updated</h3>
-            <p class="text-slate-300 mb-4">Sign up for updates, price increases, and more!</p>
-            <form id="footerEmailSignupForm" class="flex flex-col sm:flex-row gap-2">
-              <input
-                type="email"
-                id="footerEmail"
-                placeholder="Enter your email"
-                class="w-full flex-grow border border-slate-400 bg-slate-800 text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              >
-              <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700">Sign Up</button>
-            </form>
-            <div id="footerSignupMessage" class="mt-3 text-sm text-center"></div>
-          </div>
-        </div>
-
-        <div class="bg-slate-800 text-white p-6 rounded-xl shadow-lg mt-8 text-center border-2 border-red-600">
-          <p class="text-lg font-bold">IMPORTANT NOTICE</p>
-          <p class="mt-2 text-sm md:text-base">We do not purchase blacklisted or lost/stolen devices. All devices are verified through a legal compliance check.</p>
-        </div>
-
-        <div class="mt-8">
-          <div class="flex flex-wrap items-center justify-center gap-6 sm:flex-row sm:justify-center sm:gap-8 lg:justify-start">
-            <a href="https://www.sellcell.com/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center">
-              <img
-                src="https://secondhandcell.com/assets/sellcell.webp"
-                width="150"
-                height="107"
-                alt="SellCell Accredited Buyer"
-                loading="lazy"
-                class="h-20 w-auto object-contain"
-              >
-            </a>
-
-            <a href="https://www.trustpilot.com/evaluate/secondhandcell.com" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center">
-              <img
-                src="https://secondhandcell.com/assets/stars-4.svg"
-                alt="Trustpilot 5 star rating"
-                loading="lazy"
-                class="h-12 w-auto object-contain"
-              >
-            </a>
-          </div>
-        </div>
-
-        <div class="border-t border-slate-700 mt-8 pt-6 text-center text-slate-400 text-sm">
-          <p>&copy; 2026 SecondHandCell. All rights reserved.</p>
-        </div>
-      </div>
-    </footer>
+    ${issueResolvedFooterHtml}
     <script>
       (function () {
         function parsePatternPath(raw) {
