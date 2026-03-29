@@ -1,5 +1,12 @@
+function normalizeToken(value) {
+  return String(value || '')
+    .trim()
+    .replace(/^['"]+/, '')
+    .replace(/['"]+$/, '');
+}
+
 function adminAuth(req, res, next) {
-  const expected = process.env.ANALYTICS_ADMIN_TOKEN;
+  const expected = normalizeToken(process.env.ANALYTICS_ADMIN_TOKEN);
   if (!expected) {
     return res.status(500).json({ error: 'analytics_admin_token_not_configured' });
   }
@@ -9,7 +16,7 @@ function adminAuth(req, res, next) {
     return res.status(401).json({ error: 'unauthorized' });
   }
 
-  const token = auth.slice('Bearer '.length).trim();
+  const token = normalizeToken(auth.slice('Bearer '.length));
   if (token !== expected) {
     return res.status(401).json({ error: 'unauthorized' });
   }
