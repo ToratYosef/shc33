@@ -2271,8 +2271,6 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       })();
     </script>
 
-    <script type="module" src="https://secondhandcell.com/assets/js/global-auth.js" defer></script>
-
     <script>
       const createModal = () => {
         if (document.getElementById("loginModal")) return document.getElementById("loginModal");
