@@ -5657,15 +5657,24 @@ function deriveInboundStatusUpdate(order = {}, normalizedStatus, trackingMetadat
   const movementStatuses = new Set([
     'OUT_FOR_DELIVERY',
     'IN_TRANSIT',
-    'ACCEPTED',
-    'SHIPMENT_ACCEPTED',
   ]);
 
   if (movementStatuses.has(upper) && (kitOrder || emailLabelOrder)) {
     return { nextStatus: PHONE_TRANSIT_STATUS, delivered: false };
   }
 
-  const noMovementStatuses = new Set(['LABEL_CREATED', 'UNKNOWN', 'NOT_YET_IN_SYSTEM']);
+  const noMovementStatuses = new Set([
+    'LABEL_CREATED',
+    'UNKNOWN',
+    'NOT_YET_IN_SYSTEM',
+    'ACCEPTED',
+    'SHIPMENT_ACCEPTED',
+  ]);
+
+  if (emailLabelOrder && noMovementStatuses.has(upper) && currentStatus !== 'delivered_to_us' && currentStatus !== 'received' && currentStatus !== 'completed') {
+    return { nextStatus: 'label_generated', delivered: false };
+  }
+
   if (noMovementStatuses.has(upper) && baseStatus && baseStatus !== currentStatus && !hasReachedInboundTransit(currentStatus)) {
     return { nextStatus: baseStatus, delivered: false };
   }
