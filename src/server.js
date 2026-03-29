@@ -1,6 +1,5 @@
 const path = require('path');
 const fs = require('fs');
-const crypto = require('crypto');
 const { spawn } = require('child_process');
 const express = require('express');
 const cors = require('cors');
@@ -68,7 +67,6 @@ function shouldLogApiRequest(req) {
     path === '/' ||
     path === '/robots.txt' ||
     path === '/favicon.ico' ||
-    path.startsWith('/terminal/') ||
     path.startsWith('/assets/') ||
     path.startsWith('/public/') ||
     path.startsWith('/favicon/')
@@ -78,7 +76,6 @@ function shouldLogApiRequest(req) {
 
   return (
     path.startsWith('/server/') ||
-    path.startsWith('/server/terminal-auth') ||
     path.startsWith('/analytics') ||
     path.startsWith('/server/analytics') ||
     path.startsWith('/api/') ||
@@ -100,105 +97,6 @@ function escapeHtml(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-}
-
-function parseCookieHeader(headerValue) {
-  const raw = String(headerValue || '');
-  if (!raw) return {};
-
-  return raw.split(';').reduce((acc, segment) => {
-    const [key, ...rest] = segment.split('=');
-    const normalizedKey = String(key || '').trim();
-    if (!normalizedKey) {
-      return acc;
-    }
-    acc[normalizedKey] = decodeURIComponent(rest.join('=').trim());
-    return acc;
-  }, {});
-}
-
-const TERMINAL_AUTH_COOKIE_NAME = 'shc_terminal_auth';
-const TERMINAL_AUTH_TTL_MS = 12 * 60 * 60 * 1000;
-
-function getTerminalAccessPassword() {
-  return String(
-    process.env.TERMINAL_ACCESS_PASSWORD ||
-    process.env.TERMINAL_PASSWORD ||
-    ''
-  ).trim();
-}
-
-function getTerminalAuthSecret() {
-  return String(
-    process.env.TERMINAL_AUTH_SECRET ||
-    process.env.TERMINAL_SESSION_SECRET ||
-    getTerminalAccessPassword()
-  ).trim();
-}
-
-function safeCompareStrings(leftValue, rightValue) {
-  const left = Buffer.from(String(leftValue || ''));
-  const right = Buffer.from(String(rightValue || ''));
-  if (!left.length || !right.length || left.length !== right.length) {
-    return false;
-  }
-  return crypto.timingSafeEqual(left, right);
-}
-
-function signTerminalAuthPayload(expiresAt) {
-  const secret = getTerminalAuthSecret();
-  if (!secret) {
-    return '';
-  }
-  return crypto
-    .createHmac('sha256', secret)
-    .update(String(expiresAt))
-    .digest('hex');
-}
-
-function buildTerminalAuthCookieValue(expiresAt) {
-  return `${expiresAt}.${signTerminalAuthPayload(expiresAt)}`;
-}
-
-function isValidTerminalAuthCookie(rawCookieValue) {
-  const cookieValue = String(rawCookieValue || '').trim();
-  if (!cookieValue) {
-    return false;
-  }
-
-  const [expiresAtRaw, signature] = cookieValue.split('.');
-  const expiresAt = Number(expiresAtRaw);
-  if (!Number.isFinite(expiresAt) || !signature) {
-    return false;
-  }
-  if (Date.now() > expiresAt) {
-    return false;
-  }
-
-  return safeCompareStrings(signature, signTerminalAuthPayload(expiresAt));
-}
-
-function setTerminalAuthCookie(res) {
-  const expiresAt = Date.now() + TERMINAL_AUTH_TTL_MS;
-  const cookieValue = buildTerminalAuthCookieValue(expiresAt);
-  res.setHeader(
-    'Set-Cookie',
-    [
-      `${TERMINAL_AUTH_COOKIE_NAME}=${encodeURIComponent(cookieValue)}`,
-      'Path=/terminal',
-      'HttpOnly',
-      'SameSite=Strict',
-      'Secure',
-      `Max-Age=${Math.floor(TERMINAL_AUTH_TTL_MS / 1000)}`,
-    ].join('; ')
-  );
-}
-
-function clearTerminalAuthCookie(res) {
-  res.setHeader(
-    'Set-Cookie',
-    `${TERMINAL_AUTH_COOKIE_NAME}=; Path=/terminal; HttpOnly; SameSite=Strict; Secure; Max-Age=0`
-  );
 }
 
 const repricerScriptPath = path.resolve(__dirname, '..', 'repricer-process', 'run-repricer.js');
@@ -835,41 +733,6 @@ app.get('/', (req, res) => {
 });
 
 app.get('/favicon.ico', (req, res) => res.status(204).end());
-
-app.get('/server/terminal-auth/status', (req, res) => {
-  const cookies = parseCookieHeader(req.headers.cookie);
-  const authenticated = isValidTerminalAuthCookie(cookies[TERMINAL_AUTH_COOKIE_NAME]);
-  return res.status(200).json({ authenticated });
-});
-
-app.post('/server/terminal-auth/login', (req, res) => {
-  const configuredPassword = getTerminalAccessPassword();
-  if (!configuredPassword) {
-    return res.status(500).json({ error: 'terminal_password_not_configured' });
-  }
-
-  const submittedPassword = String(req.body?.password || '');
-  if (!safeCompareStrings(submittedPassword, configuredPassword)) {
-    return res.status(401).json({ error: 'invalid_password' });
-  }
-
-  setTerminalAuthCookie(res);
-  return res.status(200).json({ ok: true });
-});
-
-app.post('/server/terminal-auth/logout', (req, res) => {
-  clearTerminalAuthCookie(res);
-  return res.status(200).json({ ok: true });
-});
-
-app.get('/server/terminal-auth/check', (req, res) => {
-  const cookies = parseCookieHeader(req.headers.cookie);
-  const authenticated = isValidTerminalAuthCookie(cookies[TERMINAL_AUTH_COOKIE_NAME]);
-  if (!authenticated) {
-    return res.status(401).end();
-  }
-  return res.status(204).end();
-});
 
 app.use('/analytics', analyticsRouter);
 app.use('/analytics/admin', analyticsAdminRouter);
@@ -2668,11 +2531,6 @@ app.post('/fix-issue/:orderId/confirm', async (req, res) => {
     return res.status(500).json({ error: 'Unable to confirm issue resolution.' });
   }
 });
-
-app.use('/terminal', express.static(path.join(__dirname, '..', 'public', 'terminal'), {
-  index: 'index.html',
-  fallthrough: false,
-}));
 
 const sellcellDebugFeedPath = path.join(
   __dirname,
