@@ -9675,6 +9675,62 @@ exports.onChatTransferUpdate = functions.firestore
     return null;
   });
 
+exports.onChatNeedsAdmin = functions.firestore
+  .document("chats/{chatId}")
+  .onUpdate(async (change, context) => {
+    const before = change.before.data() || {};
+    const after = change.after.data() || {};
+    const chatId = context.params.chatId;
+
+    if (before.handoffRequested || !after.handoffRequested) {
+      return null;
+    }
+
+    const userIdentifier =
+      after.customerName ||
+      after.customerEmail ||
+      after.ownerUid ||
+      after.guestId ||
+      after.visitorId ||
+      "Unknown User";
+
+    const sourceLabel = after.sourcePage || after.sourcePath || "chat";
+    const reason = after.handoffReason || "support_request";
+    const notificationData = {
+      chatId,
+      relatedDocType: "chat",
+      relatedDocId: chatId,
+      relatedUserId: after.customerUid || after.ownerUid || "guest",
+      handoffReason: String(reason),
+      sourcePage: String(sourceLabel),
+      timestamp: Date.now().toString(),
+    };
+
+    const fcmPromise = sendAdminPushNotification(
+      "💬 Chat needs support",
+      `${userIdentifier} needs help in ${sourceLabel}.`,
+      notificationData
+    ).catch((e) => console.error("FCM Send Error (Chat Needs Admin):", e));
+
+    const firestoreNotificationPromises = [];
+    const adminsSnapshot = await adminsCollection.get();
+    adminsSnapshot.docs.forEach((adminDoc) => {
+      firestoreNotificationPromises.push(
+        addAdminFirestoreNotification(
+          adminDoc.id,
+          `Chat needs support: ${userIdentifier} (${sourceLabel}).`,
+          "chat",
+          chatId,
+          after.customerUid || after.ownerUid || null
+        ).catch((e) => console.error("Firestore Notification Error (Chat Needs Admin):", e))
+      );
+    });
+
+    await Promise.all([fcmPromise, ...firestoreNotificationPromises]);
+    console.log(`Chat ${chatId} marked as needing admin support. Notifications sent.`);
+    return null;
+  });
+
 // FCM Push Notifications for New Chat Messages
 exports.onNewChatOpened = functions.firestore
   .document("chats/{chatId}/messages/{messageId}")
@@ -9719,7 +9775,7 @@ exports.onNewChatOpened = functions.firestore
       timestamp: Date.now().toString(),
     };
 
-    // Determine routing: assigned admin vs all admins
+    // Determine routing: assigned admin vs support-requested unassigned chats only
     if (assignedAdminUid) {
       // Chat is assigned - send to specific admin only
       const adminTokenSnapshot = await db.collection(`admins/${assignedAdminUid}/fcmTokens`).get();
@@ -9750,8 +9806,8 @@ exports.onNewChatOpened = functions.firestore
       ).catch((e) => console.error("Firestore Notification Error:", e));
       
       console.log(`New message in assigned chat ${chatId}. Notification sent to admin ${assignedAdminUid}.`);
-    } else {
-      // Chat is unassigned - send to ALL admins
+    } else if (chatData.handoffRequested) {
+      // Chat is unassigned but explicitly needs support - send to ALL admins
       const fcmPromise = sendAdminPushNotification(
         "💬 New Chat Message",
         `Message from ${userIdentifier}: "${truncatedMessage}"`,
@@ -9776,6 +9832,8 @@ exports.onNewChatOpened = functions.firestore
       await Promise.all([fcmPromise, ...firestoreNotificationPromises]);
       
       console.log(`New message in unassigned chat ${chatId}. Notifications sent to all admins.`);
+    } else {
+      console.log(`Skipping admin push for bot-handled unassigned chat ${chatId}.`);
     }
 
     return null;
