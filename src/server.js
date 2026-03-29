@@ -100,6 +100,78 @@ function escapeHtml(value) {
 }
 
 const issueResolvedComponentCache = new Map();
+const ISSUE_RESOLVED_HEADER_FALLBACK = `
+<header class="site-header site-header--mobile-compact relative" data-site-header>
+  <div class="site-header__inner site-header__inner--centered">
+    <div class="logo-container-left">
+      <a href="https://secondhandcell.com/" class="logo-link" aria-label="SecondHandCell home">
+        <img
+          src="https://cdn.secondhandcell.com/images/assets/logo.webp"
+          alt="SecondHandCell Logo"
+          class="logo-image"
+          width="320"
+          height="320"
+          fetchpriority="high"
+          decoding="async"
+          onerror="this.onerror=null;this.src='https://placehold.co/200x64/ffffff/1e293b?text=SecondHandCell';"
+        >
+      </a>
+    </div>
+    <div class="logo-text-container-center">
+      <a href="https://secondhandcell.com/" aria-label="Go to homepage" class="inline-flex flex-col items-center no-underline">
+        <div class="logo-wordmark">
+          <span class="logo-wordmark__primary">Second</span><span class="logo-wordmark__accent">HandCell</span>
+        </div>
+        <p class="logo-tagline">Turn Your Old <span>Phone Into Cash!</span></p>
+      </a>
+    </div>
+    <nav class="header-auth-nav" aria-label="Account navigation">
+      <div class="site-header__auth-wrapper">
+        <a href="https://secondhandcell.com/my-account.html" class="site-header__login">Login/Sign Up</a>
+      </div>
+    </nav>
+  </div>
+</header>`;
+const ISSUE_RESOLVED_FOOTER_FALLBACK = `
+<footer class="issue-footer">
+  <div class="issue-footer__shell">
+    <div class="issue-footer__grid">
+      <section class="issue-footer__column issue-footer__brand">
+        <h3>SecondHandCell</h3>
+        <p>Your trusted partner for selling used tech. Quick quotes, fair prices, and hassle-free service.</p>
+      </section>
+      <section class="issue-footer__column">
+        <h3>Quick Links</h3>
+        <ul class="issue-footer__links">
+          <li><a href="https://secondhandcell.com/index.html">Home</a></li>
+          <li><a href="https://secondhandcell.com/support.html">Support</a></li>
+          <li><a href="https://secondhandcell.com/privacy.html">Privacy Policy</a></li>
+          <li><a href="https://secondhandcell.com/terms.html">Terms &amp; Conditions</a></li>
+        </ul>
+      </section>
+      <section class="issue-footer__column">
+        <h3>Contact Us</h3>
+        <p>Email: <a href="mailto:sales@secondhandcell.com">sales@secondhandcell.com</a></p>
+        <p>Track your order or manage your account on the main site.</p>
+      </section>
+    </div>
+    <div class="issue-footer__notice">
+      <p class="issue-footer__notice-title">Important Notice</p>
+      <p>We do not purchase blacklisted or lost/stolen devices. All devices are verified through a legal compliance check.</p>
+    </div>
+    <div class="issue-footer__badges">
+      <a href="https://www.sellcell.com/" target="_blank" rel="noopener noreferrer" class="issue-footer__badge-link">
+        <img src="https://cdn.secondhandcell.com/images/assets/sellcell.webp" width="150" height="107" alt="SellCell Accredited Buyer" loading="lazy" class="issue-footer__badge issue-footer__badge--sellcell">
+      </a>
+      <a href="https://www.trustpilot.com/evaluate/secondhandcell.com" target="_blank" rel="noopener noreferrer" class="issue-footer__badge-link">
+        <img src="https://secondhandcell.com/assets/stars-4.5.svg" alt="Trustpilot 4.5 star rating" loading="lazy" class="issue-footer__badge issue-footer__badge--trustpilot">
+      </a>
+    </div>
+    <div class="issue-footer__bottom">
+      <p>&copy; 2026 SecondHandCell. All rights reserved.</p>
+    </div>
+  </div>
+</footer>`;
 
 function readIssueResolvedComponent(filename, fallback = '') {
   const cacheKey = String(filename || '').trim();
@@ -999,8 +1071,8 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     const hasIssues = visibleIssues.length > 0;
     const orderStatusClass = hasIssues ? '' : 'completed';
     const orderStatusLabel = hasIssues ? 'Needs Attention' : 'All Clear';
-    const issueResolvedHeaderHtml = readIssueResolvedComponent('issue-resolved-header.html');
-    const issueResolvedFooterHtml = readIssueResolvedComponent('issue-resolved-footer.html');
+    const issueResolvedHeaderHtml = readIssueResolvedComponent('issue-resolved-header.html', ISSUE_RESOLVED_HEADER_FALLBACK);
+    const issueResolvedFooterHtml = readIssueResolvedComponent('issue-resolved-footer.html', ISSUE_RESOLVED_FOOTER_FALLBACK);
 
     res.status(200).send(`<!doctype html>
 <html lang="en">
@@ -1008,6 +1080,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Issue Resolution - SecondHandCell</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
       :root {
         --site-indigo: #4f46e5;
