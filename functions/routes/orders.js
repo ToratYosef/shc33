@@ -3050,6 +3050,7 @@ function createOrdersRouter({
       const requestedDeviceIndex = Number.parseInt(req.query.deviceIndex, 10);
       const hasDeviceIndex = Number.isInteger(requestedDeviceIndex) && requestedDeviceIndex >= 0;
       const includeAllPackingSlips = String(req.query.includeAllPackingSlips || '').toLowerCase() === 'true';
+      const includeLabels = String(req.query.includeLabels || '').toLowerCase() === 'true';
 
       let buffer;
       if (includeAllPackingSlips) {
@@ -3142,7 +3143,7 @@ function createOrdersRouter({
         }
       }
 
-      const labelUrls = Array.from(collectLabelUrlCandidates(order));
+      const labelUrls = includeLabels ? Array.from(collectLabelUrlCandidates(order)) : [];
       const labelBuffers = [];
 
       for (const labelUrl of labelUrls) {
@@ -3160,15 +3161,9 @@ function createOrdersRouter({
         }
       }
 
-      if (!labelUrls.length) {
-        return res.status(400).json({
-          error: 'Missing required label URL(s): no shipping label URL found on order',
-        });
-      }
-
       const pdfParts = [...labelBuffers, ...packingSlipBuffers].filter(Boolean);
       if (!pdfParts.length) {
-        return res.status(500).json({ error: 'Failed to prepare print bundle' });
+        return res.status(400).json({ error: 'No printable PDFs were available for this order' });
       }
 
       const merged = await mergePdfBuffers(pdfParts);
