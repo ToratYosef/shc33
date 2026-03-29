@@ -35,6 +35,30 @@ const {
 
 const app = express();
 
+const API_ACTION_LOGGING_ENABLED = !['0', 'false', 'off', 'no'].includes(
+  String(process.env.API_ACTION_LOGGING_ENABLED || 'true').trim().toLowerCase()
+);
+
+function summarizeApiActionContext(req) {
+  const params = req?.params && typeof req.params === 'object' ? req.params : {};
+  const body = req?.body && typeof req.body === 'object' ? req.body : {};
+  const labels = Array.isArray(body?.labelIds) ? body.labelIds.length : null;
+  const orderId =
+    params.id ||
+    params.orderId ||
+    body.orderId ||
+    body.id ||
+    null;
+
+  const parts = [];
+  if (orderId) parts.push(`order=${orderId}`);
+  if (body.type) parts.push(`type=${body.type}`);
+  if (labels) parts.push(`labels=${labels}`);
+  if (req?.user?.uid) parts.push(`uid=${req.user.uid}`);
+
+  return parts.join(' ');
+}
+
 function escapeHtml(value) {
   return String(value || '')
     .replace(/&/g, '&amp;')
@@ -649,6 +673,24 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '1mb' }));
+app.use((req, res, next) => {
+  if (!API_ACTION_LOGGING_ENABLED) {
+    return next();
+  }
+
+  const startedAtMs = Date.now();
+  const context = summarizeApiActionContext(req);
+  const requestLine = `[API] -> ${req.method} ${req.originalUrl || req.url}${context ? ` | ${context}` : ''}`;
+  console.log(requestLine);
+
+  res.on('finish', () => {
+    const durationMs = Date.now() - startedAtMs;
+    const responseLine = `[API] <- ${req.method} ${req.originalUrl || req.url} ${res.statusCode} ${durationMs}ms${context ? ` | ${context}` : ''}`;
+    console.log(responseLine);
+  });
+
+  return next();
+});
 
 app.get('/', (req, res) => {
   res.status(200).json({ ok: true });

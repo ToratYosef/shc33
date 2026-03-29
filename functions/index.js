@@ -3940,7 +3940,75 @@ function getOrderAgeInDays(order = {}) {
   return Number.isFinite(ageDays) ? Number(ageDays.toFixed(1)) : null;
 }
 
+function normalizeTrackingEventStatus(event = {}) {
+  if (!event || typeof event !== 'object') {
+    return null;
+  }
+
+  return normalizeInboundTrackingStatus(
+    event.status_code ||
+      event.statusCode ||
+      event.carrier_status_code ||
+      event.carrierStatusCode ||
+      event.event_code ||
+      event.eventCode ||
+      null,
+    event.status_description ||
+      event.statusDescription ||
+      event.carrier_status_description ||
+      event.carrierStatusDescription ||
+      event.description ||
+      null
+  );
+}
+
+function isTrackingMovementStatus(normalizedStatus) {
+  const upper = String(normalizedStatus || '').trim().toUpperCase();
+  if (!upper) {
+    return false;
+  }
+
+  if ([
+    'LABEL_CREATED',
+    'UNKNOWN',
+    'NOT_YET_IN_SYSTEM',
+    'ACCEPTED',
+    'SHIPMENT_ACCEPTED',
+  ].includes(upper)) {
+    return false;
+  }
+
+  return [
+    'OUT_FOR_DELIVERY',
+    'IN_TRANSIT',
+    'DELIVERED',
+    'DELIVERED_TO_AGENT',
+    'DELIVERY_ATTEMPT',
+  ].includes(upper);
+}
+
+function orderHasTrackingMovement(order = {}) {
+  const directStatuses = [
+    normalizeInboundTrackingStatus(order?.labelTrackingStatus, order?.labelTrackingStatusDescription),
+    normalizeInboundTrackingStatus(order?.outboundTrackingStatus, order?.outboundTrackingStatusDescription),
+  ];
+
+  if (directStatuses.some((status) => isTrackingMovementStatus(status))) {
+    return true;
+  }
+
+  const trackingEvents = [
+    ...(Array.isArray(order?.labelTrackingEvents) ? order.labelTrackingEvents : []),
+    ...(Array.isArray(order?.outboundTrackingEvents) ? order.outboundTrackingEvents : []),
+  ];
+
+  return trackingEvents.some((event) => isTrackingMovementStatus(normalizeTrackingEventStatus(event)));
+}
+
 function getPendingVoidSelections(order = {}) {
+  if (orderHasTrackingMovement(order)) {
+    return [];
+  }
   const labels = normalizeShipEngineLabelMap(order);
   return Object.entries(labels)
     .filter(([, entry]) => entry && entry.id && isLabelPendingVoid(entry))
@@ -8187,6 +8255,11 @@ async function runAdminBulkVoidJob({
 
       const selections = getPendingVoidSelections(order);
       let approvedResults = [];
+
+      if (orderHasTrackingMovement(order)) {
+        skippedEntries.push({ orderId: order.id, reason: 'tracking_movement_detected' });
+        continue;
+      }
 
       if (selections.length) {
         const { results } = await handleLabelVoid(order, selections, {
