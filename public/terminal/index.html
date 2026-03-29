@@ -3,80 +3,255 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Secure Terminal Access</title>
+    <title>Terminal Access</title>
     <style>
       :root {
         color-scheme: dark;
-        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        font-family: Poppins, Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
       }
 
       body {
         margin: 0;
         min-height: 100vh;
-        background: #0f1115;
-        color: #dbe3ee;
         display: grid;
         place-items: center;
+        background:
+          radial-gradient(circle at top left, rgba(45, 117, 255, 0.18), transparent 28%),
+          radial-gradient(circle at top right, rgba(29, 185, 84, 0.14), transparent 24%),
+          linear-gradient(180deg, #0a1020 0%, #09111a 100%);
+        color: #e6edf6;
       }
 
       main {
-        width: min(960px, 92vw);
-        border: 1px solid #2b3342;
-        border-radius: 14px;
-        padding: 1.25rem;
-        background: #161a22;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+        width: min(460px, calc(100vw - 2rem));
+        border: 1px solid rgba(150, 171, 201, 0.22);
+        border-radius: 24px;
+        padding: 2rem;
+        background: rgba(9, 15, 27, 0.92);
+        box-shadow:
+          0 26px 80px rgba(0, 0, 0, 0.45),
+          inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(14px);
+      }
+
+      .eyebrow {
+        margin: 0 0 0.4rem;
+        font-size: 0.82rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #89a8d8;
       }
 
       h1 {
-        margin-top: 0;
-        font-size: 1.25rem;
+        margin: 0;
+        font-size: clamp(1.7rem, 4vw, 2.2rem);
+        line-height: 1.1;
       }
 
-      p {
-        margin: 0.35rem 0;
-        color: #b6c2d2;
+      .subcopy {
+        margin: 0.95rem 0 1.5rem;
+        color: #b9c7da;
+        line-height: 1.65;
       }
 
-      code {
-        background: #0f141d;
-        padding: 0.1rem 0.4rem;
-        border-radius: 6px;
+      .form {
+        display: grid;
+        gap: 0.9rem;
       }
 
-      a {
-        color: #89b4ff;
-        text-decoration: none;
+      label {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #d7e2f1;
       }
 
-      a:hover {
-        text-decoration: underline;
+      input[type="password"] {
+        width: 100%;
+        border: 1px solid rgba(138, 162, 198, 0.28);
+        border-radius: 16px;
+        background: rgba(10, 18, 30, 0.92);
+        color: #f4f8ff;
+        padding: 0.95rem 1rem;
+        font-size: 1rem;
+        outline: none;
+      }
+
+      input[type="password"]:focus {
+        border-color: rgba(74, 144, 255, 0.9);
+        box-shadow: 0 0 0 4px rgba(74, 144, 255, 0.12);
       }
 
       .actions {
-        margin-top: 1rem;
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-top: 0.4rem;
       }
 
-      .button {
-        display: inline-block;
-        border: 1px solid #375783;
-        border-radius: 8px;
-        background: #21406b;
-        color: #f5f8ff;
-        font-weight: 600;
-        padding: 0.55rem 0.85rem;
+      button {
+        appearance: none;
+        border: 0;
+        border-radius: 16px;
+        padding: 0.95rem 1.15rem;
+        font-size: 0.98rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .primary {
+        background: linear-gradient(135deg, #1f6bff 0%, #1549cb 100%);
+        color: #fff;
+        min-width: 160px;
+      }
+
+      .secondary {
+        background: rgba(255, 255, 255, 0.05);
+        color: #dfe8f6;
+        border: 1px solid rgba(154, 177, 208, 0.18);
+      }
+
+      .status {
+        min-height: 1.2rem;
+        margin-top: 0.4rem;
+        font-size: 0.92rem;
+      }
+
+      .status.error {
+        color: #ff9b9b;
+      }
+
+      .status.success {
+        color: #97edb0;
+      }
+
+      .hint {
+        margin-top: 1rem;
+        font-size: 0.84rem;
+        color: #91a3bc;
       }
     </style>
   </head>
   <body>
     <main>
-      <h1>Restricted SSH Terminal</h1>
-      <p>This endpoint opens a browser terminal proxied to <code>ssh root@67.227.250.215</code> via <code>ttyd</code>.</p>
-      <p>You will be asked for the remote SSH password after connecting.</p>
-      <p>Access is protected by NGINX authentication and should only be exposed over HTTPS.</p>
-      <div class="actions">
-        <a class="button" href="/terminal/session/">Open terminal session</a>
-      </div>
+      <p class="eyebrow">SecondHandCell</p>
+      <h1>Terminal Access</h1>
+      <p class="subcopy">
+        Enter the terminal password to open the live SSH session. After access is granted,
+        the session will open in the browser without the basic-auth popup.
+      </p>
+
+      <form id="terminalAccessForm" class="form" autocomplete="off">
+        <div>
+          <label for="terminalPassword">Password</label>
+          <input id="terminalPassword" name="terminal_password" type="password" autocomplete="current-password" required />
+        </div>
+        <div class="actions">
+          <button type="submit" class="primary" id="openBtn">Open Terminal</button>
+          <button type="button" class="secondary" id="logoutBtn">Clear Access</button>
+        </div>
+        <div id="statusMessage" class="status" aria-live="polite"></div>
+      </form>
+
+      <p class="hint">This page only grants access to <code>/terminal/session/</code>. The SSH password is still entered inside the terminal itself.</p>
     </main>
+
+    <script>
+      const form = document.getElementById('terminalAccessForm');
+      const passwordInput = document.getElementById('terminalPassword');
+      const statusMessage = document.getElementById('statusMessage');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const openBtn = document.getElementById('openBtn');
+
+      const setStatus = (message, type) => {
+        statusMessage.textContent = message || '';
+        statusMessage.className = `status${type ? ` ${type}` : ''}`;
+      };
+
+      const setBusy = (busy) => {
+        openBtn.disabled = busy;
+        logoutBtn.disabled = busy;
+        passwordInput.disabled = busy;
+      };
+
+      const redirectToSession = () => {
+        window.location.href = '/terminal/session/';
+      };
+
+      async function checkStatus() {
+        try {
+          const response = await fetch('/server/terminal-auth/status', {
+            credentials: 'same-origin',
+          });
+          if (!response.ok) {
+            return;
+          }
+          const data = await response.json();
+          if (data && data.authenticated) {
+            setStatus('Access already granted. Opening terminal...', 'success');
+            setTimeout(redirectToSession, 250);
+          }
+        } catch (error) {
+          // Ignore silent status-check failures.
+        }
+      }
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        setStatus('', '');
+        setBusy(true);
+
+        try {
+          const response = await fetch('/server/terminal-auth/login', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ password: passwordInput.value }),
+          });
+
+          if (!response.ok) {
+            const payload = await response.json().catch(() => ({}));
+            if (payload && payload.error === 'invalid_password') {
+              setStatus('Incorrect password.', 'error');
+            } else {
+              setStatus('Unable to unlock terminal access right now.', 'error');
+            }
+            return;
+          }
+
+          setStatus('Access granted. Opening terminal...', 'success');
+          passwordInput.value = '';
+          setTimeout(redirectToSession, 250);
+        } catch (error) {
+          setStatus('Unable to reach terminal auth service.', 'error');
+        } finally {
+          setBusy(false);
+        }
+      });
+
+      logoutBtn.addEventListener('click', async () => {
+        setStatus('', '');
+        setBusy(true);
+        try {
+          await fetch('/server/terminal-auth/logout', {
+            method: 'POST',
+            credentials: 'same-origin',
+          });
+          passwordInput.value = '';
+          setStatus('Access cleared on this browser.', 'success');
+        } catch (error) {
+          setStatus('Unable to clear access right now.', 'error');
+        } finally {
+          setBusy(false);
+        }
+      });
+
+      checkStatus();
+    </script>
   </body>
 </html>
