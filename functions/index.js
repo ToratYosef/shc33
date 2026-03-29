@@ -743,6 +743,35 @@ function summarizeApiActionContext(req) {
   return parts.join(' ');
 }
 
+function shouldLogApiRequest(req) {
+  const path = String(req?.originalUrl || req?.url || '').split('?')[0].trim().toLowerCase();
+  if (!path) return false;
+
+  if (
+    path === '/' ||
+    path === '/robots.txt' ||
+    path === '/favicon.ico' ||
+    path.startsWith('/assets/') ||
+    path.startsWith('/public/') ||
+    path.startsWith('/favicon/')
+  ) {
+    return false;
+  }
+
+  return (
+    path.startsWith('/wholesale') ||
+    path.startsWith('/orders/') ||
+    path.startsWith('/api/') ||
+    path.startsWith('/refresh-tracking') ||
+    path.startsWith('/manual-fulfill') ||
+    path.startsWith('/verify-address') ||
+    path.startsWith('/submit-order') ||
+    path.startsWith('/generate-label/') ||
+    path.startsWith('/packing-slip/') ||
+    path.startsWith('/print-bundle/')
+  );
+}
+
 const allowedOrigins = [
   "https://toratyosef.github.io",
   "https://buyback-a0f05.web.app",
@@ -820,6 +849,10 @@ app.use((req, res, next) => {
   }
 
   if (req.__apiLogged) {
+    return next();
+  }
+
+  if (!shouldLogApiRequest(req)) {
     return next();
   }
 

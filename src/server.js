@@ -59,6 +59,38 @@ function summarizeApiActionContext(req) {
   return parts.join(' ');
 }
 
+function shouldLogApiRequest(req) {
+  const path = String(req?.originalUrl || req?.url || '').split('?')[0].trim().toLowerCase();
+  if (!path) return false;
+
+  if (
+    path === '/' ||
+    path === '/robots.txt' ||
+    path === '/favicon.ico' ||
+    path.startsWith('/terminal/') ||
+    path.startsWith('/assets/') ||
+    path.startsWith('/public/') ||
+    path.startsWith('/favicon/')
+  ) {
+    return false;
+  }
+
+  return (
+    path.startsWith('/server/') ||
+    path.startsWith('/analytics') ||
+    path.startsWith('/server/analytics') ||
+    path.startsWith('/api/') ||
+    path.startsWith('/orders/') ||
+    path.startsWith('/refresh-tracking') ||
+    path.startsWith('/manual-fulfill') ||
+    path.startsWith('/verify-address') ||
+    path.startsWith('/submit-order') ||
+    path.startsWith('/generate-label/') ||
+    path.startsWith('/packing-slip/') ||
+    path.startsWith('/print-bundle/')
+  );
+}
+
 function escapeHtml(value) {
   return String(value || '')
     .replace(/&/g, '&amp;')
@@ -675,6 +707,10 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '1mb' }));
 app.use((req, res, next) => {
   if (!API_ACTION_LOGGING_ENABLED) {
+    return next();
+  }
+
+  if (!shouldLogApiRequest(req)) {
     return next();
   }
 
