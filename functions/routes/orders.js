@@ -3050,7 +3050,6 @@ function createOrdersRouter({
       const requestedDeviceIndex = Number.parseInt(req.query.deviceIndex, 10);
       const hasDeviceIndex = Number.isInteger(requestedDeviceIndex) && requestedDeviceIndex >= 0;
       const includeAllPackingSlips = String(req.query.includeAllPackingSlips || '').toLowerCase() === 'true';
-      const includeLabels = String(req.query.includeLabels || '').toLowerCase() === 'true';
 
       let buffer;
       if (includeAllPackingSlips) {
@@ -3097,6 +3096,7 @@ function createOrdersRouter({
       const requestedDeviceIndex = Number.parseInt(req.query.deviceIndex, 10);
       const hasDeviceIndex = Number.isInteger(requestedDeviceIndex) && requestedDeviceIndex >= 0;
       const includeAllPackingSlips = String(req.query.includeAllPackingSlips || '').toLowerCase() === 'true';
+      const includeLabels = String(req.query.includeLabels || '').toLowerCase() === 'true';
 
       async function fetchPdfBuffer(url) {
         if (!url) {
