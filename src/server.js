@@ -680,6 +680,7 @@ app.use((req, res, next) => {
 
   const startedAtMs = Date.now();
   const context = summarizeApiActionContext(req);
+  req.__apiLogged = true;
   const requestLine = `[API] -> ${req.method} ${req.originalUrl || req.url}${context ? ` | ${context}` : ''}`;
   console.log(requestLine);
 
