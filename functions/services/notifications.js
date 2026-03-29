@@ -63,13 +63,15 @@ async function sendAdminPushNotification(title, body, data = {}) {
     try {
         const adminsSnapshot = await adminsCollection.get();
         const tokenEntries = [];
+        const seenTokens = new Set();
 
         for (const adminDoc of adminsSnapshot.docs) {
             const tokensSnapshot = await adminsCollection.doc(adminDoc.id).collection('fcmTokens').get();
             tokensSnapshot.forEach((doc) => {
                 const data = doc.data() || {};
                 const token = data.token || doc.id;
-                if (token) {
+                if (token && !seenTokens.has(token)) {
+                    seenTokens.add(token);
                     tokenEntries.push({ token, ref: doc.ref });
                 }
             });

@@ -4255,6 +4255,17 @@ function normalizeShipEngineLabelMap(order) {
       displayName: "Primary Shipping Label",
     };
   }
+  if (!labels.returnLabel && (order.returnLabelId || order.returnTrackingNumber || order.returnLabelUrl)) {
+    labels.returnLabel = {
+      id: order.returnLabelId || null,
+      status: order.returnLabelVoidStatus || "active",
+      message: order.returnLabelVoidMessage || null,
+      trackingNumber: order.returnTrackingNumber || null,
+      generatedAt: order.returnLabelGeneratedAt || order.updatedAt || order.createdAt || null,
+      displayName: "Return Label",
+      labelDownloadUrl: order.returnLabelUrl || null,
+    };
+  }
   return labels;
 }
 
@@ -5943,6 +5954,7 @@ async function sendAdminPushNotification(title, body, data = {}) {
 
   const adminsSnapshot = await adminsCollection.get();
   const tokenEntries = [];
+  const seenTokens = new Set();
 
   for (const adminDoc of adminsSnapshot.docs) {
     const tokensSnapshot = await adminsCollection
@@ -5953,7 +5965,8 @@ async function sendAdminPushNotification(title, body, data = {}) {
     tokensSnapshot.forEach((tokenDoc) => {
       const tokenData = tokenDoc.data() || {};
       const token = tokenData.token || tokenDoc.id;
-      if (typeof token === 'string' && token.trim()) {
+      if (typeof token === 'string' && token.trim() && !seenTokens.has(token)) {
+        seenTokens.add(token);
         tokenEntries.push({ token, ref: tokenDoc.ref });
       }
     });
@@ -7690,11 +7703,22 @@ app.post("/orders/:id/return-label", async (req, res) => {
     );
 
     const returnTrackingNumber = returnLabelData.tracking_number;
+    const returnLabelId = returnLabelData.label_id || returnLabelData.labelId || returnLabelData.id || null;
 
     await updateOrderBoth(req.params.id, {
       status: "return-label-generated",
       returnLabelUrl: returnLabelData.label_download?.pdf,
       returnTrackingNumber: returnTrackingNumber,
+      returnLabelId,
+      returnLabelGeneratedAt: admin.firestore.FieldValue.serverTimestamp(),
+      'shipEngineLabels.returnLabel': {
+        id: returnLabelId,
+        trackingNumber: returnTrackingNumber,
+        labelDownloadUrl: returnLabelData.label_download?.pdf || null,
+        displayName: 'Return Label',
+        generatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        status: 'active',
+      },
     });
 
     const customerMailOptions = {
