@@ -7,6 +7,7 @@ const functions = require("firebase-functions");
 const db = getFirestore();
 const messaging = getMessaging();
 const adminsCollection = db.collection("admins");
+const ACTIVE_ADMIN_PUSH_WINDOW_MS = 12 * 60 * 60 * 1000;
 
 function firebaseNotificationsEnabled() {
     const raw = String(process.env.FIREBASE_NOTIFICATIONS_ENABLED || 'true').trim().toLowerCase();
@@ -33,6 +34,25 @@ function isInvalidFcmToken(error) {
         message.includes('notregistered') ||
         message.includes('requested entity was not found')
     );
+}
+
+function toMillis(value) {
+    if (!value) return null;
+    if (typeof value?.toMillis === 'function') return value.toMillis();
+    const seconds = value?._seconds ?? value?.seconds;
+    if (typeof seconds === 'number') {
+        const nanos = value?._nanoseconds ?? value?.nanoseconds ?? 0;
+        return seconds * 1000 + Math.floor(nanos / 1e6);
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
+}
+
+function isAdminTokenDocActive(data = {}) {
+    if (data.active === false) return false;
+    const lastSeenAtMs = toMillis(data.lastSeenAt || data.updatedAt || data.createdAt);
+    if (!Number.isFinite(lastSeenAtMs)) return false;
+    return (Date.now() - lastSeenAtMs) <= ACTIVE_ADMIN_PUSH_WINDOW_MS;
 }
 
 // Set up Nodemailer transporter using the Firebase Functions config
@@ -70,6 +90,9 @@ async function sendAdminPushNotification(title, body, data = {}) {
             tokensSnapshot.forEach((doc) => {
                 const data = doc.data() || {};
                 const token = data.token || doc.id;
+                if (!isAdminTokenDocActive(data)) {
+                    return;
+                }
                 if (token && !seenTokens.has(token)) {
                     seenTokens.add(token);
                     tokenEntries.push({ token, ref: doc.ref });
@@ -78,7 +101,7 @@ async function sendAdminPushNotification(title, body, data = {}) {
         }
 
         if (!tokenEntries.length) {
-            console.log('No FCM tokens found for admins.');
+            console.log('No active admin FCM tokens found.');
             return null;
         }
 
