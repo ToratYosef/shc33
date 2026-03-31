@@ -6377,6 +6377,97 @@ function buildReofferEmailHtml({
   });
 }
 
+async function submitReofferForDevice(order, {
+  deviceKey,
+  newPrice,
+  reasons,
+  comments = '',
+  originalQuoteOverride = null,
+  emailLogMessage = 'Re-offer email sent to customer.',
+}) {
+  const orderId = order?.id;
+  if (!orderId) throw new Error('Order ID is required for re-offer.');
+
+  const resolvedDeviceKey = typeof deviceKey === 'string' && deviceKey.trim()
+    ? deviceKey.trim()
+    : buildOrderDeviceKey(orderId, 0);
+
+  if (!newPrice || !Array.isArray(reasons) || reasons.length === 0) {
+    throw new Error('New price and at least one reason are required');
+  }
+
+  const nextOffer = {
+    newPrice,
+    reasons,
+    comments,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    autoAcceptDate: admin.firestore.Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  };
+
+  const nextDeviceStatusByKey = {
+    ...(order.deviceStatusByKey || {}),
+    [resolvedDeviceKey]: "re-offered-pending",
+  };
+  const derivedStatus = deriveOrderStatusFromDevices(order, nextDeviceStatusByKey);
+  const updatePayload = {
+    reOffer: nextOffer,
+    [`deviceStatusByKey.${resolvedDeviceKey}`]: "re-offered-pending",
+    [`reOfferByDevice.${resolvedDeviceKey}`]: nextOffer,
+  };
+
+  if (derivedStatus) {
+    updatePayload.status = derivedStatus;
+  } else {
+    const deviceKeys = collectOrderDeviceKeys(order);
+    if (deviceKeys.length === 1) {
+      updatePayload.status = "re-offered-pending";
+    }
+  }
+
+  const hasAnyAwaitingResponse = collectOrderDeviceKeys(order).some((key) => {
+    const nextStatus = normalizeStatusValue(nextDeviceStatusByKey[key] || order.status);
+    return nextStatus === 'emailed';
+  });
+  updatePayload.qcAwaitingResponse = hasAnyAwaitingResponse;
+
+  await updateOrderBoth(orderId, updatePayload);
+
+  let reasonString = reasons.join(", ");
+  if (comments) reasonString += `; ${comments}`;
+
+  const customerName = order.shippingInfo?.fullName || "there";
+  const encodedDeviceKey = encodeURIComponent(resolvedDeviceKey);
+  const reviewUrl = `https://secondhandcell.com/reoffer-action.html?orderId=${orderId}&deviceKey=${encodedDeviceKey}&fromEmailLink=1&fromReofferLink=1`;
+
+  const customerEmailHtml = buildReofferEmailHtml({
+    orderId: order.id,
+    customerName,
+    originalQuote: Number(originalQuoteOverride ?? order.estimatedQuote ?? order.originalQuote ?? 0),
+    newPrice: Number(newPrice),
+    reasonString,
+    reviewUrl,
+  });
+
+  await transporter.sendMail({
+    from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+    to: order.shippingInfo.email,
+    subject: `Re-offer for Order #${order.id}`,
+    html: customerEmailHtml
+  });
+
+  await recordCustomerEmail(
+    orderId,
+    emailLogMessage,
+    {
+      newPrice: Number(newPrice).toFixed(2),
+      originalQuote: Number(originalQuoteOverride ?? order.estimatedQuote ?? order.originalQuote ?? 0).toFixed(2),
+      deviceKey: resolvedDeviceKey,
+    }
+  );
+
+  return { orderId, deviceKey: resolvedDeviceKey, newPrice: Number(newPrice) };
+}
+
 function buildOfferAcceptedEmailHtml({ orderId }) {
   return `
     <p>Thank you for accepting the revised offer for Order <strong>#${escapeHtml(orderId)}</strong>.</p>
@@ -7589,83 +7680,15 @@ app.post("/orders/:id/re-offer", async (req, res) => {
     }
 
     const order = { id: orderDoc.id, ...orderDoc.data() };
-    const resolvedDeviceKey = typeof deviceKey === 'string' && deviceKey.trim()
-      ? deviceKey.trim()
-      : buildOrderDeviceKey(orderId, 0);
-
-    const nextOffer = {
+    const result = await submitReofferForDevice(order, {
+      deviceKey,
       newPrice,
       reasons,
       comments,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      autoAcceptDate: admin.firestore.Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    };
-
-    // Compute new device statuses after this device is re-offered
-    const nextDeviceStatusByKey = {
-      ...(order.deviceStatusByKey || {}),
-      [resolvedDeviceKey]: "re-offered-pending",
-    };
-
-    // Derive order status from all device statuses
-    const derivedStatus = deriveOrderStatusFromDevices(order, nextDeviceStatusByKey);
-    
-    const updatePayload = {
-      reOffer: nextOffer,
-      [`deviceStatusByKey.${resolvedDeviceKey}`]: "re-offered-pending",
-      [`reOfferByDevice.${resolvedDeviceKey}`]: nextOffer,
-    };
-    
-    // Only update order-level status if derived status is available
-    // Otherwise, maintain current order status (devices may still be in various states)
-    if (derivedStatus) {
-      updatePayload.status = derivedStatus;
-    } else {
-      // If not all devices are in terminal states, check if we should update to re-offered-pending
-      // Only do so if this is a single-device order or all devices have been processed
-      const deviceKeys = collectOrderDeviceKeys(order);
-      if (deviceKeys.length === 1) {
-        updatePayload.status = "re-offered-pending";
-      }
-      // For multi-device orders, keep the current status until all devices are processed
-    }
-
-    await updateOrderBoth(orderId, updatePayload);
-
-    let reasonString = reasons.join(", ");
-    if (comments) reasonString += `; ${comments}`;
-
-    const customerName = order.shippingInfo.fullName || "there";
-    const encodedDeviceKey = encodeURIComponent(resolvedDeviceKey);
-    const reviewUrl = `https://secondhandcell.com/reoffer-action.html?orderId=${orderId}&deviceKey=${encodedDeviceKey}&fromEmailLink=1&fromReofferLink=1`;
-
-    const customerEmailHtml = buildReofferEmailHtml({
-      orderId: order.id,
-      customerName,
-      originalQuote: Number(order.estimatedQuote || order.originalQuote || 0),
-      newPrice: Number(newPrice),
-      reasonString,
-      reviewUrl,
+      emailLogMessage: 'Re-offer email sent to customer.',
     });
 
-    await transporter.sendMail({
-      from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
-      to: order.shippingInfo.email,
-      subject: `Re-offer for Order #${order.id}`,
-      html: customerEmailHtml
-    });
-
-    await recordCustomerEmail(
-      orderId,
-      'Re-offer email sent to customer.',
-      {
-        newPrice: Number(newPrice).toFixed(2),
-        originalQuote: Number(order.estimatedQuote || order.originalQuote || 0).toFixed(2),
-        deviceKey: resolvedDeviceKey,
-      }
-    );
-
-    res.json({ message: "Re-offer submitted successfully", newPrice, orderId: order.id, deviceKey: resolvedDeviceKey });
+    res.json({ message: "Re-offer submitted successfully", newPrice, orderId: result.orderId, deviceKey: result.deviceKey });
   } catch (err) {
     console.error("Error submitting re-offer:", err);
     res.status(500).json({ error: "Failed to submit re-offer" });
@@ -7833,8 +7856,6 @@ app.post("/orders/:id/auto-requote", async (req, res) => {
       return res.status(400).json({ error: 'No eligible devices selected for automatic 75% deduction.' });
     }
 
-    const nextDeviceStatusByKey = { ...(order.deviceStatusByKey || {}) };
-    const autoReducedPayoutByDevice = { ...(order.autoReducedPayoutByDevice || {}) };
     const reducedSummaries = [];
 
     for (const deviceKey of targetDeviceKeys) {
@@ -7849,8 +7870,6 @@ app.post("/orders/:id/auto-requote", async (req, res) => {
       const reducedTo = Number((reducedFrom * 0.25).toFixed(2));
       if (!Number.isFinite(reducedTo) || reducedTo <= 0) continue;
 
-      nextDeviceStatusByKey[deviceKey] = 'ready_to_pay';
-      autoReducedPayoutByDevice[deviceKey] = reducedTo;
       reducedSummaries.push({ deviceKey, reducedFrom, reducedTo });
     }
 
@@ -7858,104 +7877,27 @@ app.post("/orders/:id/auto-requote", async (req, res) => {
       return res.status(400).json({ error: 'Unable to calculate a valid 75%-less payout for the selected device(s).' });
     }
 
-    const unresolvedIssues = buildIssueList(order).filter((issue) => !issue.resolved);
-    const targetSet = new Set(reducedSummaries.map((item) => item.deviceKey));
-    const hasRemainingAwaitingResponse = unresolvedIssues.some((issue) => !targetSet.has(issue.deviceKey));
-
-    const normalizedStatuses = allDeviceKeys
-      .map((deviceKey) => normalizeStatusValue(nextDeviceStatusByKey[deviceKey] || order.status))
-      .filter(Boolean);
-
-    let nextOrderStatus = order.status || 'ready_to_pay';
-    if (hasRemainingAwaitingResponse) {
-      nextOrderStatus = 'emailed';
-    } else if (normalizedStatuses.some((status) => status === 'issue_resolved')) {
-      nextOrderStatus = 'issue_resolved';
-    } else if (normalizedStatuses.some((status) => status === 'ready_to_pay')) {
-      nextOrderStatus = 'ready_to_pay';
-    } else {
-      nextOrderStatus = deriveOrderStatusFromDevices(order, nextDeviceStatusByKey) || 'ready_to_pay';
-    }
-
     const reducedFromTotal = Number(reducedSummaries.reduce((sum, item) => sum + item.reducedFrom, 0).toFixed(2));
     const reducedToTotal = Number(reducedSummaries.reduce((sum, item) => sum + item.reducedTo, 0).toFixed(2));
-    const timestampField = admin.firestore.FieldValue.serverTimestamp();
-
-    await updateOrderBoth(order.id, {
-      status: nextOrderStatus,
-      deviceStatusByKey: nextDeviceStatusByKey,
-      autoReducedPayoutByDevice,
-      qcAwaitingResponse: hasRemainingAwaitingResponse,
-      finalPayoutAmount: reducedToTotal,
-      finalOfferAmount: reducedToTotal,
-      finalPayout: reducedToTotal,
-      autoReducedPayoutReadyAt: timestampField,
-      autoRequote: {
-        reducedFrom: reducedFromTotal,
-        reducedTo: reducedToTotal,
-        manual: true,
-        automatic: false,
-        initiatedBy: 'admin_manual_auto_requote',
-        readyAt: timestampField,
-      },
-    }, {
-      logEntries: [
-        {
-          type: 'auto_requote',
-          message: `Admin applied 75%-less deduction and moved selected device(s) to ready to pay at $${reducedToTotal.toFixed(2)}.`,
-          metadata: {
-            previousStatus: order.status || null,
-            nextStatus: nextOrderStatus,
-            reducedFrom: reducedFromTotal,
-            reducedTo: reducedToTotal,
-            reductionPercent: 75,
-            automatic: false,
-            affectedDeviceKeys: reducedSummaries.map((item) => item.deviceKey),
-          },
-        },
-      ],
-    });
-
-    const customerName = order.shippingInfo?.fullName || 'there';
-    const customerEmail = order.shippingInfo?.email;
-    if (customerEmail) {
-      const emailHtml = buildEmailLayout({
-        title: 'Adjusted payout applied',
-        accentColor: '#dc2626',
-        includeTrustpilot: false,
-        bodyHtml: `
-          <p>Hi ${escapeHtml(customerName)},</p>
-          <p>Per our terms, order <strong>#${escapeHtml(order.id)}</strong> has been adjusted to a 75%-less payout for the affected device${reducedSummaries.length === 1 ? '' : 's'}.</p>
-          <p>The previous payout amount was <strong>$${reducedFromTotal.toFixed(2)}</strong> and the adjusted payout is <strong>$${reducedToTotal.toFixed(2)}</strong>.</p>
-          <p>If you have any questions, reply to this email and we can review it with you.</p>
-        `,
+    const reasonText = 'Per our terms, since we did not receive a response within 7 days, this revised offer is set at 75% less than the quoted amount.';
+    let latestOrder = order;
+    for (const summary of reducedSummaries) {
+      const refreshedSnap = await ordersCollection.doc(order.id).get();
+      latestOrder = { id: refreshedSnap.id, ...refreshedSnap.data() };
+      await submitReofferForDevice(latestOrder, {
+        deviceKey: summary.deviceKey,
+        newPrice: summary.reducedTo,
+        reasons: [reasonText],
+        comments: `75%-less re-offer sent from admin after response window expired. Original quote: $${summary.reducedFrom.toFixed(2)}. Revised offer: $${summary.reducedTo.toFixed(2)}.`,
+        originalQuoteOverride: summary.reducedFrom,
+        emailLogMessage: 'Admin-triggered 75%-less re-offer email sent to customer.',
       });
-
-      await transporter.sendMail({
-        from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
-        to: customerEmail,
-        subject: `Order #${order.id} adjusted per terms`,
-        html: emailHtml,
-      });
-
-      await recordCustomerEmail(
-        order.id,
-        'Admin-triggered 75%-less adjusted payout email sent to customer.',
-        {
-          status: nextOrderStatus,
-          reducedFrom: reducedFromTotal.toFixed(2),
-          reducedTo: reducedToTotal.toFixed(2),
-          automatic: false,
-          affectedDeviceKeys: reducedSummaries.map((item) => item.deviceKey),
-        },
-        { logType: 'auto_requote_email' }
-      );
     }
 
     return res.json({
       ok: true,
       orderId: order.id,
-      status: nextOrderStatus,
+      status: 're-offered-pending',
       reducedFrom: reducedFromTotal,
       reducedTo: reducedToTotal,
       affectedDeviceKeys: reducedSummaries.map((item) => item.deviceKey),
@@ -8746,8 +8688,6 @@ async function runAutomaticReducedPayoutSweep(options = {}) {
     }
 
     const orderDeviceEntries = collectOrderDeviceEntries(order);
-    const nextDeviceStatusByKey = { ...(order.deviceStatusByKey || {}) };
-    const autoReducedPayoutByDevice = { ...(order.autoReducedPayoutByDevice || {}) };
     const eligibleDeviceSummaries = [];
 
     for (const entry of orderDeviceEntries) {
@@ -8763,13 +8703,7 @@ async function runAutomaticReducedPayoutSweep(options = {}) {
       const reducedAmount = Number((baseAmount * 0.25).toFixed(2));
       if (!Number.isFinite(reducedAmount) || reducedAmount <= 0) continue;
 
-      eligibleDeviceSummaries.push({
-        deviceKey,
-        reducedAmount,
-        baseAmount,
-      });
-      nextDeviceStatusByKey[deviceKey] = 'auto_75_less';
-      autoReducedPayoutByDevice[deviceKey] = reducedAmount;
+      eligibleDeviceSummaries.push({ deviceKey, reducedAmount, baseAmount });
     }
 
     if (!eligibleDeviceSummaries.length) {
@@ -8777,92 +8711,27 @@ async function runAutomaticReducedPayoutSweep(options = {}) {
       continue;
     }
 
-    const reducedAmount = Number(
-      eligibleDeviceSummaries.reduce((sum, item) => sum + item.reducedAmount, 0).toFixed(2)
-    );
-    const baseAmount = Number(
-      eligibleDeviceSummaries.reduce((sum, item) => sum + item.baseAmount, 0).toFixed(2)
-    );
-    const derivedStatus = deriveOrderStatusFromDevices(order, nextDeviceStatusByKey) || 'auto_75_less';
-
-    const customerName = order.shippingInfo?.fullName || 'there';
-    const customerEmail = order.shippingInfo?.email;
-    const baseDisplay = baseAmount.toFixed(2);
-    const reducedDisplay = reducedAmount.toFixed(2);
-    const timestampField = admin.firestore.FieldValue.serverTimestamp();
+    const reducedAmount = Number(eligibleDeviceSummaries.reduce((sum, item) => sum + item.reducedAmount, 0).toFixed(2));
+    const baseAmount = Number(eligibleDeviceSummaries.reduce((sum, item) => sum + item.baseAmount, 0).toFixed(2));
+    const reasonText = 'Per our terms, since we did not receive a response within 7 days, this revised offer is set at 75% less than the quoted amount.';
 
     try {
-      await updateOrderBoth(order.id, {
-        status: derivedStatus,
-        deviceStatusByKey: nextDeviceStatusByKey,
-        autoReducedPayoutByDevice,
-        finalPayoutAmount: reducedAmount,
-        finalOfferAmount: reducedAmount,
-        finalPayout: reducedAmount,
-        autoReducedPayoutReadyAt: timestampField,
-        qcAwaitingResponse: false,
-        autoRequote: {
-          reducedFrom: Number(baseDisplay),
-          reducedTo: reducedAmount,
-          manual: false,
-          automatic: true,
-          initiatedBy: 'system_auto_requote_7_day_unresolved',
-          readyAt: timestampField,
-          lastCustomerEmailAt: admin.firestore.Timestamp.fromMillis(lastEmailMs),
-        },
-      }, {
-        logEntries: [
-          {
-            type: 'auto_requote',
-            message: `Order moved to auto 75% less at $${reducedDisplay} after unresolved customer communication for 7 days.`,
-            metadata: {
-              previousStatus: order.status || null,
-              nextStatus: derivedStatus,
-              reducedFrom: Number(baseDisplay),
-              reducedTo: reducedAmount,
-              reductionPercent: 75,
-              automatic: true,
-              affectedDeviceKeys: eligibleDeviceSummaries.map((item) => item.deviceKey),
-            },
-          },
-        ],
-      });
-
-      if (customerEmail) {
-        const emailHtml = buildEmailLayout({
-          title: 'Adjusted payout now ready',
-          accentColor: '#dc2626',
-          includeTrustpilot: false,
-          bodyHtml: `
-            <p>Hi ${escapeHtml(customerName)},</p>
-            <p>Since we did not receive a response within 7 days, order <strong>#${escapeHtml(order.id)}</strong> has moved to the automatic 75%-less payout stage per our terms.</p>
-            <p>The previous quote was <strong>$${baseDisplay}</strong> and the adjusted payout is <strong>$${reducedDisplay}</strong>.</p>
-            <p>If you have any questions, reply to this email and we can review it with you.</p>
-          `,
+      let latestOrder = order;
+      for (const summary of eligibleDeviceSummaries) {
+        const refreshedSnap = await ordersCollection.doc(order.id).get();
+        latestOrder = { id: refreshedSnap.id, ...refreshedSnap.data() };
+        await submitReofferForDevice(latestOrder, {
+          deviceKey: summary.deviceKey,
+          newPrice: summary.reducedAmount,
+          reasons: [reasonText],
+          comments: `75%-less re-offer sent automatically after 7-day unresolved issue timeout. Original quote: $${summary.baseAmount.toFixed(2)}. Revised offer: $${summary.reducedAmount.toFixed(2)}.`,
+          originalQuoteOverride: summary.baseAmount,
+          emailLogMessage: 'Automatic 7-day unresolved issue 75%-less re-offer email sent to customer.',
         });
-
-        await transporter.sendMail({
-          from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
-          to: customerEmail,
-          subject: `Order #${order.id} moved to adjusted payout`,
-          html: emailHtml,
-        });
-
-        await recordCustomerEmail(
-          order.id,
-          'Automatic 7-day unresolved issue adjusted payout email sent to customer.',
-          {
-            status: derivedStatus,
-            reducedFrom: baseDisplay,
-            reducedTo: reducedDisplay,
-            automatic: true,
-          },
-          { logType: 'auto_requote_email' }
-        );
       }
       processedEntries.push({
         orderId: order.id,
-        reducedFrom: Number(baseDisplay),
+        reducedFrom: baseAmount,
         reducedTo: reducedAmount,
         affectedDeviceKeys: eligibleDeviceSummaries.map((item) => item.deviceKey),
       });
