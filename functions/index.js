@@ -8672,24 +8672,78 @@ app.post('/orders/admin/bulk-void-test-orders', async (req, res) => {
   }
 });
 
-async function runAutomaticReducedPayoutSweep() {
-  const nowMs = Date.now();
-  const eligibleSnapshot = await ordersCollection
-    .where('status', '==', 'emailed')
-    .limit(AUTO_REDUCED_PAYOUT_QUERY_LIMIT)
-    .get();
+app.post('/orders/admin/bulk-auto-75-less', async (req, res) => {
+  try {
+    const parsedLimit = Number(req.body?.limit);
+    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0
+      ? Math.max(1, Math.floor(parsedLimit))
+      : AUTO_REDUCED_PAYOUT_QUERY_LIMIT;
 
-  for (const doc of eligibleSnapshot.docs) {
+    const payload = await runAutomaticReducedPayoutSweep({
+      maxOrders: limit,
+      orderIds: req.body?.orderIds,
+    });
+    res.json(payload);
+  } catch (error) {
+    console.error('Admin bulk auto 75%-less run failed:', error);
+    res.status(500).json({ error: error?.message || 'Failed to run bulk auto 75%-less payout.' });
+  }
+});
+
+async function runAutomaticReducedPayoutSweep(options = {}) {
+  const nowMs = Date.now();
+  const parsedMaxOrders = Number(options?.maxOrders);
+  const maxOrders = Number.isFinite(parsedMaxOrders) && parsedMaxOrders > 0
+    ? Math.max(1, Math.floor(parsedMaxOrders))
+    : AUTO_REDUCED_PAYOUT_QUERY_LIMIT;
+  const requestedOrderIds = Array.isArray(options?.orderIds)
+    ? options.orderIds.map((value) => String(value || '').trim()).filter(Boolean)
+    : [];
+
+  let docs = [];
+  if (requestedOrderIds.length) {
+    const snapshots = await Promise.all(
+      requestedOrderIds.slice(0, maxOrders).map((orderId) => ordersCollection.doc(orderId).get())
+    );
+    docs = snapshots.filter((doc) => doc.exists);
+  } else {
+    const eligibleSnapshot = await ordersCollection
+      .where('status', '==', 'emailed')
+      .limit(maxOrders)
+      .get();
+    docs = eligibleSnapshot.docs;
+  }
+
+  const processedEntries = [];
+  const skippedEntries = [];
+  const failedEntries = [];
+
+  for (const doc of docs) {
     const order = { id: doc.id, ...doc.data() };
-    if (!order.qcAwaitingResponse) continue;
-    if (order.autoRequote?.automatic === true || order.autoRequote?.manual === true) continue;
+    if (!order.qcAwaitingResponse) {
+      skippedEntries.push({ orderId: order.id, reason: 'Order is not awaiting customer response.' });
+      continue;
+    }
+    if (order.autoRequote?.automatic === true || order.autoRequote?.manual === true) {
+      skippedEntries.push({ orderId: order.id, reason: 'Automatic/manual 75%-less flow already applied.' });
+      continue;
+    }
 
     const status = String(order.status || '').toLowerCase();
-    if (MANUAL_AUTO_REQUOTE_INELIGIBLE_STATUSES.has(status)) continue;
+    if (MANUAL_AUTO_REQUOTE_INELIGIBLE_STATUSES.has(status)) {
+      skippedEntries.push({ orderId: order.id, reason: `Status ${status} is not eligible.` });
+      continue;
+    }
 
     const lastEmailMs = getLastCustomerEmailMillis(order);
-    if (!Number.isFinite(lastEmailMs)) continue;
-    if (nowMs - lastEmailMs < AUTO_REDUCED_PAYOUT_DELAY_MS) continue;
+    if (!Number.isFinite(lastEmailMs)) {
+      skippedEntries.push({ orderId: order.id, reason: 'No customer issue email timestamp found.' });
+      continue;
+    }
+    if (nowMs - lastEmailMs < AUTO_REDUCED_PAYOUT_DELAY_MS) {
+      skippedEntries.push({ orderId: order.id, reason: '7-day response window has not expired yet.' });
+      continue;
+    }
 
     const orderDeviceEntries = collectOrderDeviceEntries(order);
     const nextDeviceStatusByKey = { ...(order.deviceStatusByKey || {}) };
@@ -8718,7 +8772,10 @@ async function runAutomaticReducedPayoutSweep() {
       autoReducedPayoutByDevice[deviceKey] = reducedAmount;
     }
 
-    if (!eligibleDeviceSummaries.length) continue;
+    if (!eligibleDeviceSummaries.length) {
+      skippedEntries.push({ orderId: order.id, reason: 'No emailed devices eligible for automatic 75%-less payout.' });
+      continue;
+    }
 
     const reducedAmount = Number(
       eligibleDeviceSummaries.reduce((sum, item) => sum + item.reducedAmount, 0).toFixed(2)
@@ -8803,10 +8860,28 @@ async function runAutomaticReducedPayoutSweep() {
           { logType: 'auto_requote_email' }
         );
       }
+      processedEntries.push({
+        orderId: order.id,
+        reducedFrom: Number(baseDisplay),
+        reducedTo: reducedAmount,
+        affectedDeviceKeys: eligibleDeviceSummaries.map((item) => item.deviceKey),
+      });
     } catch (error) {
       console.error(`Failed automatic reduced payout stage update for order ${order.id}:`, error);
+      failedEntries.push({ orderId: order.id, reason: error?.message || 'Automatic 75%-less update failed.' });
     }
   }
+
+  return {
+    processed: processedEntries.length,
+    skipped: skippedEntries.length,
+    failed: failedEntries.length,
+    scanned: docs.length,
+    hasMore: !requestedOrderIds.length && docs.length === maxOrders,
+    processedEntries: processedEntries.slice(0, 25),
+    skippedEntries: skippedEntries.slice(0, 25),
+    failedEntries: failedEntries.slice(0, 25),
+  };
 }
 
 
