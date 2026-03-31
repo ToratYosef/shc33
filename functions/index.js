@@ -7657,14 +7657,10 @@ app.post("/orders/:id/return-label", async (req, res) => {
       country_code: "US",
     };
 
-    const isReturnToCustomer = order.status === "re-offered-declined";
-    const shipEngineOriginAddress = isReturnToCustomer ? shcReturnsAddress : shcSalesAddress;
-    const shipFromAddress = isReturnToCustomer
-      ? shipEngineOriginAddress
-      : buyerAddress;
-    const shipToAddress = isReturnToCustomer
-      ? buyerAddress
-      : shipEngineOriginAddress;
+    // A return label from this route always means we are shipping the device back
+    // from SecondHandCell to the customer.
+    const shipFromAddress = shcReturnsAddress;
+    const shipToAddress = buyerAddress;
 
     const items = Array.isArray(order?.items) ? order.items : [];
     const itemsDeviceCount = items.reduce((sum, item) => sum + (Number(item?.qty) || 0), 0);
