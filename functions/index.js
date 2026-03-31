@@ -661,7 +661,6 @@ function deriveOrderStatusFromDevices(order = {}, nextDeviceStatusByKey = null) 
   const deviceKeys = collectOrderDeviceKeys({ ...order, deviceStatusByKey });
 
   const terminalStatuses = new Set([
-    'auto_75_less',
     'completed',
     're_offered_accepted',
     're_offered_auto_accepted',
@@ -689,10 +688,6 @@ function deriveOrderStatusFromDevices(order = {}, nextDeviceStatusByKey = null) 
 
   if (normalizedStatuses.some((status) => status.includes('accepted'))) {
     return 're-offered-accepted';
-  }
-
-  if (normalizedStatuses.some((status) => status === 'auto_75_less')) {
-    return 'auto_75_less';
   }
 
   if (normalizedStatuses.every((status) => status === 'completed' || status === 'paid')) {
