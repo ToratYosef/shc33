@@ -578,6 +578,50 @@ function buildOrderDeviceKey(orderId, deviceIndex = 0) {
   return `${baseOrderId}::${safeIndex}`;
 }
 
+function normalizeQtyValue(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 1;
+  return Math.max(1, Math.floor(numeric));
+}
+
+function collectOrderDeviceEntries(order = {}) {
+  const items = Array.isArray(order?.items) ? order.items : [];
+  if (!items.length) {
+    return [{ deviceIndex: 0, item: order, qtyIndex: 0 }];
+  }
+
+  const entries = [];
+  let expandedIndex = 0;
+  items.forEach((item) => {
+    const qty = normalizeQtyValue(item?.qty ?? item?.quantity ?? 1);
+    for (let qtyIndex = 0; qtyIndex < qty; qtyIndex += 1) {
+      entries.push({ deviceIndex: expandedIndex, item, qtyIndex });
+      expandedIndex += 1;
+    }
+  });
+
+  return entries.length ? entries : [{ deviceIndex: 0, item: order, qtyIndex: 0 }];
+}
+
+function getPerDeviceOffer(item = {}, order = {}) {
+  const qty = normalizeQtyValue(item?.qty ?? item?.quantity ?? 1);
+  const direct = Number(item?.unitPrice ?? item?.price ?? item?.payout ?? item?.offerAmount ?? item?.estimatedQuote);
+  if (Number.isFinite(direct)) return direct;
+
+  const total = Number(
+    item?.totalPayout ??
+    item?.estimatedQuote ??
+    order?.totalPayout ??
+    order?.estimatedQuote ??
+    order?.originalQuote
+  );
+  if (Number.isFinite(total)) {
+    return qty > 1 ? total / qty : total;
+  }
+
+  return 0;
+}
+
 function collectOrderDeviceKeys(order = {}) {
   const orderId = sanitizeDocumentId(order.id || order.orderId || order.orderID);
   const keySet = new Set();
@@ -7759,9 +7803,167 @@ app.post("/orders/:id/return-label", async (req, res) => {
 });
 
 app.post("/orders/:id/auto-requote", async (req, res) => {
-  return res.status(410).json({
-    error: 'Manual auto-requote is disabled. Orders are finalized automatically after 7 days when unresolved.',
-  });
+  try {
+    const orderId = String(req.params.id || '').trim();
+    if (!orderId) {
+      return res.status(400).json({ error: 'Order ID is required.' });
+    }
+
+    const orderSnap = await ordersCollection.doc(orderId).get();
+    if (!orderSnap.exists) {
+      return res.status(404).json({ error: 'Order not found.' });
+    }
+
+    const order = { id: orderSnap.id, ...orderSnap.data() };
+    const requestedKeys = [
+      ...(Array.isArray(req.body?.deviceKeys) ? req.body.deviceKeys : []),
+      req.body?.deviceKey,
+    ]
+      .map((value) => String(value || '').trim())
+      .filter(Boolean)
+      .filter((value, index, array) => array.indexOf(value) === index);
+
+    const orderEntries = collectOrderDeviceEntries(order);
+    const allDeviceKeys = orderEntries.map((entry) => buildOrderDeviceKey(order.id, entry.deviceIndex));
+    const targetDeviceKeys = requestedKeys.length
+      ? requestedKeys.filter((deviceKey) => allDeviceKeys.includes(deviceKey))
+      : allDeviceKeys.filter((deviceKey) => normalizeStatusValue(order.deviceStatusByKey?.[deviceKey] || order.status) === 'emailed');
+
+    if (!targetDeviceKeys.length) {
+      return res.status(400).json({ error: 'No eligible devices selected for automatic 75% deduction.' });
+    }
+
+    const nextDeviceStatusByKey = { ...(order.deviceStatusByKey || {}) };
+    const autoReducedPayoutByDevice = { ...(order.autoReducedPayoutByDevice || {}) };
+    const reducedSummaries = [];
+
+    for (const deviceKey of targetDeviceKeys) {
+      const parsed = deviceKey.split('::');
+      const deviceIndex = Number.parseInt(parsed[1] || '0', 10);
+      const entry = orderEntries.find((item) => item.deviceIndex === deviceIndex);
+      if (!entry) continue;
+
+      const reducedFrom = Number(getPerDeviceOffer(entry.item || {}, order));
+      if (!Number.isFinite(reducedFrom) || reducedFrom <= 0) continue;
+
+      const reducedTo = Number((reducedFrom * 0.25).toFixed(2));
+      if (!Number.isFinite(reducedTo) || reducedTo <= 0) continue;
+
+      nextDeviceStatusByKey[deviceKey] = 'ready_to_pay';
+      autoReducedPayoutByDevice[deviceKey] = reducedTo;
+      reducedSummaries.push({ deviceKey, reducedFrom, reducedTo });
+    }
+
+    if (!reducedSummaries.length) {
+      return res.status(400).json({ error: 'Unable to calculate a valid 75%-less payout for the selected device(s).' });
+    }
+
+    const unresolvedIssues = buildIssueList(order).filter((issue) => !issue.resolved);
+    const targetSet = new Set(reducedSummaries.map((item) => item.deviceKey));
+    const hasRemainingAwaitingResponse = unresolvedIssues.some((issue) => !targetSet.has(issue.deviceKey));
+
+    const normalizedStatuses = allDeviceKeys
+      .map((deviceKey) => normalizeStatusValue(nextDeviceStatusByKey[deviceKey] || order.status))
+      .filter(Boolean);
+
+    let nextOrderStatus = order.status || 'ready_to_pay';
+    if (hasRemainingAwaitingResponse) {
+      nextOrderStatus = 'emailed';
+    } else if (normalizedStatuses.some((status) => status === 'issue_resolved')) {
+      nextOrderStatus = 'issue_resolved';
+    } else if (normalizedStatuses.some((status) => status === 'ready_to_pay')) {
+      nextOrderStatus = 'ready_to_pay';
+    } else {
+      nextOrderStatus = deriveOrderStatusFromDevices(order, nextDeviceStatusByKey) || 'ready_to_pay';
+    }
+
+    const reducedFromTotal = Number(reducedSummaries.reduce((sum, item) => sum + item.reducedFrom, 0).toFixed(2));
+    const reducedToTotal = Number(reducedSummaries.reduce((sum, item) => sum + item.reducedTo, 0).toFixed(2));
+    const timestampField = admin.firestore.FieldValue.serverTimestamp();
+
+    await updateOrderBoth(order.id, {
+      status: nextOrderStatus,
+      deviceStatusByKey: nextDeviceStatusByKey,
+      autoReducedPayoutByDevice,
+      qcAwaitingResponse: hasRemainingAwaitingResponse,
+      finalPayoutAmount: reducedToTotal,
+      finalOfferAmount: reducedToTotal,
+      finalPayout: reducedToTotal,
+      autoReducedPayoutReadyAt: timestampField,
+      autoRequote: {
+        reducedFrom: reducedFromTotal,
+        reducedTo: reducedToTotal,
+        manual: true,
+        automatic: false,
+        initiatedBy: 'admin_manual_auto_requote',
+        readyAt: timestampField,
+      },
+    }, {
+      logEntries: [
+        {
+          type: 'auto_requote',
+          message: `Admin applied 75%-less deduction and moved selected device(s) to ready to pay at $${reducedToTotal.toFixed(2)}.`,
+          metadata: {
+            previousStatus: order.status || null,
+            nextStatus: nextOrderStatus,
+            reducedFrom: reducedFromTotal,
+            reducedTo: reducedToTotal,
+            reductionPercent: 75,
+            automatic: false,
+            affectedDeviceKeys: reducedSummaries.map((item) => item.deviceKey),
+          },
+        },
+      ],
+    });
+
+    const customerName = order.shippingInfo?.fullName || 'there';
+    const customerEmail = order.shippingInfo?.email;
+    if (customerEmail) {
+      const emailHtml = buildEmailLayout({
+        title: 'Adjusted payout applied',
+        accentColor: '#dc2626',
+        includeTrustpilot: false,
+        bodyHtml: `
+          <p>Hi ${escapeHtml(customerName)},</p>
+          <p>Per our terms, order <strong>#${escapeHtml(order.id)}</strong> has been adjusted to a 75%-less payout for the affected device${reducedSummaries.length === 1 ? '' : 's'}.</p>
+          <p>The previous payout amount was <strong>$${reducedFromTotal.toFixed(2)}</strong> and the adjusted payout is <strong>$${reducedToTotal.toFixed(2)}</strong>.</p>
+          <p>If you have any questions, reply to this email and we can review it with you.</p>
+        `,
+      });
+
+      await transporter.sendMail({
+        from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+        to: customerEmail,
+        subject: `Order #${order.id} adjusted per terms`,
+        html: emailHtml,
+      });
+
+      await recordCustomerEmail(
+        order.id,
+        'Admin-triggered 75%-less adjusted payout email sent to customer.',
+        {
+          status: nextOrderStatus,
+          reducedFrom: reducedFromTotal.toFixed(2),
+          reducedTo: reducedToTotal.toFixed(2),
+          automatic: false,
+          affectedDeviceKeys: reducedSummaries.map((item) => item.deviceKey),
+        },
+        { logType: 'auto_requote_email' }
+      );
+    }
+
+    return res.json({
+      ok: true,
+      orderId: order.id,
+      status: nextOrderStatus,
+      reducedFrom: reducedFromTotal,
+      reducedTo: reducedToTotal,
+      affectedDeviceKeys: reducedSummaries.map((item) => item.deviceKey),
+    });
+  } catch (error) {
+    console.error('Error applying manual auto-requote:', error);
+    return res.status(500).json({ error: 'Failed to apply 75%-less deduction.' });
+  }
 });
 
 app.post("/orders/:id/cancel", async (req, res) => {
