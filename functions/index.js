@@ -617,6 +617,7 @@ function deriveOrderStatusFromDevices(order = {}, nextDeviceStatusByKey = null) 
   const deviceKeys = collectOrderDeviceKeys({ ...order, deviceStatusByKey });
 
   const terminalStatuses = new Set([
+    'auto_75_less',
     'completed',
     're_offered_accepted',
     're_offered_auto_accepted',
@@ -644,6 +645,10 @@ function deriveOrderStatusFromDevices(order = {}, nextDeviceStatusByKey = null) 
 
   if (normalizedStatuses.some((status) => status.includes('accepted'))) {
     return 're-offered-accepted';
+  }
+
+  if (normalizedStatuses.some((status) => status === 'auto_75_less')) {
+    return 'auto_75_less';
   }
 
   if (normalizedStatuses.every((status) => status === 'completed' || status === 'paid')) {
@@ -8484,11 +8489,42 @@ async function runAutomaticReducedPayoutSweep() {
     if (!Number.isFinite(lastEmailMs)) continue;
     if (nowMs - lastEmailMs < AUTO_REDUCED_PAYOUT_DELAY_MS) continue;
 
-    const baseAmount = Number(order.reOffer?.newPrice ?? getOrderPayout(order));
-    if (!Number.isFinite(baseAmount) || baseAmount <= 0) continue;
+    const orderDeviceEntries = collectOrderDeviceEntries(order);
+    const nextDeviceStatusByKey = { ...(order.deviceStatusByKey || {}) };
+    const autoReducedPayoutByDevice = { ...(order.autoReducedPayoutByDevice || {}) };
+    const eligibleDeviceSummaries = [];
 
-    const reducedAmount = Number((baseAmount * 0.25).toFixed(2));
-    if (!Number.isFinite(reducedAmount) || reducedAmount <= 0) continue;
+    for (const entry of orderDeviceEntries) {
+      const deviceKey = buildOrderDeviceKey(order.id, entry.deviceIndex);
+      const currentDeviceStatus = normalizeStatusValue(
+        nextDeviceStatusByKey[deviceKey] || order.status
+      );
+      if (currentDeviceStatus !== 'emailed') continue;
+
+      const baseAmount = Number(getPerDeviceOffer(entry.item || {}, order));
+      if (!Number.isFinite(baseAmount) || baseAmount <= 0) continue;
+
+      const reducedAmount = Number((baseAmount * 0.25).toFixed(2));
+      if (!Number.isFinite(reducedAmount) || reducedAmount <= 0) continue;
+
+      eligibleDeviceSummaries.push({
+        deviceKey,
+        reducedAmount,
+        baseAmount,
+      });
+      nextDeviceStatusByKey[deviceKey] = 'auto_75_less';
+      autoReducedPayoutByDevice[deviceKey] = reducedAmount;
+    }
+
+    if (!eligibleDeviceSummaries.length) continue;
+
+    const reducedAmount = Number(
+      eligibleDeviceSummaries.reduce((sum, item) => sum + item.reducedAmount, 0).toFixed(2)
+    );
+    const baseAmount = Number(
+      eligibleDeviceSummaries.reduce((sum, item) => sum + item.baseAmount, 0).toFixed(2)
+    );
+    const derivedStatus = deriveOrderStatusFromDevices(order, nextDeviceStatusByKey) || 'auto_75_less';
 
     const customerName = order.shippingInfo?.fullName || 'there';
     const customerEmail = order.shippingInfo?.email;
@@ -8498,11 +8534,13 @@ async function runAutomaticReducedPayoutSweep() {
 
     try {
       await updateOrderBoth(order.id, {
-        status: 'completed',
+        status: derivedStatus,
+        deviceStatusByKey: nextDeviceStatusByKey,
+        autoReducedPayoutByDevice,
         finalPayoutAmount: reducedAmount,
         finalOfferAmount: reducedAmount,
         finalPayout: reducedAmount,
-        requoteAcceptedAt: timestampField,
+        autoReducedPayoutReadyAt: timestampField,
         qcAwaitingResponse: false,
         autoRequote: {
           reducedFrom: Number(baseDisplay),
@@ -8510,20 +8548,22 @@ async function runAutomaticReducedPayoutSweep() {
           manual: false,
           automatic: true,
           initiatedBy: 'system_auto_requote_7_day_unresolved',
-          completedAt: timestampField,
+          readyAt: timestampField,
           lastCustomerEmailAt: admin.firestore.Timestamp.fromMillis(lastEmailMs),
         },
       }, {
         logEntries: [
           {
             type: 'auto_requote',
-            message: `Order auto-finalized at $${reducedDisplay} after unresolved customer communication for 7 days.`,
+            message: `Order moved to auto 75% less at $${reducedDisplay} after unresolved customer communication for 7 days.`,
             metadata: {
               previousStatus: order.status || null,
+              nextStatus: derivedStatus,
               reducedFrom: Number(baseDisplay),
               reducedTo: reducedAmount,
               reductionPercent: 75,
               automatic: true,
+              affectedDeviceKeys: eligibleDeviceSummaries.map((item) => item.deviceKey),
             },
           },
         ],
@@ -8531,28 +8571,29 @@ async function runAutomaticReducedPayoutSweep() {
 
       if (customerEmail) {
         const emailHtml = buildEmailLayout({
-          title: 'Order finalized at adjusted payout',
+          title: 'Adjusted payout now ready',
           accentColor: '#dc2626',
           includeTrustpilot: false,
           bodyHtml: `
             <p>Hi ${escapeHtml(customerName)},</p>
-            <p>Since we did not receive a response within 7 days, we finalized order <strong>#${escapeHtml(order.id)}</strong> at a payout that is 75% less than the previous quote of $${baseDisplay}, per our terms.</p>
-            <p>Your payout amount is <strong>$${reducedDisplay}</strong>. If you have any questions, reply to this email and we can review with you.</p>
+            <p>Since we did not receive a response within 7 days, order <strong>#${escapeHtml(order.id)}</strong> has moved to the automatic 75%-less payout stage per our terms.</p>
+            <p>The previous quote was <strong>$${baseDisplay}</strong> and the adjusted payout is <strong>$${reducedDisplay}</strong>.</p>
+            <p>If you have any questions, reply to this email and we can review it with you.</p>
           `,
         });
 
         await transporter.sendMail({
           from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
           to: customerEmail,
-          subject: `Order #${order.id} finalized at adjusted payout`,
+          subject: `Order #${order.id} moved to adjusted payout`,
           html: emailHtml,
         });
 
         await recordCustomerEmail(
           order.id,
-          'Automatic 7-day unresolved issue payout finalization email sent to customer.',
+          'Automatic 7-day unresolved issue adjusted payout email sent to customer.',
           {
-            status: 'completed',
+            status: derivedStatus,
             reducedFrom: baseDisplay,
             reducedTo: reducedDisplay,
             automatic: true,
@@ -8561,7 +8602,7 @@ async function runAutomaticReducedPayoutSweep() {
         );
       }
     } catch (error) {
-      console.error(`Failed automatic reduced payout finalization for order ${order.id}:`, error);
+      console.error(`Failed automatic reduced payout stage update for order ${order.id}:`, error);
     }
   }
 }
