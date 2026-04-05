@@ -823,6 +823,68 @@ function createOrdersRouter({
     };
   }
 
+  function buildOrderReceivedCustomerEmail(order = {}) {
+    const shippingInfo = order?.shippingInfo || {};
+    const normalizedShippingPreference = String(
+      order.shippingPreferenceNormalized || order.shippingPreference || ''
+    ).trim().toLowerCase();
+    const trackOrderUrl = buildTrackOrderUrl(order.id, shippingInfo.email, { fromEmailLink: '1' });
+    const trackStatusButtonHtml = `
+      <div style="text-align:center; margin-top:18px;">
+        <a href="${trackOrderUrl}" class="button-link" style="background-color:#2563eb;">Track your status here</a>
+      </div>
+    `;
+
+    let shippingInstructions = '';
+    if (normalizedShippingPreference === SHIPPING_PREFERENCE.KIT) {
+      shippingInstructions = `
+        <div style="margin-top: 24px;">
+          <h2 style="font-size:18px; color:#0f172a; margin:0 0 10px;">Shipping kit instructions</h2>
+          <p style="margin:0 0 12px; color:#475569;">We're sending a padded mailer with an adhesive strip, device sleeve, and prepaid USPS label. We'll email tracking as soon as it ships.</p>
+          <ol style="margin:0 0 12px 18px; padding-left:18px; color:#475569;">
+            <li style="margin-bottom:8px;">When it arrives, place your device in the protective sleeve and add the included padding.</li>
+            <li style="margin-bottom:8px;">Include the device ID sticker from the kit (or a note with your order number) inside the mailer.</li>
+            <li style="margin-bottom:8px;">Seal the mailer firmly, attach the prepaid label, and drop it at any USPS location.</li>
+          </ol>
+          <p style="margin:0; color:#475569;">Keep your USPS receipt for tracking. Questions? Just reply to this email.</p>
+          ${trackStatusButtonHtml}
+        </div>
+      `;
+    } else {
+      let autoLabelMessage = 'Your prepaid shipping label has been generated and sent to your email, so your order is fully submitted.';
+      if (order?.upsLabelUrl) {
+        autoLabelMessage = 'Your prepaid UPS shipping label has been generated and sent to your email, so your order is fully submitted.';
+      } else if (order?.uspsLabelUrl) {
+        autoLabelMessage = 'Your prepaid USPS shipping label has been generated and sent to your email, so your order is fully submitted.';
+      }
+
+      shippingInstructions = `
+        <div style="margin-top: 24px;">
+          <h2 style="font-size:18px; color:#0f172a; margin:0 0 10px;">Shipping label instructions</h2>
+          <p style="margin:0 0 12px; color:#475569;">${autoLabelMessage}</p>
+          <ol style="margin:0 0 12px 18px; padding-left:18px; color:#475569;">
+            <li style="margin-bottom:8px;">Back up data, remove SIM/eSIM, and sign out of Apple/Google/Samsung accounts.</li>
+            <li style="margin-bottom:8px;">Factory reset the device, then wrap it in padding and place it in a sturdy box.</li>
+            <li style="margin-bottom:8px;">If your label is ready, print it, seal the box, attach it securely, and keep your carrier receipt.</li>
+          </ol>
+          <p style="margin:0; color:#475569;">Questions? Reply to this email.</p>
+          ${trackStatusButtonHtml}
+        </div>
+      `;
+    }
+
+    return {
+      from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+      to: shippingInfo.email,
+      subject: `Your SecondHandCell Order #${order.id} Has Been Received!`,
+      html: ORDER_RECEIVED_EMAIL_HTML
+        .replace(/\*\*CUSTOMER_NAME\*\*/g, shippingInfo.fullName || 'Valued customer')
+        .replace(/\*\*ORDER_ID\*\*/g, order.id || '')
+        .replace(/\*\*DEVICE_NAME\*\*/g, `${order.device || 'Device'} ${order.storage || ''}`.trim())
+        .replace(/\*\*SHIPPING_INSTRUCTION\*\*/g, shippingInstructions),
+    };
+  }
+
   function buildTrackOrderUrl(orderId, email, extraParams = {}) {
     const params = new URLSearchParams({
       orderId: String(orderId || '').trim(),
@@ -2697,6 +2759,130 @@ function createOrdersRouter({
         error: error.message || 'Failed to generate UPS shipping label.',
         details: responseData,
         warnings: error.warnings || extractShipEngineWarnings(error),
+      });
+    }
+  });
+
+  router.post('/orders/:id/admin-update-email-and-resend', async (req, res) => {
+    const authResult = await resolvedAuthenticateAdminRequest(req);
+    if (!authResult?.ok) {
+      return res.status(authResult?.status || 403).json({
+        error: authResult?.error || 'Admin access required',
+        code: authResult?.code || 'AUTH_FORBIDDEN',
+      });
+    }
+
+    try {
+      const orderId = String(req.params.id || '').trim();
+      const nextEmail = String(req.body?.email || '').trim().toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!orderId) {
+        return res.status(400).json({ error: 'Order ID is required.' });
+      }
+      if (!emailRegex.test(nextEmail)) {
+        return res.status(400).json({ error: 'A valid email address is required.' });
+      }
+
+      const orderRef = ordersCollection.doc(orderId);
+      const orderSnap = await orderRef.get();
+      if (!orderSnap.exists) {
+        return res.status(404).json({ error: 'Order not found.' });
+      }
+
+      const order = { id: orderSnap.id, ...orderSnap.data() };
+      const currentEmail = String(
+        order?.shippingInfo?.email || order?.email || order?.customerEmail || order?.userEmail || ''
+      ).trim().toLowerCase();
+
+      const payload = {
+        'shippingInfo.email': nextEmail,
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+      if (!order.email || String(order.email).trim().toLowerCase() === currentEmail) payload.email = nextEmail;
+      if (!order.customerEmail || String(order.customerEmail).trim().toLowerCase() === currentEmail) payload.customerEmail = nextEmail;
+      if (!order.userEmail || String(order.userEmail).trim().toLowerCase() === currentEmail) payload.userEmail = nextEmail;
+
+      await updateOrderBoth(orderId, payload, {
+        autoLogStatus: false,
+        logEntries: [
+          {
+            type: 'customer',
+            message: 'Customer email updated from admin before resending customer emails.',
+            metadata: { previousEmail: currentEmail || null, nextEmail },
+          },
+        ],
+      });
+
+      const refreshedSnap = await orderRef.get();
+      const refreshedOrder = { id: refreshedSnap.id, ...refreshedSnap.data() };
+      const mailJobs = [buildOrderReceivedCustomerEmail(refreshedOrder)];
+      const resent = ['order_received'];
+
+      const normalizedPreference = String(
+        refreshedOrder.shippingPreferenceNormalized || refreshedOrder.shippingPreference || ''
+      ).trim().toLowerCase();
+
+      if (normalizedPreference === SHIPPING_PREFERENCE.KIT) {
+        if (refreshedOrder?.outboundLabelUrl || refreshedOrder?.outboundTrackingNumber) {
+          mailJobs.push({
+            from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+            to: refreshedOrder.shippingInfo?.email,
+            subject: `Your SecondHandCell Shipping Kit for Order #${refreshedOrder.id} is on its Way!`,
+            html: SHIPPING_KIT_EMAIL_HTML
+              .replace(/\*\*CUSTOMER_NAME\*\*/g, refreshedOrder.shippingInfo?.fullName || 'Customer')
+              .replace(/\*\*ORDER_ID\*\*/g, refreshedOrder.id)
+              .replace(/\*\*TRACKING_NUMBER\*\*/g, refreshedOrder.outboundTrackingNumber || 'N/A'),
+          });
+          resent.push('shipping_kit');
+        }
+      } else {
+        const labelDownloadUrl =
+          refreshedOrder?.upsLabelUrl ||
+          refreshedOrder?.uspsLabelUrl ||
+          refreshedOrder?.inboundLabelUrl ||
+          null;
+        const trackingNumber =
+          refreshedOrder?.trackingNumber ||
+          refreshedOrder?.inboundTrackingNumber ||
+          null;
+        if (labelDownloadUrl || trackingNumber) {
+          const carrierName = refreshedOrder?.upsLabelUrl ? 'UPS' : 'USPS';
+          mailJobs.push(buildShippingLabelEmail(refreshedOrder, {
+            carrierName,
+            labelDownloadUrl: labelDownloadUrl || buildTrackOrderUrl(refreshedOrder.id, refreshedOrder.shippingInfo?.email, { fromEmailLink: '1' }),
+            trackingNumber: trackingNumber || 'N/A',
+          }));
+          resent.push('shipping_label');
+        }
+      }
+
+      for (const mailOptions of mailJobs) {
+        await transporter.sendMail(mailOptions);
+      }
+
+      await updateOrderBoth(orderId, {
+        lastCustomerEmailSentAt: FieldValue.serverTimestamp(),
+      }, {
+        autoLogStatus: false,
+        logEntries: [
+          {
+            type: 'email',
+            message: `Resent customer emails to updated address: ${nextEmail}.`,
+            metadata: { resent },
+          },
+        ],
+      });
+
+      return res.json({
+        ok: true,
+        email: nextEmail,
+        resent,
+      });
+    } catch (error) {
+      console.error('Failed to update email and resend customer emails:', error);
+      return res.status(error?.status || 500).json({
+        error: error?.message || 'Failed to update email and resend customer emails.',
       });
     }
   });
