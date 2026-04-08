@@ -4,7 +4,7 @@ const EMAIL_LOGO_URL =
   "https://cdn.secondhandcell.com/images/assets/logo-white.webp";
 const COUNTDOWN_NOTICE_TEXT =
   "If we don't hear back, we may finalize your order at 75% less to keep your order moving.";
-const TRUSTPILOT_REVIEW_LINK = "https://www.trustpilot.com/evaluate/secondhandcell.com";
+const TRUSTPILOT_REVIEW_LINK = "https://www.trustpilot.com/review/secondhandcell.com?utm_medium=trustbox&utm_source=TrustBoxReviewCollector";
 const TRUSTPILOT_STARS_IMAGE_URL = "https://cdn.trustpilot.net/brand-assets/4.1.0/stars/stars-5.png";
 
 const BLACKLISTED_LEGAL_HTML = `
