@@ -621,6 +621,47 @@ function createOrdersRouter({
     return error;
   }
 
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  router.get('/issue-resolved-confirmation.html', (req, res) => {
+    const orderId = String(req.query.orderId || '').trim();
+    const deviceLabel = String(req.query.deviceLabel || 'Device').trim();
+
+    const title = orderId
+      ? `Issue resolved for order #${orderId}`
+      : 'Issue resolved successfully';
+    const subtitle = orderId
+      ? `Thanks! We recorded your update for ${deviceLabel}. Our team will continue processing your order.`
+      : 'Thanks! We recorded your update and our team will continue processing your order.';
+
+    return res.status(200).send(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Issue Resolved • SecondHandCell</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-slate-100 text-slate-900">
+    <main class="min-h-screen flex items-center justify-center px-4 py-10">
+      <section class="w-full max-w-xl rounded-2xl bg-white shadow-xl border border-slate-200 p-8 sm:p-10">
+        <div class="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-2xl">✓</div>
+        <h1 class="text-2xl sm:text-3xl font-bold text-center">${escapeHtml(title)}</h1>
+        <p class="mt-3 text-center text-slate-600">${escapeHtml(subtitle)}</p>
+        ${orderId ? `<p class="mt-5 text-center text-sm text-slate-500">Reference: <span class="font-semibold text-slate-700">#${escapeHtml(orderId)}</span></p>` : ''}
+      </section>
+    </main>
+  </body>
+</html>`);
+  });
+
   function buildShipEngineErrorMessage(error, fallbackMessage) {
     const responseData = error?.response?.data || error?.responseData || null;
     const errors = Array.isArray(responseData?.errors) ? responseData.errors : [];
