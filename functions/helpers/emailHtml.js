@@ -1,7 +1,7 @@
 const { escapeHtml } = require('./stringUtils');
 
 const EMAIL_LOGO_URL =
-  "https://cdn.secondhandcell.com/images/assets/logo-white.webp";
+  "https://cdn.secondhandcell.com/images/assets/logo.webp";
 const COUNTDOWN_NOTICE_TEXT =
   "If we don't hear back, we may finalize your order at 75% less to keep your order moving.";
 const TRUSTPILOT_REVIEW_LINK = "https://www.trustpilot.com/review/secondhandcell.com?utm_medium=trustbox&utm_source=TrustBoxReviewCollector";
@@ -211,7 +211,7 @@ function buildEmailLayout({
   bodyHtml = "",
   accentColor = "#16a34a",
   includeTrustpilot = true,
-  footerText = "Need help? Reply to this email.",
+  footerText = "SecondHandCell.com • https://secondhandcell.com • sales@secondhandcell.com",
   includeCountdownNotice = false,
 } = {}) {
   const normalizedBodyHtml = String(bodyHtml || "")
@@ -233,7 +233,7 @@ function buildEmailLayout({
     ? `
         <div style="font-weight:600; color:#6b7280; margin-bottom:4px;">${escapeHtml(footerParts[0])}</div>
         <div>
-          <a href="${escapeHtml(footerParts[1])}" style="color:#8b8b8f; text-decoration:none;">${escapeHtml(footerParts[1].replace(/^https?:\/\//i, ""))}</a>
+          <a href="${escapeHtml(footerParts[1])}" style="color:#8b8b8f; text-decoration:none;">SecondHandCell.com</a>
           &nbsp;&nbsp;&bull;&nbsp;&nbsp;
           <a href="mailto:${escapeHtml(footerParts[2])}" style="color:#8b8b8f; text-decoration:none;">${escapeHtml(footerParts[2])}</a>
         </div>
@@ -266,7 +266,7 @@ function buildEmailLayout({
           <td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px; background:#ffffff; border-radius:28px; overflow:hidden; border:1px solid #e5e7eb; box-shadow:0 12px 40px rgba(0,0,0,0.04);">
               <tr>
-                <td style="padding:28px 36px 24px 36px; background:#0f172a; border-bottom:1px solid #111827;">
+                <td style="padding:32px 36px 24px 36px; background:#ffffff; border-bottom:1px solid #f1f1f1;">
                   <div style="text-align:center;">
                     <img src="${EMAIL_LOGO_URL}" alt="SecondHandCell" style="height:44px; display:block; margin:0 auto;" />
                   </div>
@@ -332,7 +332,7 @@ const SHIPPING_KIT_EMAIL_HTML = buildEmailLayout({
 const ORDER_RECEIVED_EMAIL_HTML = buildEmailLayout({
   title: "Order confirmation",
   includeTrustpilot: false,
-  footerText: "SecondHandCell • https://secondhandcell.com • support@secondhandcell.com",
+  footerText: "SecondHandCell.com • https://secondhandcell.com • sales@secondhandcell.com",
   bodyHtml: `
       <p style="font-size:17px; margin:0 0 14px;">Hi <strong>**CUSTOMER_NAME**</strong>,</p>
       <p style="margin:0 0 18px;">Thanks for your order. We created your trade-in for <strong>**DEVICE_NAME**</strong>.</p>
@@ -353,7 +353,7 @@ const ORDER_RECEIVED_EMAIL_HTML = buildEmailLayout({
       <div style="margin:0 0 24px;">**SHIPPING_INSTRUCTION**</div>
       <div style="border-top:1px solid #e2e8f0; padding-top:20px;">
         <div style="font-size:18px; font-weight:700; color:#0f172a; margin:0 0 10px;">Need help?</div>
-        <p style="margin:0; color:#475569;">Reply to this email or contact us at <a href="mailto:support@secondhandcell.com" style="color:#2563eb; text-decoration:none;">support@secondhandcell.com</a>.</p>
+        <p style="margin:0; color:#475569;">Reply to this email or contact us at <a href="mailto:sales@secondhandcell.com" style="color:#2563eb; text-decoration:none;">sales@secondhandcell.com</a>.</p>
       </div>
   `,
 });
@@ -463,7 +463,7 @@ function getOrderCompletedEmailTemplate({ includeTrustpilot = true } = {}) {
   return buildEmailLayout({
     title: "Order complete",
     includeTrustpilot,
-    footerText: "SecondHandCell • https://secondhandcell.com • support@secondhandcell.com",
+    footerText: "SecondHandCell.com • https://secondhandcell.com • sales@secondhandcell.com",
     bodyHtml: `
         <p style="margin:0 0 14px;">Hi <strong>**CUSTOMER_NAME**</strong>,</p>
         <p style="margin:0 0 22px;">Your order has been completed and your payout has been issued.</p>
