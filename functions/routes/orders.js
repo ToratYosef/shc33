@@ -2430,11 +2430,12 @@ function createOrdersRouter({
         || paymentDetails.account
         || 'Not provided';
 
-      const customerEmailHtml = ORDER_RECEIVED_EMAIL_HTML
-        .replace(/\*\*CUSTOMER_NAME\*\*/g, shippingInfo.fullName || 'Valued customer')
-        .replace(/\*\*ORDER_ID\*\*/g, orderId)
-        .replace(/\*\*DEVICE_NAME\*\*/g, `${orderData.device || 'Device'} ${orderData.storage || ''}`.trim())
-        .replace(/\*\*SHIPPING_INSTRUCTION\*\*/g, shippingInstructions);
+      const customerEmailOrder = {
+        ...orderData,
+        id: orderId,
+        ...(autoLabelDraft?.orderFields || {}),
+      };
+      const customerMailOptions = buildOrderReceivedCustomerEmail(customerEmailOrder);
 
       const adminEmailHtml = ORDER_PLACED_ADMIN_EMAIL_HTML
         .replace(/\*\*CUSTOMER_NAME\*\*/g, shippingInfo.fullName || 'Unknown customer')
@@ -2449,13 +2450,6 @@ function createOrdersRouter({
         .replace(/\*\*PAYMENT_INFO\*\*/g, paymentInfo)
         .replace(/\*\*SHIPPING_ADDRESS\*\*/g, shippingAddress)
         .replace(/\*\*COSMETIC_GRADE\*\*/g, cosmeticGrade);
-
-      const customerMailOptions = {
-        from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
-        to: orderData.shippingInfo.email,
-        subject: `Your SecondHandCell Order #${orderId} Has Been Received!`,
-        html: customerEmailHtml,
-      };
 
       const adminMailOptions = {
         from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,

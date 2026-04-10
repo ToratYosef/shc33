@@ -54,6 +54,7 @@ const SHIPPING_KIT_EMAIL_HTML = buildEmailLayout({
 
 const ORDER_RECEIVED_EMAIL_HTML = buildEmailLayout({
   title: 'Order confirmation',
+  includeTrustpilot: false,
   footerText: 'SecondHandCell • https://secondhandcell.com • support@secondhandcell.com',
   bodyHtml: `
     <p style="font-size:17px; margin:0 0 14px;">Hi <strong>**CUSTOMER_NAME**</strong>,</p>
