@@ -1,5 +1,6 @@
 const express = require('express');
 const admin = require('firebase-admin');
+const EMAIL_DISPLAY_NAME = 'SecondHandCell Orders';
 
 module.exports = function createEmailsRouter({
   transporter,
@@ -13,6 +14,7 @@ module.exports = function createEmailsRouter({
   collectOrderDeviceKeys,
   deriveOrderStatusFromDevices,
 }) {
+  const getEmailFromAddress = () => `${EMAIL_DISPLAY_NAME} <${process.env.EMAIL_USER}>`;
 
   if (!transporter) {
     throw new Error('Email transporter must be provided to create the emails router.');
@@ -22,8 +24,6 @@ module.exports = function createEmailsRouter({
   const missingEnvVars = [];
   if (!process.env.EMAIL_USER) missingEnvVars.push('EMAIL_USER');
   if (!process.env.EMAIL_PASS) missingEnvVars.push('EMAIL_PASS');
-  if (!process.env.EMAIL_NAME) missingEnvVars.push('EMAIL_NAME');
-
   if (missingEnvVars.length > 0) {
     console.warn(`⚠️  Email transporter created but missing environment variables: ${missingEnvVars.join(', ')}`);
   }
@@ -41,7 +41,7 @@ module.exports = function createEmailsRouter({
       }
 
       const mailOptions = {
-        from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+        from: getEmailFromAddress(),
         to,
         subject,
         html,

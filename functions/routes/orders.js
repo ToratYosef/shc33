@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const { resolveUspsServiceAndWeightByDeviceCount } = require('../helpers/shipengine');
+const EMAIL_DISPLAY_NAME = 'SecondHandCell Orders';
 // Updated: Added DELETE endpoint for shipping address
 
 function normalizeNullableString(value) {
@@ -55,6 +56,10 @@ function resolveSubmitterIpAddress(req = {}) {
     normalizeIpCandidate(req.connection?.remoteAddress) ||
     null
   );
+}
+
+function getEmailFromAddress() {
+  return `${EMAIL_DISPLAY_NAME} <${process.env.EMAIL_USER}>`;
 }
 
 function inferUserAgentMetadata(userAgent) {
@@ -810,7 +815,7 @@ function createOrdersRouter({
     const trackStatusLink = buildTrackOrderUrl(order.id, shippingInfo.email, { fromEmailLink: '1' });
 
     return {
-      from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+      from: getEmailFromAddress(),
       to: shippingInfo.email,
       subject: `Your ${carrierName} SecondHandCell Shipping Label for Order #${order.id}`,
       html: SHIPPING_LABEL_EMAIL_HTML
@@ -911,7 +916,7 @@ function createOrdersRouter({
     }
 
     return {
-      from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+      from: getEmailFromAddress(),
       to: shippingInfo.email,
       subject: normalizedShippingPreference === SHIPPING_PREFERENCE.KIT
         ? `Your SecondHandCell Order #${order.id} Has Been Received!`
@@ -2474,7 +2479,7 @@ function createOrdersRouter({
         .replace(/\*\*COSMETIC_GRADE\*\*/g, cosmeticGrade);
 
       const adminMailOptions = {
-        from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+        from: getEmailFromAddress(),
         to: 'sales@secondhandcell.com',
         subject: `${orderData.shippingInfo.fullName} - placed an order for a ${orderData.device}`,
         html: adminEmailHtml,
@@ -2829,7 +2834,7 @@ function createOrdersRouter({
       if (normalizedPreference === SHIPPING_PREFERENCE.KIT) {
         if (refreshedOrder?.outboundLabelUrl || refreshedOrder?.outboundTrackingNumber) {
           mailJobs.push({
-            from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+            from: getEmailFromAddress(),
             to: refreshedOrder.shippingInfo?.email,
             subject: `Your SecondHandCell Shipping Kit for Order #${refreshedOrder.id} is on its Way!`,
             html: SHIPPING_KIT_EMAIL_HTML
@@ -3047,7 +3052,7 @@ function createOrdersRouter({
           );
 
         customerMailOptions = {
-          from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+          from: getEmailFromAddress(),
           to: order.shippingInfo.email,
           subject: customerEmailSubject,
           html: customerEmailHtml,

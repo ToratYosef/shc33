@@ -3543,6 +3543,8 @@ transporter.verify(function(error, success) {
 
 const EMAIL_LOGO_URL =
   "https://cdn.secondhandcell.com/images/assets/logo-white.webp";
+const EMAIL_DISPLAY_NAME = "SecondHandCell Orders";
+process.env.EMAIL_NAME = EMAIL_DISPLAY_NAME;
 const COUNTDOWN_NOTICE_TEXT =
   "If we don't hear back about this issue within 7 days, we may automatically finalize your order at 75% less to keep your order moving.";
 const TRUSTPILOT_REVIEW_LINK = "https://www.trustpilot.com/review/secondhandcell.com?utm_medium=trustbox&utm_source=TrustBoxReviewCollector";

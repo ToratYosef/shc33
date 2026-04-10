@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const admin = require('firebase-admin');
+const EMAIL_DISPLAY_NAME = 'SecondHandCell Orders';
 const { updateOrderBoth } = require('../db/db');
 const { sendEmail } = require('../services/notifications');
 const { BLACKLISTED_EMAIL_HTML } = require('../helpers/templates');
@@ -144,7 +145,7 @@ router.post('/check-esn', async (req, res) => {
                 .replace(/\*\*STATUS_REASON\*\*/g, statusReason);
 
             const mailOptions = {
-                from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+                from: `${EMAIL_DISPLAY_NAME} <${process.env.EMAIL_USER}>`,
                 to: customerEmail,
                 subject: `Important Notice Regarding Your Device for Order #${orderId}`,
                 html: blacklistEmailHtml,
