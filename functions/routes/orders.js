@@ -840,9 +840,13 @@ function createOrdersRouter({
       null;
     const labelCarrierName = order?.upsLabelUrl ? 'UPS' : 'USPS';
     const trackStatusButtonHtml = `
-      <div style="text-align:center; margin-top:18px;">
-        <a href="${trackOrderUrl}" class="button-link" style="background-color:#2563eb;">Track your status here</a>
-      </div>
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin-top:18px;">
+        <tr>
+          <td style="border-radius:999px; background:#ffffff; border:1px solid #d1d5db; text-align:center;">
+            <a href="${trackOrderUrl}" style="display:inline-block; padding:14px 23px; font-size:14px; line-height:14px; font-weight:600; letter-spacing:-0.01em; color:#111111; text-decoration:none; border-radius:999px;">Track Your Order</a>
+          </td>
+        </tr>
+      </table>
     `;
 
     let shippingInstructions = '';
@@ -866,9 +870,13 @@ function createOrdersRouter({
         : 'Your prepaid shipping label will be available shortly.';
       const downloadLabelButtonHtml = labelDownloadUrl
         ? `
-          <div style="margin:16px 0 0;">
-            <a href="${labelDownloadUrl}" class="button-link" style="background-color:#0f172a; padding:13px 22px; font-size:16px;">Download ${labelCarrierName} Label</a>
-          </div>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:16px 0 0;">
+            <tr>
+              <td style="border-radius:999px; background:#111111; text-align:center;">
+                <a href="${labelDownloadUrl}" style="display:inline-block; background:#111111; color:#ffffff; text-decoration:none; font-size:14px; line-height:14px; font-weight:600; letter-spacing:-0.01em; padding:15px 24px; border-radius:999px;">Print My Label</a>
+              </td>
+            </tr>
+          </table>
         `
         : '';
       const trackingNumberHtml = trackingNumber
@@ -2125,9 +2133,13 @@ function createOrdersRouter({
           : 'order_pending';
       const trackOrderUrl = buildTrackOrderUrl(orderId, orderData?.shippingInfo?.email, { fromEmailLink: '1' });
       const trackStatusButtonHtml = `
-        <div style="text-align:center; margin-top:18px;">
-          <a href="${trackOrderUrl}" class="button-link" style="background-color:#2563eb;">Track your status here</a>
-        </div>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin-top:18px;">
+          <tr>
+            <td style="border-radius:999px; background:#ffffff; border:1px solid #d1d5db; text-align:center;">
+              <a href="${trackOrderUrl}" style="display:inline-block; padding:14px 23px; font-size:14px; line-height:14px; font-weight:600; letter-spacing:-0.01em; color:#111111; text-decoration:none; border-radius:999px;">Track Your Order</a>
+            </td>
+          </tr>
+        </table>
       `;
 
       if (normalizedShippingPreference === SHIPPING_PREFERENCE.KIT) {

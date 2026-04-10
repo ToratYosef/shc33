@@ -3549,10 +3549,14 @@ const TRUSTPILOT_REVIEW_LINK = "https://www.trustpilot.com/review/secondhandcell
 const TRUSTPILOT_STARS_IMAGE_URL = "https://cdn.trustpilot.net/brand-assets/4.1.0/stars/stars-5.png";
 function buildCountdownNoticeHtml() {
   return `
-    <div style="margin-top: 24px; padding: 18px 20px; background-color: #ecfdf5; border-radius: 12px; border: 1px solid #bbf7d0; color: #065f46; font-size: 17px; line-height: 1.6;">
-      <strong style="display:block; font-size:18px; margin-bottom:8px;">Friendly reminder</strong>
-      If we don't hear back about this issue within <strong>7 days</strong>, we may finalize your device at <strong>75% less</strong> to keep your order moving.
-    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:24px; background:#fff7ed; border:1px solid #fed7aa; border-radius:18px;">
+      <tr>
+        <td style="padding:18px 20px; color:#9a3412; font-size:15px; line-height:24px;">
+          <strong style="display:block; color:#7c2d12; font-size:15px; margin-bottom:6px;">Reminder</strong>
+          If we don't hear back about this issue within <strong>7 days</strong>, we may finalize your device at <strong>75% less</strong> to keep your order moving.
+        </td>
+      </tr>
+    </table>
   `;
 }
 
@@ -4877,17 +4881,42 @@ const DOWNGRADE_EMAIL_HTML = buildEmailLayout({
 
 function getOrderCompletedEmailTemplate({ includeTrustpilot = true } = {}) {
   return buildEmailLayout({
-    title: "🥳 Your order is complete!",
+    title: "Order complete",
     includeTrustpilot,
+    footerText: "SecondHandCell • https://secondhandcell.com • support@secondhandcell.com",
     bodyHtml: `
-        <p>Hi **CUSTOMER_NAME**,</p>
-        <p>Great news! Order <strong>#**ORDER_ID**</strong> is complete and your payout is headed your way.</p>
-        <div style="background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:16px; padding:20px 24px; margin:28px 0;">
-          <p style="margin:0 0 12px;"><strong style="color:#0f172a;">Device</strong><br><span style="color:#475569;">**DEVICE_SUMMARY**</span></p>
-          <p style="margin:0 0 12px;"><strong style="color:#0f172a;">Payout</strong><br><span style="color:#059669; font-size:22px; font-weight:700;">$**ORDER_TOTAL**</span></p>
-          <p style="margin:0;"><strong style="color:#0f172a;">Payment method</strong><br><span style="color:#475569;">**PAYMENT_METHOD**</span></p>
-        </div>
-        <p>Thanks for choosing SecondHandCell!</p>
+        <p style="margin:0 0 14px;">Hi <strong>**CUSTOMER_NAME**</strong>,</p>
+        <p style="margin:0 0 22px;">Your order has been completed and your payout has been issued.</p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f9f9fa; border-radius:22px; border:1px solid #ececec; margin:0 0 24px;">
+          <tr>
+            <td style="padding:24px 24px 8px 24px; font-size:12px; line-height:16px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#8b8b8f;">
+              Payment Summary
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 24px 24px 24px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="padding:10px 0; font-size:15px; line-height:22px; color:#6b7280; border-bottom:1px solid #e9e9eb; width:130px;">Order ID</td>
+                  <td style="padding:10px 0; font-size:15px; line-height:22px; color:#111111; font-weight:600; border-bottom:1px solid #e9e9eb; text-align:right;">**ORDER_ID**</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 0; font-size:15px; line-height:22px; color:#6b7280; border-bottom:1px solid #e9e9eb; width:130px;">Device</td>
+                  <td style="padding:10px 0; font-size:15px; line-height:22px; color:#111111; font-weight:600; border-bottom:1px solid #e9e9eb; text-align:right;">**DEVICE_SUMMARY**</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 0; font-size:15px; line-height:22px; color:#6b7280; border-bottom:1px solid #e9e9eb; width:130px;">Payout</td>
+                  <td style="padding:10px 0; font-size:15px; line-height:22px; color:#111111; font-weight:600; border-bottom:1px solid #e9e9eb; text-align:right;">$**ORDER_TOTAL**</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 0 0 0; font-size:15px; line-height:22px; color:#6b7280; width:130px;">Method</td>
+                  <td style="padding:10px 0 0 0; font-size:15px; line-height:22px; color:#111111; font-weight:600; text-align:right;">**PAYMENT_METHOD**</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:0;">If you have any questions about your payout, reply to this email and we’ll help.</p>
     `,
   });
 }
@@ -5238,13 +5267,17 @@ function buildDeviceSummary(order = {}) {
 
 function buildTrustpilotSection() {
   return `
-    <div style="text-align:center; padding: 28px 24px 32px; background-color:#f8fafc; border-top: 1px solid #e2e8f0;">
-      <p style="font-weight:600; color:#0f172a; font-size:18px; margin:0 0 12px 0;">Loved your experience?</p>
-      <a href="${TRUSTPILOT_REVIEW_LINK}" style="display:inline-block; text-decoration:none; border:none; outline:none;">
-        <img src="${TRUSTPILOT_STARS_IMAGE_URL}" alt="Rate us on Trustpilot" style="height:58px; width:auto; display:block; margin:0 auto 10px auto; border:0;">
-      </a>
-      <p style="font-size:15px; color:#475569; margin:12px 0 0;">Your feedback keeps the <strong>SecondHandCell</strong> community thriving.</p>
-    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:28px; background:#f9f9fa; border:1px solid #ececec; border-radius:22px;">
+      <tr>
+        <td style="padding:24px; text-align:center;">
+          <div style="font-size:20px; line-height:26px; font-weight:600; letter-spacing:-0.03em; color:#111111; margin-bottom:8px;">Share your experience</div>
+          <div style="font-size:15px; line-height:24px; color:#6b7280; margin:0 0 18px;">If you have a moment, we'd appreciate your feedback.</div>
+          <a href="${TRUSTPILOT_REVIEW_LINK}" style="display:inline-block; text-decoration:none; border:none; outline:none;">
+            <img src="${TRUSTPILOT_STARS_IMAGE_URL}" alt="Rate us on Trustpilot" style="height:58px; width:auto; display:block; margin:0 auto; border:0;">
+          </a>
+        </td>
+      </tr>
+    </table>
   `;
 }
 
@@ -5256,21 +5289,42 @@ function buildEmailLayout({
   footerText = "Need help? Reply to this email.",
   includeCountdownNotice = false,
 } = {}) {
-  const headingSection = title
-    ? `
-        <tr>
-          <td style="background:${accentColor}; padding: 30px 24px; text-align:center;">
-            <h1 style="margin:0; font-size:28px; line-height:1.3; color:#ffffff; font-weight:700;">${escapeHtml(
-              title
-            )}</h1>
-          </td>
-        </tr>
-      `
-    : "";
-
+  const normalizedBodyHtml = String(bodyHtml || "")
+    .replace(
+      /class="button-link"\s+style="([^"]*)"/g,
+      (_match, extraStyle) =>
+        `style="display:inline-block; padding:14px 26px; border-radius:999px; background-color:#16a34a; color:#ffffff !important; font-weight:600; text-decoration:none; font-size:15px; line-height:15px; letter-spacing:-0.01em; ${extraStyle}"`
+    )
+    .replace(
+      /class="button-link"/g,
+      'style="display:inline-block; padding:14px 26px; border-radius:999px; background-color:#16a34a; color:#ffffff !important; font-weight:600; text-decoration:none; font-size:15px; line-height:15px; letter-spacing:-0.01em;"'
+    );
   const trustpilotSection = includeTrustpilot ? buildTrustpilotSection() : "";
   const countdownSection = includeCountdownNotice
     ? buildCountdownNoticeHtml()
+    : "";
+  const footerParts = String(footerText || "").split("•").map((part) => part.trim()).filter(Boolean);
+  const footerHtml = footerParts.length >= 3
+    ? `
+        <div style="font-weight:600; color:#6b7280; margin-bottom:4px;">${escapeHtml(footerParts[0])}</div>
+        <div>
+          <a href="${escapeHtml(footerParts[1])}" style="color:#8b8b8f; text-decoration:none;">${escapeHtml(footerParts[1].replace(/^https?:\/\//i, ""))}</a>
+          &nbsp;&nbsp;&bull;&nbsp;&nbsp;
+          <a href="mailto:${escapeHtml(footerParts[2])}" style="color:#8b8b8f; text-decoration:none;">${escapeHtml(footerParts[2])}</a>
+        </div>
+      `
+    : `<div>${escapeHtml(footerText)}</div>`;
+  const headingSection = title
+    ? `
+      <tr>
+        <td style="padding:42px 36px 18px 36px; text-align:center;">
+          <div style="width:64px; height:4px; border-radius:999px; background:${escapeHtml(accentColor)}; margin:0 auto 18px auto;"></div>
+          <div style="font-size:34px; line-height:38px; font-weight:600; letter-spacing:-0.04em; color:#111111; margin-bottom:0;">
+            ${escapeHtml(title)}
+          </div>
+        </td>
+      </tr>
+    `
     : "";
 
   return `
@@ -5280,37 +5334,36 @@ function buildEmailLayout({
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>${escapeHtml(title || "SecondHandCell Update")}</title>
-      <style>
-        body { background-color:#f1f5f9; margin:0; padding:24px 12px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#0f172a; }
-        .email-shell { width:100%; max-width:640px; margin:0 auto; background:#ffffff; border-radius:20px; overflow:hidden; box-shadow:0 25px 45px rgba(15,23,42,0.08); border:1px solid #e2e8f0; }
-        .logo-cell { padding:28px 0 16px; text-align:center; background-color:#ffffff; }
-        .logo-cell img { height:56px; width:auto; }
-        .content-cell { padding:32px 30px; font-size:17px; line-height:1.75; }
-        .content-cell p { margin:0 0 20px; }
-        .footer-cell { padding:28px 32px; text-align:center; font-size:15px; color:#475569; background-color:#f8fafc; border-top:1px solid #e2e8f0; }
-        .footer-cell p { margin:4px 0; }
-        a.button-link { display:inline-block; padding:14px 26px; border-radius:9999px; background-color:#16a34a; color:#ffffff !important; font-weight:600; text-decoration:none; font-size:17px; }
-      </style>
     </head>
-    <body>
-      <table role="presentation" cellpadding="0" cellspacing="0" class="email-shell">
+    <body style="margin:0; padding:0; background-color:#f3f4f6; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#111111;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f4f6; margin:0; padding:32px 16px;">
         <tr>
-          <td class="logo-cell">
-            <img src="${EMAIL_LOGO_URL}" alt="SecondHandCell Logo" />
-          </td>
-        </tr>
-        ${headingSection}
-        <tr>
-          <td class="content-cell">
-            ${bodyHtml}
-            ${countdownSection}
-          </td>
-        </tr>
-        ${trustpilotSection ? `<tr><td>${trustpilotSection}</td></tr>` : ""}
-        <tr>
-          <td class="footer-cell">
-            <p>${footerText}</p>
-            <p>© ${new Date().getFullYear()} SecondHandCell. All rights reserved.</p>
+          <td align="center">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px; background:#ffffff; border-radius:28px; overflow:hidden; border:1px solid #e5e7eb; box-shadow:0 12px 40px rgba(0,0,0,0.04);">
+              <tr>
+                <td style="padding:28px 36px 24px 36px; background:#0f172a; border-bottom:1px solid #111827;">
+                  <div style="text-align:center;">
+                    <img src="${EMAIL_LOGO_URL}" alt="SecondHandCell" style="height:44px; display:block; margin:0 auto;" />
+                  </div>
+                </td>
+              </tr>
+              ${headingSection}
+              <tr>
+                <td style="padding:0 36px 0 36px; font-size:16px; line-height:26px; color:#3f3f46;">
+                  ${normalizedBodyHtml}
+                  ${countdownSection}
+                  ${trustpilotSection}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:34px 36px 34px 36px;">
+                  <div style="border-top:1px solid #eeeeee; padding-top:22px; text-align:center; font-size:12px; line-height:20px; color:#9ca3af;">
+                    ${footerHtml}
+                    <div style="margin-top:6px;">© ${new Date().getFullYear()} SecondHandCell. All rights reserved.</div>
+                  </div>
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
       </table>
