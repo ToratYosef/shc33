@@ -6837,6 +6837,9 @@ app.put("/orders/:id/status", async (req, res) => {
     if (status === 'needs_printing') {
       statusUpdate.needsPrintingAt = timestamp;
     }
+    if (status === 'completed') {
+      statusUpdate.completedAt = timestamp;
+    }
 
     const { order } = await updateOrderBoth(orderId, statusUpdate);
 
