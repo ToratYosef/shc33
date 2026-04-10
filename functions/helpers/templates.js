@@ -53,26 +53,34 @@ const SHIPPING_KIT_EMAIL_HTML = buildEmailLayout({
 });
 
 const ORDER_RECEIVED_EMAIL_HTML = buildEmailLayout({
-  title: 'Order Received',
+  title: 'Order confirmation',
+  footerText: 'SecondHandCell • https://secondhandcell.com • support@secondhandcell.com',
   bodyHtml: `
-    <p style="font-size:18px; margin-bottom:12px;">Hi <strong>**CUSTOMER_NAME**</strong>,</p>
-    <p>Thanks for choosing SecondHandCell. We received your order for <strong>**DEVICE_NAME**</strong>.</p>
+    <p style="font-size:17px; margin:0 0 14px;">Hi <strong>**CUSTOMER_NAME**</strong>,</p>
+    <p style="margin:0 0 18px;">Thanks for your order. We created your trade-in for <strong>**DEVICE_NAME**</strong>.</p>
 
-    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:14px; padding:14px 16px; margin:18px 0;">
-      <p style="margin:0; color:#1e40af;"><strong>Order ID:</strong> #**ORDER_ID**</p>
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:18px 20px; margin:20px 0 24px;">
+      <div style="font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#64748b; margin-bottom:10px; font-weight:600;">Order Summary</div>
+      <p style="margin:0 0 8px; color:#0f172a;"><strong>Order ID:</strong> #**ORDER_ID**</p>
+      <p style="margin:0; color:#475569;"><strong>Device:</strong> **DEVICE_NAME**</p>
     </div>
 
-    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:16px; padding:20px 22px; margin:24px 0; color:#334155;">
-      <p style="margin:0 0 12px;"><strong>Before shipping your device:</strong></p>
-      <ul style="padding-left:20px; margin:0; line-height:1.75;">
-        <li>Back up your data.</li>
+    <div style="margin:0 0 24px;">
+      <div style="font-size:18px; font-weight:700; color:#0f172a; margin:0 0 10px;">Next steps</div>
+      <ul style="padding-left:18px; margin:0; color:#475569; line-height:1.7;">
+        <li>Back up any data you want to keep.</li>
+        <li>Remove Apple ID, iCloud, Google, or Samsung accounts.</li>
         <li>Factory reset the device.</li>
-        <li>Remove iCloud / Google / Samsung accounts.</li>
-        <li>Remove your SIM card.</li>
+        <li>Remove any SIM card or eSIM profile.</li>
       </ul>
     </div>
 
-    <div style="margin-top:20px;">**SHIPPING_INSTRUCTION**</div>
+    <div style="margin:0 0 24px;">**SHIPPING_INSTRUCTION**</div>
+
+    <div style="border-top:1px solid #e2e8f0; padding-top:20px;">
+      <div style="font-size:18px; font-weight:700; color:#0f172a; margin:0 0 10px;">Need help?</div>
+      <p style="margin:0; color:#475569;">Reply to this email or contact us at <a href="mailto:support@secondhandcell.com" style="color:#2563eb; text-decoration:none;">support@secondhandcell.com</a>.</p>
+    </div>
   `,
 });
 
