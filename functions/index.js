@@ -4349,7 +4349,13 @@ async function requestShipEngineVoid(labelId, shipengineKey) {
       timeout: 30000,
     }
   );
-  return response.data || {};
+  const data = response.data || {};
+  const httpApproved = response.status === 200 || response.status === 203;
+  return {
+    ...data,
+    approved: Boolean(data.approved) || httpApproved,
+    statusCode: response.status,
+  };
 }
 
 async function sendVoidNotificationEmail(order, results, options = {}) {
@@ -4556,6 +4562,36 @@ async function handleLabelVoid(order, selections, options = {}) {
         error.response?.data?.errors?.[0]?.message ||
         error.message ||
         "Failed to void label.";
+      const normalizedMessage = String(message || "").toLowerCase();
+      const alreadySubmittedLike =
+        normalizedMessage.includes("already submitted") ||
+        normalizedMessage.includes("already been submitted") ||
+        normalizedMessage.includes("already voided") ||
+        normalizedMessage.includes("has been voided") ||
+        normalizedMessage.includes("cannot be voided");
+
+      if (alreadySubmittedLike) {
+        entry.status = "voided";
+        entry.voidStatus = entry.status;
+        entry.message = message;
+        entry.voidMessage = message;
+        entry.voidedAt = nowTimestamp;
+        entry.lastVoidAttemptAt = nowTimestamp;
+        if (options.reason === "automatic") {
+          entry.autoVoidAttemptedAt = nowTimestamp;
+        } else {
+          entry.manualVoidAttemptedAt = nowTimestamp;
+        }
+        if (!entry.generatedAt) {
+          entry.generatedAt =
+            entry.createdAt || order.labelGeneratedAt || order.kitLabelGeneratedAt || order.createdAt || nowTimestamp;
+        }
+
+        labels[key] = entry;
+        changed = true;
+        results.push({ key, labelId, approved: true, message, skipped: true });
+        continue;
+      }
 
       entry.status = "void_error";
       entry.voidStatus = entry.status;
