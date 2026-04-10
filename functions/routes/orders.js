@@ -829,6 +829,16 @@ function createOrdersRouter({
       order.shippingPreferenceNormalized || order.shippingPreference || ''
     ).trim().toLowerCase();
     const trackOrderUrl = buildTrackOrderUrl(order.id, shippingInfo.email, { fromEmailLink: '1' });
+    const labelDownloadUrl =
+      order?.upsLabelUrl ||
+      order?.uspsLabelUrl ||
+      order?.inboundLabelUrl ||
+      null;
+    const trackingNumber =
+      order?.trackingNumber ||
+      order?.inboundTrackingNumber ||
+      null;
+    const labelCarrierName = order?.upsLabelUrl ? 'UPS' : 'USPS';
     const trackStatusButtonHtml = `
       <div style="text-align:center; margin-top:18px;">
         <a href="${trackOrderUrl}" class="button-link" style="background-color:#2563eb;">Track your status here</a>
@@ -851,17 +861,26 @@ function createOrdersRouter({
         </div>
       `;
     } else {
-      let autoLabelMessage = 'Your prepaid shipping label has been generated and sent to your email, so your order is fully submitted.';
-      if (order?.upsLabelUrl) {
-        autoLabelMessage = 'Your prepaid UPS shipping label has been generated and sent to your email, so your order is fully submitted.';
-      } else if (order?.uspsLabelUrl) {
-        autoLabelMessage = 'Your prepaid USPS shipping label has been generated and sent to your email, so your order is fully submitted.';
-      }
+      const autoLabelMessage = labelDownloadUrl
+        ? `Your prepaid ${labelCarrierName} shipping label is included below, so your order is fully submitted.`
+        : 'Your prepaid shipping label will be available shortly.';
+      const downloadLabelButtonHtml = labelDownloadUrl
+        ? `
+          <div style="text-align:center; margin:16px 0 18px;">
+            <a href="${labelDownloadUrl}" class="button-link">Download Your ${labelCarrierName} Shipping Label</a>
+          </div>
+        `
+        : '';
+      const trackingNumberHtml = trackingNumber
+        ? `<p style="margin:0 0 14px; color:#2563eb; font-weight:600;">Tracking Number: ${trackingNumber}</p>`
+        : '';
 
       shippingInstructions = `
         <div style="margin-top: 24px;">
           <h2 style="font-size:18px; color:#0f172a; margin:0 0 10px;">Shipping label instructions</h2>
           <p style="margin:0 0 12px; color:#475569;">${autoLabelMessage}</p>
+          ${downloadLabelButtonHtml}
+          ${trackingNumberHtml}
           <ol style="margin:0 0 12px 18px; padding-left:18px; color:#475569;">
             <li style="margin-bottom:8px;">Back up data, remove SIM/eSIM, and sign out of Apple/Google/Samsung accounts.</li>
             <li style="margin-bottom:8px;">Factory reset the device, then wrap it in padding and place it in a sturdy box.</li>
@@ -876,7 +895,9 @@ function createOrdersRouter({
     return {
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
       to: shippingInfo.email,
-      subject: `Your SecondHandCell Order #${order.id} Has Been Received!`,
+      subject: normalizedShippingPreference === SHIPPING_PREFERENCE.KIT
+        ? `Your SecondHandCell Order #${order.id} Has Been Received!`
+        : `Order #${order.id} Received — Your ${labelCarrierName} Shipping Label Inside`,
       html: ORDER_RECEIVED_EMAIL_HTML
         .replace(/\*\*CUSTOMER_NAME\*\*/g, shippingInfo.fullName || 'Valued customer')
         .replace(/\*\*ORDER_ID\*\*/g, order.id || '')
@@ -2246,23 +2267,6 @@ function createOrdersRouter({
             autoLabelMessage =
               'Your prepaid UPS shipping label has been generated and sent to your email, so your order is fully submitted.';
 
-            try {
-              await transporter.sendMail(
-                buildShippingLabelEmail(
-                  { ...orderData, id: orderId },
-                  {
-                    carrierName: 'UPS',
-                    labelDownloadUrl: singleLabel.downloadUrl,
-                    trackingNumber: singleLabel.labelRecord.trackingNumber,
-                  }
-                )
-              );
-            } catch (emailError) {
-              const warning =
-                `Label was generated, but the confirmation email failed to send: ${emailError?.message || 'unknown error'}`;
-              autoLabelWarnings.push(warning);
-              console.error(`[Shipping Label Email] Order ${orderId}:`, emailError);
-            }
           } else if (requestedLabelCarrier === 'usps') {
             const deviceCount = resolveOrderDeviceCount(draftOrder);
             const shippingProfile = resolveUspsServiceAndWeightByDeviceCount(deviceCount);
@@ -2344,23 +2348,6 @@ function createOrdersRouter({
             autoLabelMessage =
               'Your prepaid USPS shipping label has been generated and sent to your email, so your order is fully submitted.';
 
-            try {
-              await transporter.sendMail(
-                buildShippingLabelEmail(
-                  { ...orderData, id: orderId },
-                  {
-                    carrierName: 'USPS',
-                    labelDownloadUrl: singleLabel.downloadUrl,
-                    trackingNumber: singleLabel.labelRecord.trackingNumber,
-                  }
-                )
-              );
-            } catch (emailError) {
-              const warning =
-                `Label was generated, but the confirmation email failed to send: ${emailError?.message || 'unknown error'}`;
-              autoLabelWarnings.push(warning);
-              console.error(`[Shipping Label Email] Order ${orderId}:`, emailError);
-            }
           } else {
             const message = requestedLabelResolution.ambiguous
               ? 'Multiple label carrier values were detected in submit payload. Skipping automatic label generation to avoid choosing the wrong carrier.'
@@ -2835,25 +2822,6 @@ function createOrdersRouter({
               .replace(/\*\*TRACKING_NUMBER\*\*/g, refreshedOrder.outboundTrackingNumber || 'N/A'),
           });
           resent.push('shipping_kit');
-        }
-      } else {
-        const labelDownloadUrl =
-          refreshedOrder?.upsLabelUrl ||
-          refreshedOrder?.uspsLabelUrl ||
-          refreshedOrder?.inboundLabelUrl ||
-          null;
-        const trackingNumber =
-          refreshedOrder?.trackingNumber ||
-          refreshedOrder?.inboundTrackingNumber ||
-          null;
-        if (labelDownloadUrl || trackingNumber) {
-          const carrierName = refreshedOrder?.upsLabelUrl ? 'UPS' : 'USPS';
-          mailJobs.push(buildShippingLabelEmail(refreshedOrder, {
-            carrierName,
-            labelDownloadUrl: labelDownloadUrl || buildTrackOrderUrl(refreshedOrder.id, refreshedOrder.shippingInfo?.email, { fromEmailLink: '1' }),
-            trackingNumber: trackingNumber || 'N/A',
-          }));
-          resent.push('shipping_label');
         }
       }
 
