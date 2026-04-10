@@ -866,27 +866,37 @@ function createOrdersRouter({
         : 'Your prepaid shipping label will be available shortly.';
       const downloadLabelButtonHtml = labelDownloadUrl
         ? `
-          <div style="text-align:center; margin:16px 0 18px;">
-            <a href="${labelDownloadUrl}" class="button-link">Download Your ${labelCarrierName} Shipping Label</a>
+          <div style="margin:16px 0 0;">
+            <a href="${labelDownloadUrl}" class="button-link" style="background-color:#0f172a; padding:13px 22px; font-size:16px;">Download ${labelCarrierName} Label</a>
           </div>
         `
         : '';
       const trackingNumberHtml = trackingNumber
-        ? `<p style="margin:0 0 14px; color:#2563eb; font-weight:600;">Tracking Number: ${trackingNumber}</p>`
+        ? `
+          <div style="margin-top:16px; border:1px solid #dbe3ee; background:#ffffff; border-radius:12px; padding:14px 16px;">
+            <div style="font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:#64748b; font-weight:600; margin-bottom:8px;">Tracking number</div>
+            <div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace; font-size:16px; line-height:1.5; color:#0f172a; word-break:break-all;">${trackingNumber}</div>
+          </div>
+        `
         : '';
 
       shippingInstructions = `
-        <div style="margin-top: 24px;">
-          <h2 style="font-size:18px; color:#0f172a; margin:0 0 10px;">Shipping label instructions</h2>
-          <p style="margin:0 0 12px; color:#475569;">${autoLabelMessage}</p>
-          ${downloadLabelButtonHtml}
-          ${trackingNumberHtml}
+        <div style="margin-top:24px;">
+          <div style="border:1px solid #dbe3ee; background:#f8fafc; border-radius:14px; padding:20px 20px 18px;">
+            <div style="font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#64748b; margin-bottom:10px; font-weight:600;">Shipping information</div>
+            <h2 style="font-size:18px; line-height:1.4; color:#0f172a; margin:0 0 8px;">Your ${labelCarrierName} shipping label is ready</h2>
+            <p style="margin:0; color:#475569;">${autoLabelMessage}</p>
+            ${downloadLabelButtonHtml}
+            ${trackingNumberHtml}
+          </div>
+          <div style="margin-top:18px;">
           <ol style="margin:0 0 12px 18px; padding-left:18px; color:#475569;">
             <li style="margin-bottom:8px;">Back up data, remove SIM/eSIM, and sign out of Apple/Google/Samsung accounts.</li>
             <li style="margin-bottom:8px;">Factory reset the device, then wrap it in padding and place it in a sturdy box.</li>
             <li style="margin-bottom:8px;">If your label is ready, print it, seal the box, attach it securely, and keep your carrier receipt.</li>
           </ol>
           <p style="margin:0; color:#475569;">Questions? Reply to this email.</p>
+          </div>
           ${trackStatusButtonHtml}
         </div>
       `;
