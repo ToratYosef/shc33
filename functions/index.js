@@ -3542,7 +3542,7 @@ transporter.verify(function(error, success) {
 });
 
 const EMAIL_LOGO_URL =
-  "https://cdn.secondhandcell.com/images/assets/logo.webp";
+  "https://cdn.secondhandcell.com/images/assets/logo-white.webp";
 const EMAIL_DISPLAY_NAME = "SecondHandCell Orders";
 process.env.EMAIL_NAME = EMAIL_DISPLAY_NAME;
 const COUNTDOWN_NOTICE_TEXT =
