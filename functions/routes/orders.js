@@ -1,7 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { resolveUspsServiceAndWeightByDeviceCount } = require('../helpers/shipengine');
+const { resolveUspsServiceAndWeightByDeviceCount, buildTrackingUrl } = require('../helpers/shipengine');
 const EMAIL_DISPLAY_NAME = 'SecondHandCell Orders';
 // Updated: Added DELETE endpoint for shipping address
 
@@ -884,11 +884,20 @@ function createOrdersRouter({
           </table>
         `
         : '';
+      const carrierCode = labelCarrierName.toLowerCase() === 'ups' ? 'ups' : 'stamps_com';
+      const trackingUrl = trackingNumber
+        ? buildTrackingUrl({
+            trackingNumber,
+            carrierCode,
+          })
+        : null;
       const trackingNumberHtml = trackingNumber
         ? `
           <div style="margin-top:16px; border:1px solid #dbe3ee; background:#ffffff; border-radius:12px; padding:14px 16px;">
             <div style="font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:#64748b; font-weight:600; margin-bottom:8px;">Tracking number</div>
-            <div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace; font-size:16px; line-height:1.5; color:#0f172a; word-break:break-all;">${trackingNumber}</div>
+            <div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace; font-size:16px; line-height:1.5; color:#0f172a; word-break:break-all;">
+              <a href="${trackingUrl}" style="color:#0f172a; text-decoration:none;">${trackingNumber}</a>
+            </div>
           </div>
         `
         : '';

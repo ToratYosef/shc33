@@ -266,10 +266,27 @@ function buildEmailLayout({
           <td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px; background:#ffffff; border-radius:28px; overflow:hidden; border:1px solid #e5e7eb; box-shadow:0 12px 40px rgba(0,0,0,0.04);">
               <tr>
-                <td style="padding:32px 36px 24px 36px; background:#ffffff; border-bottom:1px solid #f1f1f1;">
-                  <div style="text-align:center;">
-                    <img src="${EMAIL_LOGO_URL}" alt="SecondHandCell" style="height:44px; display:block; margin:0 auto;" />
-                  </div>
+                <td style="padding:20px 24px 16px 24px; background:#ffffff; border-bottom:1px solid #f1f1f1;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td width="84" valign="middle" style="width:84px;">
+                        <a href="https://secondhandcell.com" style="text-decoration:none; display:inline-block;">
+                          <img src="${EMAIL_LOGO_URL}" alt="SecondHandCell" style="height:44px; display:block; margin:0;" />
+                        </a>
+                      </td>
+                      <td align="center" valign="middle" style="padding:0 10px;">
+                        <a href="https://secondhandcell.com" style="text-decoration:none; display:inline-block;">
+                          <div style="font-family:-apple-system,BlinkMacSystemFont,'Inter',Arial,sans-serif; font-size:28px; line-height:32px; font-weight:600; letter-spacing:-0.5px; color:#111827; text-align:center;">
+                            <span style="color:#111827;">Second</span><span style="color:#16A34A;">HandCell</span>
+                          </div>
+                          <div style="margin-top:6px; font-family:-apple-system,BlinkMacSystemFont,'Inter',Arial,sans-serif; font-size:11px; line-height:16px; font-weight:400; color:#16A34A; text-align:center;">
+                            Turn Your Old <span style="color:#0F172A;">Phone Into Cash!</span>
+                          </div>
+                        </a>
+                      </td>
+                      <td width="84" style="width:84px;">&nbsp;</td>
+                    </tr>
+                  </table>
                 </td>
               </tr>
               ${headingSection}
