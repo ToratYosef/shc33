@@ -3857,8 +3857,13 @@ const TRACKING_REFRESH_MIN_INTERVAL_MS = Math.max(
 const ADMIN_BULK_VOID_MIN_DAYS_DEFAULT = 27;
 const ADMIN_BULK_VOID_QUERY_LIMIT = Math.max(50, Number(process.env.ADMIN_BULK_VOID_QUERY_LIMIT || 500));
 const ADMIN_BULK_VOID_MAX_PER_RUN = Math.max(1, Number(process.env.ADMIN_BULK_VOID_MAX_PER_RUN || 12));
-const TEST_ORDER_EMAILS = new Set(['eesetton@gmail.com', 'saulsetton16@gmail.com']);
-const TEST_ORDER_ADDRESS_NEEDLE = '1966 west 3rd st';
+const INTERNAL_ORDER_MATCH_NAMES = new Set(['saul setton', 'eli setton']);
+const INTERNAL_ORDER_MATCH_EMAILS = new Set(['eesetton@gmail.com', 'saulsetton16@gmail.com']);
+const INTERNAL_ORDER_MATCH_PHONES = new Set(['9295845753', '3475859892']);
+const INTERNAL_ORDER_MATCH_ADDRESS_NEEDLES = new Set([
+  '1966 w 3rd st',
+  '1966 west 3rd st',
+]);
 const AUTO_REDUCED_PAYOUT_DELAY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const AUTO_REDUCED_PAYOUT_QUERY_LIMIT = 300;
 let automaticInboundTrackingRefreshInProgress = false;
@@ -4018,6 +4023,79 @@ function normalizeAddressText(value) {
   return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
+function normalizeLooseText(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+function normalizePhoneDigits(value) {
+  return String(value || '').replace(/\D+/g, '');
+}
+
+function matchesInternalOrderCleanupTarget(order = {}) {
+  const fullName = normalizeLooseText(
+    order?.shippingInfo?.fullName ||
+    order?.shippingInfo?.name ||
+    order?.shippingAddress?.fullName ||
+    order?.shippingAddress?.name ||
+    order?.customerName ||
+    order?.name ||
+    ''
+  );
+
+  const email = String(
+    order?.shippingInfo?.email ||
+    order?.email ||
+    order?.customerEmail ||
+    order?.userEmail ||
+    ''
+  )
+    .trim()
+    .toLowerCase();
+
+  const phone = normalizePhoneDigits(
+    order?.shippingInfo?.phone ||
+    order?.shippingAddress?.phone ||
+    order?.phone ||
+    order?.customerPhone ||
+    ''
+  );
+
+  const addressCombined = normalizeAddressText([
+    order?.shippingInfo?.address,
+    order?.shippingInfo?.address1,
+    order?.shippingInfo?.addressLine1,
+    order?.shippingInfo?.street,
+    order?.shippingAddress?.address,
+    order?.shippingAddress?.address1,
+    order?.shippingAddress?.addressLine1,
+    order?.shippingAddress?.street,
+  ].filter(Boolean).join(' '));
+
+  if (INTERNAL_ORDER_MATCH_NAMES.has(fullName)) {
+    return true;
+  }
+
+  if (INTERNAL_ORDER_MATCH_EMAILS.has(email)) {
+    return true;
+  }
+
+  if (INTERNAL_ORDER_MATCH_PHONES.has(phone)) {
+    return true;
+  }
+
+  for (const needle of INTERNAL_ORDER_MATCH_ADDRESS_NEEDLES) {
+    if (addressCombined.includes(needle)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function getOrderAgeInDays(order = {}) {
   const anchorDate = toDate(order.labelGeneratedAt || order.kitLabelGeneratedAt || order.emailedAt || order.createdAt);
   if (!anchorDate) {
@@ -4135,24 +4213,7 @@ function getVoidedLabelIds(order = {}) {
 }
 
 function isTestOrderMatch(order = {}) {
-  const email = String(
-    order?.shippingInfo?.email || order?.email || order?.customerEmail || order?.userEmail || ''
-  )
-    .trim()
-    .toLowerCase();
-
-  const addressCombined = normalizeAddressText([
-    order?.shippingInfo?.address,
-    order?.shippingInfo?.address1,
-    order?.shippingInfo?.addressLine1,
-    order?.shippingInfo?.street,
-    order?.shippingAddress?.address,
-    order?.shippingAddress?.address1,
-    order?.shippingAddress?.addressLine1,
-    order?.shippingAddress?.street,
-  ].filter(Boolean).join(' '));
-
-  return TEST_ORDER_EMAILS.has(email) || addressCombined.includes(TEST_ORDER_ADDRESS_NEEDLE);
+  return matchesInternalOrderCleanupTarget(order);
 }
 
 async function sendBulkVoidSummaryEmail({
@@ -6580,20 +6641,69 @@ async function submitReofferForDevice(order, {
 }
 
 function buildOfferAcceptedEmailHtml({ orderId }) {
-  return `
-    <p>Thank you for accepting the revised offer for Order <strong>#${escapeHtml(orderId)}</strong>.</p>
-    <p>We've received your confirmation, and payment processing will now begin.</p>
-  `;
+  return buildEmailLayout({
+    title: "Offer accepted",
+    includeTrustpilot: false,
+    footerText: "SecondHandCell.com • https://secondhandcell.com • sales@secondhandcell.com",
+    bodyHtml: `
+      <p style="margin:0 0 14px;">Hi there,</p>
+      <p style="margin:0 0 22px;">We received your confirmation for the revised offer on order <strong>#${escapeHtml(orderId)}</strong>.</p>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f9f9fa; border-radius:22px; border:1px solid #ececec; margin:0 0 24px;">
+        <tr>
+          <td style="padding:24px 24px 8px 24px; font-size:12px; line-height:16px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#8b8b8f;">
+            Confirmation
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 24px 24px 24px; font-size:15px; line-height:24px; color:#3f3f46;">
+            Your updated offer has been accepted and payment processing will begin shortly.
+          </td>
+        </tr>
+      </table>
+      <p style="margin:0;">If you have any questions, reply to this email and we’ll help.</p>
+    `,
+  });
 }
 
-function buildReturnLabelEmailHtml({ customerName, orderId, returnTrackingNumber }) {
-  return `
-    <p>Hello ${escapeHtml(customerName || 'there')},</p>
-    <p>As requested, here is your return shipping label for your device (Order ID: ${escapeHtml(orderId)}):</p>
-    <p>Return Tracking Number: <strong>${escapeHtml(returnTrackingNumber || "N/A")}</strong></p>
-    <p>Thank you,</p>
-    <p>The SecondHandCell Team</p>
-  `;
+function buildReturnLabelEmailHtml({ customerName, orderId, returnTrackingNumber, returnLabelUrl }) {
+  const safeTrackingNumber = escapeHtml(returnTrackingNumber || "N/A");
+  const safeLabelUrl = escapeHtml(returnLabelUrl || "#");
+  const labelButtonHtml = returnLabelUrl
+    ? `
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:16px 0 0;">
+        <tr>
+          <td style="border-radius:999px; background:#111111; text-align:center;">
+            <a href="${safeLabelUrl}" style="display:inline-block; background:#111111; color:#ffffff; text-decoration:none; font-size:14px; line-height:14px; font-weight:600; letter-spacing:-0.01em; padding:15px 24px; border-radius:999px;">Print Return Label</a>
+          </td>
+        </tr>
+      </table>
+    `
+    : "";
+
+  return buildEmailLayout({
+    title: "Return label ready",
+    includeTrustpilot: false,
+    footerText: "SecondHandCell.com • https://secondhandcell.com • sales@secondhandcell.com",
+    bodyHtml: `
+      <p style="margin:0 0 14px;">Hi <strong>${escapeHtml(customerName || 'there')}</strong>,</p>
+      <p style="margin:0 0 22px;">As requested, your return label for order <strong>#${escapeHtml(orderId)}</strong> is ready.</p>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f9f9fa; border-radius:22px; border:1px solid #ececec; margin:0 0 24px;">
+        <tr>
+          <td style="padding:24px 24px 8px 24px; font-size:12px; line-height:16px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#8b8b8f;">
+            Return Shipment
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 24px 24px 24px;">
+            <div style="font-size:15px; line-height:22px; color:#6b7280; margin-bottom:8px;">Tracking Number</div>
+            <div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace; font-size:16px; line-height:24px; color:#111111; word-break:break-all;">${safeTrackingNumber}</div>
+            ${labelButtonHtml}
+          </td>
+        </tr>
+      </table>
+      <p style="margin:0;">Attach the label to your package and drop it off with USPS. Reply to this email if you need help.</p>
+    `,
+  });
 }
 
 // Renamed from sendTestEmail to avoid conflict
@@ -6716,6 +6826,7 @@ async function sendMultipleTestEmails(email, emailTypes) {
           customerName: orderToUse.shippingInfo.fullName,
           orderId: orderToUse.id,
           returnTrackingNumber: orderToUse.returnTrackingNumber,
+          returnLabelUrl: orderToUse.returnLabelUrl,
         });
         break;
       case "blacklisted":
@@ -7911,6 +8022,7 @@ app.post("/orders/:id/return-label", async (req, res) => {
         customerName: order.shippingInfo.fullName,
         orderId: order.id,
         returnTrackingNumber,
+        returnLabelUrl: returnLabelData.label_download?.pdf,
       }),
     };
 
@@ -8506,6 +8618,10 @@ async function collectTestOrderCandidates(maxCandidates = ADMIN_BULK_VOID_QUERY_
   return candidates;
 }
 
+async function collectInternalCleanupCandidates(maxCandidates = ADMIN_BULK_VOID_QUERY_LIMIT) {
+  return collectTestOrderCandidates(maxCandidates);
+}
+
 async function runAdminBulkVoidJob({
   mode = 'aged',
   minDays = ADMIN_BULK_VOID_MIN_DAYS_DEFAULT,
@@ -8520,6 +8636,7 @@ async function runAdminBulkVoidJob({
   }
 
   const cancelledEntries = [];
+  const deletedEntries = [];
   const skippedEntries = [];
   const failedEntries = [];
   const normalizedMaxOrders = Math.max(1, Number(maxOrders || ADMIN_BULK_VOID_MAX_PER_RUN));
@@ -8538,7 +8655,7 @@ async function runAdminBulkVoidJob({
       .filter((snapshot) => snapshot.exists)
       .map((snapshot) => ({ id: snapshot.id, ...snapshot.data() }));
   } else if (mode === 'test') {
-    candidates = await collectTestOrderCandidates(ADMIN_BULK_VOID_QUERY_LIMIT);
+    candidates = await collectInternalCleanupCandidates(ADMIN_BULK_VOID_QUERY_LIMIT);
   } else {
     const agedSnapshot = await ordersCollection
       .where('status', '==', 'label_generated')
@@ -8600,7 +8717,7 @@ async function runAdminBulkVoidJob({
       const updatePayload = {
         status: 'canceled',
         autoCancelled: true,
-        cancelReason: mode === 'test' ? 'admin_bulk_void_test_order' : 'admin_bulk_void_27_days',
+        cancelReason: mode === 'test' ? 'admin_bulk_delete_internal_order' : 'admin_bulk_void_27_days',
         cancelledAt: timestampField,
         adminBulkVoidProcessedAt: timestampField,
         autoLabelVoidProcessedAt: timestampField,
@@ -8616,7 +8733,7 @@ async function runAdminBulkVoidJob({
             type: 'cancellation',
             message:
               mode === 'test'
-                ? 'Order cancelled by admin bulk test-order void action.'
+                ? 'Order cancelled by admin internal-order cleanup before deletion.'
                 : `Order cancelled by admin bulk aged-label void action (${Number(minDays)}+ days).`,
             metadata: {
               labelsVoided: voidedLabelIds,
@@ -8633,16 +8750,32 @@ async function runAdminBulkVoidJob({
         labelIds: voidedLabelIds,
       });
       totalVoidedLabelCount += voidedLabelIds.length;
+
+      if (mode === 'test') {
+        const deleteResult = await deleteOrderFromCollections(order.id);
+        if (!deleteResult.ok) {
+          failedEntries.push({
+            orderId: order.id,
+            reason: deleteResult.error || 'delete_failed_after_cancel',
+          });
+          continue;
+        }
+
+        deletedEntries.push({
+          orderId: order.id,
+          userId: deleteResult.userId || null,
+        });
+      }
     } catch (error) {
       failedEntries.push({ orderId: order.id, reason: error?.message || 'unknown_error' });
     }
   }
 
   const title = mode === 'test'
-    ? 'Admin test-order bulk void completed'
+    ? 'Admin internal-order cleanup completed'
     : `Admin ${Number(minDays)}+ day bulk void completed`;
   const subject = mode === 'test'
-    ? `Admin test-order void summary: ${cancelledEntries.length} cancelled`
+    ? `Admin internal-order cleanup summary: ${deletedEntries.length} deleted`
     : `Admin bulk void summary (${Number(minDays)}+ days): ${cancelledEntries.length} cancelled`;
 
   if (cancelledEntries.length > 0 && totalVoidedLabelCount > 0) {
@@ -8650,7 +8783,7 @@ async function runAdminBulkVoidJob({
       await sendBulkVoidSummaryEmail({
         title,
         subject,
-        reason: mode === 'test' ? 'test_order_cleanup' : `${Number(minDays)}_day_threshold`,
+        reason: mode === 'test' ? 'internal_order_cleanup' : `${Number(minDays)}_day_threshold`,
         cancelledEntries,
         skippedEntries,
         failedEntries,
@@ -8672,10 +8805,12 @@ async function runAdminBulkVoidJob({
     hasMore,
     scanned: candidates.length,
     cancelled: cancelledEntries.length,
+    deleted: deletedEntries.length,
     voidedLabels: totalVoidedLabelCount,
     skipped: skippedEntries.length,
     failed: failedEntries.length,
     cancelledEntries,
+    deletedEntries,
     skippedEntries: skippedEntries.slice(0, 25),
     failedEntries: failedEntries.slice(0, 25),
   };
@@ -8723,8 +8858,8 @@ app.post('/orders/admin/bulk-void-test-orders', async (req, res) => {
     });
     res.json(payload);
   } catch (error) {
-    console.error('Admin bulk test-order void failed:', error);
-    res.status(500).json({ error: error?.message || 'Failed to run admin bulk test-order void.' });
+    console.error('Admin internal-order cleanup failed:', error);
+    res.status(500).json({ error: error?.message || 'Failed to run admin internal-order cleanup.' });
   }
 });
 
