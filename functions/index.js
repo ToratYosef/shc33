@@ -6518,10 +6518,18 @@ function buildReofferEmailHtml({
   newPrice,
   reasonString,
   reviewUrl,
+  condition,
 }) {
   const safeReason = escapeHtml(reasonString || '').replace(/\n/g, "<br>");
   const originalQuoteValue = Number(originalQuote || 0).toFixed(2);
   const newOfferValue = Number(newPrice || 0).toFixed(2);
+  const normalizedCondition = String(condition || '').trim().toLowerCase();
+  const isSeverelyDamagedRequote =
+    normalizedCondition === 'no_power' ||
+    normalizedCondition === 'no power' ||
+    normalizedCondition === 'severely_damaged' ||
+    normalizedCondition === 'severely damaged' ||
+    normalizedCondition === 'no power / severely damaged';
 
   return buildEmailLayout({
     title: "Updated offer available",
@@ -6536,8 +6544,7 @@ function buildReofferEmailHtml({
         </div>
         <p style="margin-bottom:12px;">Reason for the change:</p>
         <p style="background:#fef3c7; border-radius:14px; border:1px solid #fde68a; color:#92400e; padding:14px 18px; margin:0 0 28px;">${safeReason}</p>
-        <p style="margin:0 0 14px;">As per our guidelines, broken condition can only have a maximum of 3 defects. Otherwise it is considered severely damaged, and at that point we can only offer a price for parts because the device will not be able to be resold.</p>
-        <p style="margin:0 0 14px;">Please look out for an email from us within the next 24 hours with any additional updates.</p>
+        ${isSeverelyDamagedRequote ? '<p style="margin:0 0 14px;">As per our guidelines, broken condition can only have a maximum of 3 defects. Otherwise it is considered severely damaged, and at that point we can only offer a price for parts because the device will not be able to be resold.</p>' : ''}
         <p style="margin:0 0 14px;">If you are not happy with the re-quote, you can decline and choose to have the device returned to you free of charge.</p>
         <p style="margin:0 0 20px;">If we do not hear back within 7 regular days, the updated offer will be auto-accepted per our guidelines.</p>
         <p style="margin-bottom:20px;">Review the updated offer and choose how you'd like to proceed:</p>
@@ -6554,6 +6561,7 @@ async function submitReofferForDevice(order, {
   newPrice,
   reasons,
   comments = '',
+  condition = '',
   originalQuoteOverride = null,
   emailLogMessage = 'Re-offer email sent to customer.',
 }) {
@@ -6572,6 +6580,7 @@ async function submitReofferForDevice(order, {
     newPrice,
     reasons,
     comments,
+    condition,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     autoAcceptDate: admin.firestore.Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000),
   };
@@ -6618,6 +6627,7 @@ async function submitReofferForDevice(order, {
     newPrice: Number(newPrice),
     reasonString,
     reviewUrl,
+    condition,
   });
 
   await transporter.sendMail({
@@ -6702,6 +6712,35 @@ function buildReturnLabelEmailHtml({ customerName, orderId, returnTrackingNumber
         </tr>
       </table>
       <p style="margin:0;">Attach the label to your package and drop it off with USPS. Reply to this email if you need help.</p>
+    `,
+  });
+}
+
+function buildReturnRequestedEmailHtml({ customerName, orderId, modelName }) {
+  const safeModelName = escapeHtml(modelName || 'Device on file');
+
+  return buildEmailLayout({
+    title: "Return request confirmed",
+    includeTrustpilot: false,
+    footerText: "SecondHandCell.com • https://secondhandcell.com • sales@secondhandcell.com",
+    bodyHtml: `
+      <p style="margin:0 0 14px;">Hi <strong>${escapeHtml(customerName || 'there')}</strong>,</p>
+      <p style="margin:0 0 22px;">We received your request to decline the revised offer for order <strong>#${escapeHtml(orderId)}</strong> and have your device returned.</p>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f9f9fa; border-radius:22px; border:1px solid #ececec; margin:0 0 24px;">
+        <tr>
+          <td style="padding:24px 24px 8px 24px; font-size:12px; line-height:16px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#8b8b8f;">
+            Return Request
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 24px 24px 24px; font-size:15px; line-height:24px; color:#3f3f46;">
+            <p style="margin:0 0 10px;"><strong>Order ID:</strong> #${escapeHtml(orderId)}</p>
+            <p style="margin:0;"><strong>Device:</strong> ${safeModelName}</p>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:0 0 14px;">Our team will prepare the return shipment and send the return label details shortly.</p>
+      <p style="margin:0;">If you have any questions, reply to this email and we’ll help.</p>
     `,
   });
 }
@@ -8291,9 +8330,18 @@ app.post("/return-phone-action", async (req, res) => {
 
     await updateOrderBoth(orderId, updatePayload);
 
-    const customerHtmlBody = `
-      <p>We have received your request to decline the revised offer and have your device returned. We are now processing your request and will send return tracking details to your email shortly.</p>
-    `;
+    const orderItems = Array.isArray(orderData?.items) ? orderData.items : [];
+    const fallbackIndex = Number(String(resolvedDeviceKey).split('::')[1] || 0);
+    const matchedItem = orderItems.find((item) => String(item?.deviceKey || item?.id || '').trim() === resolvedDeviceKey)
+      || orderItems[fallbackIndex]
+      || orderItems[0]
+      || null;
+    const modelName = matchedItem?.modelName || matchedItem?.model || matchedItem?.device || orderData?.device || 'Device on file';
+    const customerHtmlBody = buildReturnRequestedEmailHtml({
+      customerName: orderData?.shippingInfo?.fullName || 'there',
+      orderId: orderData.id,
+      modelName,
+    });
 
     await transporter.sendMail({
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
@@ -8677,15 +8725,17 @@ async function runAdminBulkVoidJob({
   for (const order of candidates) {
     try {
       const ageDays = getOrderAgeInDays(order);
+      const isInternalCleanupMode = mode === 'test';
+      const alreadyCancelled = isAlreadyProcessedForBulkVoid(order);
 
-      if (mode !== 'test') {
+      if (!isInternalCleanupMode) {
         if (ageDays === null || ageDays < Number(minDays || ADMIN_BULK_VOID_MIN_DAYS_DEFAULT)) {
           skippedEntries.push({ orderId: order.id, reason: 'below_age_threshold' });
           continue;
         }
       }
 
-      if (isAlreadyProcessedForBulkVoid(order)) {
+      if (alreadyCancelled && !isInternalCleanupMode) {
         skippedEntries.push({ orderId: order.id, reason: 'already_cancelled' });
         continue;
       }
@@ -8693,7 +8743,7 @@ async function runAdminBulkVoidJob({
       const selections = getPendingVoidSelections(order);
       let approvedResults = [];
 
-      if (orderHasTrackingMovement(order)) {
+      if (orderHasTrackingMovement(order) && !isInternalCleanupMode) {
         skippedEntries.push({ orderId: order.id, reason: 'tracking_movement_detected' });
         continue;
       }
@@ -8713,42 +8763,44 @@ async function runAdminBulkVoidJob({
         ? approvedResults.map((entry) => entry.labelId).filter(Boolean)
         : (hasAnyVoidedLabel(order) ? getVoidedLabelIds(order) : []);
 
-      const timestampField = admin.firestore.FieldValue.serverTimestamp();
-      const updatePayload = {
-        status: 'canceled',
-        autoCancelled: true,
-        cancelReason: mode === 'test' ? 'admin_bulk_delete_internal_order' : 'admin_bulk_void_27_days',
-        cancelledAt: timestampField,
-        adminBulkVoidProcessedAt: timestampField,
-        autoLabelVoidProcessedAt: timestampField,
-      };
+      if (!alreadyCancelled) {
+        const timestampField = admin.firestore.FieldValue.serverTimestamp();
+        const updatePayload = {
+          status: 'canceled',
+          autoCancelled: true,
+          cancelReason: mode === 'test' ? 'admin_bulk_delete_internal_order' : 'admin_bulk_void_27_days',
+          cancelledAt: timestampField,
+          adminBulkVoidProcessedAt: timestampField,
+          autoLabelVoidProcessedAt: timestampField,
+        };
 
-      if (mode === 'test') {
-        updatePayload.testOrderAutoVoidProcessedAt = timestampField;
-      }
+        if (mode === 'test') {
+          updatePayload.testOrderAutoVoidProcessedAt = timestampField;
+        }
 
-      await updateOrderBoth(order.id, updatePayload, {
-        logEntries: [
-          {
-            type: 'cancellation',
-            message:
-              mode === 'test'
-                ? 'Order cancelled by admin internal-order cleanup before deletion.'
-                : `Order cancelled by admin bulk aged-label void action (${Number(minDays)}+ days).`,
-            metadata: {
-              labelsVoided: voidedLabelIds,
-              ageDays,
-              mode,
+        await updateOrderBoth(order.id, updatePayload, {
+          logEntries: [
+            {
+              type: 'cancellation',
+              message:
+                mode === 'test'
+                  ? 'Order cancelled by admin internal-order cleanup before deletion.'
+                  : `Order cancelled by admin bulk aged-label void action (${Number(minDays)}+ days).`,
+              metadata: {
+                labelsVoided: voidedLabelIds,
+                ageDays,
+                mode,
+              },
             },
-          },
-        ],
-      });
+          ],
+        });
 
-      cancelledEntries.push({
-        orderId: order.id,
-        ageDays,
-        labelIds: voidedLabelIds,
-      });
+        cancelledEntries.push({
+          orderId: order.id,
+          ageDays,
+          labelIds: voidedLabelIds,
+        });
+      }
       totalVoidedLabelCount += voidedLabelIds.length;
 
       if (mode === 'test') {
