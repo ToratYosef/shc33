@@ -209,6 +209,36 @@ function parseLimitParamStrict(rawValue, fallback = 500, max = 2000) {
   return { ok: true, value: Math.min(value, max) };
 }
 
+const CANCEL_REOFFER_QC_FIELDS = [
+  'qcCompletedAt',
+  'qcDeviceMatch',
+  'qcDeviceName',
+  'qcStorage',
+  'qcColor',
+  'qcHistory',
+  'qcResults',
+];
+
+function normalizeStatusValue(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, '-');
+}
+
+function isCancelReofferIntent(body = {}) {
+  if (!body || typeof body !== 'object') {
+    return false;
+  }
+  if (normalizeStatusValue(body.status) !== 'received') {
+    return false;
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'reOffer') || Object.prototype.hasOwnProperty.call(body, 'reoffer')) {
+    return true;
+  }
+  return CANCEL_REOFFER_QC_FIELDS.some((field) => Object.prototype.hasOwnProperty.call(body, field));
+}
+
 function serializeCreatedAt(value) {
   if (value == null) return null;
   if (typeof value === 'string' || typeof value === 'number') return value;
@@ -307,7 +337,7 @@ function createOrdersRouter({
   getShipEngineApiKey,
   transporter,
   deviceHelpers,
-  issuePageHelpers,
+  issuePageHelpers = {},
   authenticateAdminRequest = null,
 }) {
   const router = express.Router();
@@ -330,7 +360,11 @@ function createOrdersRouter({
     sendVoidNotificationEmail,
   } = shipEngine;
   const { buildOrderDeviceKey, collectOrderDeviceKeys, deriveOrderStatusFromDevices } = deviceHelpers;
-  const { buildIssueList, ISSUE_COPY, toTitleCase } = issuePageHelpers;
+  const {
+    buildIssueList = () => [],
+    ISSUE_COPY = {},
+    toTitleCase = (value = '') => String(value),
+  } = issuePageHelpers;
   const fixIssuePageTemplatePath = path.join(__dirname, '..', 'templates', 'fix-issue-page.html');
   let fixIssuePageTemplateCache = null;
 
@@ -1975,6 +2009,87 @@ function createOrdersRouter({
         hint: 'Please check server logs using requestId for more details.',
         requestId,
       });
+    }
+  });
+
+  router.put('/orders/:id/status', async (req, res, next) => {
+    if (!isCancelReofferIntent(req.body)) {
+      return next();
+    }
+
+    const orderId = String(req.params.id || '').trim();
+    if (!orderId) {
+      return res.status(400).json({ error: 'Order ID is required.' });
+    }
+
+    const authResult = await resolvedAuthenticateAdminRequest(req);
+    if (!authResult.ok) {
+      return res.status(authResult.status).json({
+        error: authResult.error,
+        code: authResult.code,
+      });
+    }
+
+    try {
+      const orderRef = ordersCollection.doc(orderId);
+      const orderSnapshot = await orderRef.get();
+      if (!orderSnapshot.exists) {
+        return res.status(404).json({ error: 'Order not found.' });
+      }
+
+      const existingOrder = orderSnapshot.data() || {};
+      const currentStatus = normalizeStatusValue(existingOrder.status);
+      if (currentStatus !== 're-offered-pending') {
+        return res.status(409).json({
+          error: 'Cancel re-offer is only allowed from re-offered-pending status.',
+          code: 'INVALID_STATUS_TRANSITION',
+          from: existingOrder.status || null,
+          to: 'received',
+        });
+      }
+
+      const actorUid = req.user?.uid || authResult.uid || null;
+      const actorEmail = req.user?.email || null;
+      const clearPayload = {
+        status: 'received',
+        reOffer: FieldValue.delete(),
+        reoffer: FieldValue.delete(),
+        qcCompletedAt: FieldValue.delete(),
+        qcDeviceMatch: FieldValue.delete(),
+        qcDeviceName: FieldValue.delete(),
+        qcStorage: FieldValue.delete(),
+        qcColor: FieldValue.delete(),
+        qcHistory: FieldValue.delete(),
+        qcResults: FieldValue.delete(),
+      };
+
+      const logEntries = [
+        {
+          type: 'status',
+          message: 'Admin canceled re-offer and reset QC state.',
+          metadata: {
+            from: 're-offered-pending',
+            to: 'received',
+            reason: 'admin_cancel_reoffer',
+            actorUid,
+            actorEmail,
+          },
+        },
+      ];
+
+      const { order } = await updateOrderBoth(orderId, clearPayload, {
+        autoLogStatus: false,
+        logEntries,
+      });
+
+      return res.status(200).json({
+        ok: true,
+        message: 'Re-offer canceled and QC history cleared.',
+        order,
+      });
+    } catch (error) {
+      console.error('Error canceling re-offer status:', error);
+      return res.status(500).json({ error: 'Failed to cancel re-offer.' });
     }
   });
 
