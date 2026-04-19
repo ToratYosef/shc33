@@ -1,5 +1,6 @@
 const { getFirestore } = require('firebase-admin/firestore');
 const { initFirebaseAdmin } = require('../../functions/helpers/firebaseAdmin');
+const { inferUserAgentMetadata } = require('../utils/userAgent');
 
 initFirebaseAdmin();
 
@@ -16,6 +17,13 @@ function toDate(value) {
 
 function serializeSession(doc) {
   const data = doc.data() || {};
+  const landingExtra = data.landing_extra || null;
+  const client = landingExtra && typeof landingExtra === 'object' && landingExtra.client && typeof landingExtra.client === 'object'
+    ? landingExtra.client
+    : {};
+  const uaMeta = inferUserAgentMetadata(data.user_agent || null);
+  const screenWidth = Number.isFinite(Number(client.screenWidth)) ? Number(client.screenWidth) : null;
+  const screenHeight = Number.isFinite(Number(client.screenHeight)) ? Number(client.screenHeight) : null;
   return {
     id: doc.id,
     session_id: data.session_id || doc.id,
@@ -30,6 +38,15 @@ function serializeSession(doc) {
     source: data.source || null,
     utm: data.utm || {},
     user_agent: data.user_agent || null,
+    browser: client.browser || uaMeta.browser || null,
+    os: client.os || uaMeta.os || null,
+    device_type: client.deviceType || uaMeta.deviceType || null,
+    device_name: client.deviceName || uaMeta.deviceName || null,
+    screen_width: screenWidth,
+    screen_height: screenHeight,
+    screen: screenWidth && screenHeight ? `${screenWidth}x${screenHeight}` : null,
+    language: client.language || null,
+    timezone: client.timezone || null,
     ip_masked: data.ip_masked || null,
     ip_full: data.ip_full || null,
     country: data.country || null,

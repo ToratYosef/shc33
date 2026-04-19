@@ -46,9 +46,18 @@ router.get('/summary', async (req, res, next) => {
     }
 
     const sourceCounts = new Map();
+    const pageCounts = new Map();
+    const referrerCounts = new Map();
+    const locationCounts = new Map();
     for (const session of sessions) {
       const sourceKey = session.source || 'unknown';
       sourceCounts.set(sourceKey, (sourceCounts.get(sourceKey) || 0) + 1);
+      const pageKey = session.landing_path || 'unknown';
+      pageCounts.set(pageKey, (pageCounts.get(pageKey) || 0) + 1);
+      const referrerKey = session.referrer || 'direct';
+      referrerCounts.set(referrerKey, (referrerCounts.get(referrerKey) || 0) + 1);
+      const locationKey = [session.city, session.region, session.country].filter(Boolean).join(', ') || 'unknown';
+      locationCounts.set(locationKey, (locationCounts.get(locationKey) || 0) + 1);
     }
 
     return res.json({
@@ -63,6 +72,18 @@ router.get('/summary', async (req, res, next) => {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
         .map(([source, count]) => ({ source, sessions: count })),
+      top_pages: Array.from(pageCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([page, count]) => ({ page, sessions: count })),
+      top_referrers: Array.from(referrerCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([referrer, count]) => ({ referrer, sessions: count })),
+      top_locations: Array.from(locationCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([location, count]) => ({ location, sessions: count })),
     });
   } catch (error) {
     return next(error);
@@ -89,10 +110,12 @@ router.get('/sessions', async (req, res, next) => {
 
     const limit = Math.min(Number(req.query.limit) || 50, 200);
     const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const total = sessions.length;
 
     return res.json({
       limit,
       offset,
+      total,
       sessions: sessions.slice(offset, offset + limit),
     });
   } catch (error) {
