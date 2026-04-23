@@ -8144,7 +8144,7 @@ app.post("/orders/:id/auto-requote", async (req, res) => {
 
     const reducedFromTotal = Number(reducedSummaries.reduce((sum, item) => sum + item.reducedFrom, 0).toFixed(2));
     const reducedToTotal = Number(reducedSummaries.reduce((sum, item) => sum + item.reducedTo, 0).toFixed(2));
-    const reasonText = 'Per our terms, since we did not receive a response within 7 days, this revised offer is set at 75% less than the quoted amount.';
+    const reasonText = 'We retried the device after testing, and the reported issue is still present. Because the problem remains unresolved, this revised offer is set at 75% less than the quoted amount.';
     let latestOrder = order;
     for (const summary of reducedSummaries) {
       const refreshedSnap = await ordersCollection.doc(order.id).get();
@@ -8153,7 +8153,7 @@ app.post("/orders/:id/auto-requote", async (req, res) => {
         deviceKey: summary.deviceKey,
         newPrice: summary.reducedTo,
         reasons: [reasonText],
-        comments: `75%-less re-offer sent from admin after response window expired. Original quote: $${summary.reducedFrom.toFixed(2)}. Revised offer: $${summary.reducedTo.toFixed(2)}.`,
+        comments: `We retried the device after testing and it still has the same unresolved problem. Original quote: $${summary.reducedFrom.toFixed(2)}. Revised offer: $${summary.reducedTo.toFixed(2)}.`,
         originalQuoteOverride: summary.reducedFrom,
         emailLogMessage: 'Admin-triggered 75%-less re-offer email sent to customer.',
       });
