@@ -6675,28 +6675,16 @@ function buildOfferAcceptedEmailHtml({ orderId }) {
   });
 }
 
-function buildReturnLabelEmailHtml({ customerName, orderId, returnTrackingNumber, returnLabelUrl }) {
+function buildReturnLabelEmailHtml({ customerName, orderId, returnTrackingNumber }) {
   const safeTrackingNumber = escapeHtml(returnTrackingNumber || "N/A");
-  const safeLabelUrl = escapeHtml(returnLabelUrl || "#");
-  const labelButtonHtml = returnLabelUrl
-    ? `
-      <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:16px 0 0;">
-        <tr>
-          <td style="border-radius:999px; background:#111111; text-align:center;">
-            <a href="${safeLabelUrl}" style="display:inline-block; background:#111111; color:#ffffff; text-decoration:none; font-size:14px; line-height:14px; font-weight:600; letter-spacing:-0.01em; padding:15px 24px; border-radius:999px;">Print Return Label</a>
-          </td>
-        </tr>
-      </table>
-    `
-    : "";
 
   return buildEmailLayout({
-    title: "Return label ready",
+    title: "Your SecondHandCell Return Tracking",
     includeTrustpilot: false,
     footerText: "SecondHandCell.com • https://secondhandcell.com • sales@secondhandcell.com",
     bodyHtml: `
       <p style="margin:0 0 14px;">Hi <strong>${escapeHtml(customerName || 'there')}</strong>,</p>
-      <p style="margin:0 0 22px;">As requested, your return label for order <strong>#${escapeHtml(orderId)}</strong> is ready.</p>
+      <p style="margin:0 0 22px;">Your phone for order <strong>#${escapeHtml(orderId)}</strong> is on its way back to you.</p>
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f9f9fa; border-radius:22px; border:1px solid #ececec; margin:0 0 24px;">
         <tr>
           <td style="padding:24px 24px 8px 24px; font-size:12px; line-height:16px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#8b8b8f;">
@@ -6707,11 +6695,10 @@ function buildReturnLabelEmailHtml({ customerName, orderId, returnTrackingNumber
           <td style="padding:0 24px 24px 24px;">
             <div style="font-size:15px; line-height:22px; color:#6b7280; margin-bottom:8px;">Tracking Number</div>
             <div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace; font-size:16px; line-height:24px; color:#111111; word-break:break-all;">${safeTrackingNumber}</div>
-            ${labelButtonHtml}
           </td>
         </tr>
       </table>
-      <p style="margin:0;">Attach the label to your package and drop it off with USPS. Reply to this email if you need help.</p>
+      <p style="margin:0;">Track your package using the USPS tracking number above. Reply to this email if you need help.</p>
     `,
   });
 }
@@ -6860,12 +6847,11 @@ async function sendMultipleTestEmails(email, emailTypes) {
         break;
       case "return-label":
         orderToUse = mockOrderData;
-        subject = `[TEST] Your SecondHandCell Return Label`;
+        subject = `[TEST] Your SecondHandCell Return Tracking`;
         htmlBody = buildReturnLabelEmailHtml({
           customerName: orderToUse.shippingInfo.fullName,
           orderId: orderToUse.id,
           returnTrackingNumber: orderToUse.returnTrackingNumber,
-          returnLabelUrl: orderToUse.returnLabelUrl,
         });
         break;
       case "blacklisted":
@@ -8056,12 +8042,11 @@ app.post("/orders/:id/return-label", async (req, res) => {
     const customerMailOptions = {
       from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
       to: order.shippingInfo.email,
-      subject: "Your SecondHandCell Return Label",
+      subject: "Your SecondHandCell Return Tracking",
       html: buildReturnLabelEmailHtml({
         customerName: order.shippingInfo.fullName,
         orderId: order.id,
         returnTrackingNumber,
-        returnLabelUrl: returnLabelData.label_download?.pdf,
       }),
     };
 
