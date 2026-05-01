@@ -6732,6 +6732,35 @@ function buildReturnRequestedEmailHtml({ customerName, orderId, modelName }) {
   });
 }
 
+function buildReofferCanceledEmailHtml({ customerName, orderId, modelName }) {
+  const safeModelName = escapeHtml(modelName || 'Device on file');
+
+  return buildEmailLayout({
+    title: "Re-offer canceled",
+    includeTrustpilot: false,
+    footerText: "SecondHandCell.com • https://secondhandcell.com • sales@secondhandcell.com",
+    bodyHtml: `
+      <p style="margin:0 0 14px;">Hi <strong>${escapeHtml(customerName || 'there')}</strong>,</p>
+      <p style="margin:0 0 22px;">We canceled the revised offer for order <strong>#${escapeHtml(orderId)}</strong>.</p>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f9f9fa; border-radius:22px; border:1px solid #ececec; margin:0 0 24px;">
+        <tr>
+          <td style="padding:24px 24px 8px 24px; font-size:12px; line-height:16px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#8b8b8f;">
+            Device Review
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 24px 24px 24px; font-size:15px; line-height:24px; color:#3f3f46;">
+            <p style="margin:0 0 10px;"><strong>Order ID:</strong> #${escapeHtml(orderId)}</p>
+            <p style="margin:0;"><strong>Device:</strong> ${safeModelName}</p>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:0 0 14px;">Our team will look over this device again and follow up after the review.</p>
+      <p style="margin:0;">If you have any questions, reply to this email and we’ll help.</p>
+    `,
+  });
+}
+
 // Renamed from sendTestEmail to avoid conflict
 async function sendMultipleTestEmails(email, emailTypes) {
   const mockOrderData = {
@@ -7942,6 +7971,109 @@ app.post("/orders/:id/re-offer", async (req, res) => {
   } catch (err) {
     console.error("Error submitting re-offer:", err);
     res.status(500).json({ error: "Failed to submit re-offer" });
+  }
+});
+
+app.post("/orders/:id/cancel-reoffer", async (req, res) => {
+  try {
+    const orderId = String(req.params.id || '').trim();
+    const requestedDeviceKey = String(req.body?.deviceKey || '').trim();
+    if (!orderId) {
+      return res.status(400).json({ error: "Order ID is required." });
+    }
+
+    const orderRef = ordersCollection.doc(orderId);
+    const orderDoc = await orderRef.get();
+    if (!orderDoc.exists) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    const order = { id: orderDoc.id, ...orderDoc.data() };
+    const resolvedDeviceKey = requestedDeviceKey || buildOrderDeviceKey(orderId, 0);
+    const currentStatus = normalizeStatusValue(order.deviceStatusByKey?.[resolvedDeviceKey] || order.status);
+    const activeOffers = {
+      ...(order.reOfferByDevice || {}),
+      ...(order.reofferByDevice || {}),
+    };
+
+    if (currentStatus !== 're_offered_pending') {
+      return res.status(409).json({ error: "No pending re-offer found for this device." });
+    }
+
+    const nextDeviceStatusByKey = {
+      ...(order.deviceStatusByKey || {}),
+      [resolvedDeviceKey]: "received",
+    };
+    const remainingPendingKeys = collectOrderDeviceKeys(order).filter((deviceKey) => {
+      if (deviceKey === resolvedDeviceKey) return false;
+      const status = normalizeStatusValue(nextDeviceStatusByKey[deviceKey] || order.status);
+      return status === 're_offered_pending';
+    });
+    const nextLegacyOfferKey = remainingPendingKeys.find((deviceKey) => activeOffers[deviceKey]);
+
+    const updatePayload = {
+      [`deviceStatusByKey.${resolvedDeviceKey}`]: "received",
+      [`reOfferByDevice.${resolvedDeviceKey}`]: admin.firestore.FieldValue.delete(),
+      [`reofferByDevice.${resolvedDeviceKey}`]: admin.firestore.FieldValue.delete(),
+      reofferCanceledAt: admin.firestore.FieldValue.serverTimestamp(),
+      reofferCanceledDeviceKey: resolvedDeviceKey,
+    };
+
+    if (remainingPendingKeys.length > 0) {
+      updatePayload.status = "re-offered-pending";
+      if (nextLegacyOfferKey) {
+        updatePayload.reOffer = activeOffers[nextLegacyOfferKey];
+      }
+    } else {
+      updatePayload.status = "received";
+      updatePayload.reOffer = admin.firestore.FieldValue.delete();
+    }
+
+    await updateOrderBoth(orderId, updatePayload, {
+      logEntries: [{
+        type: "admin",
+        message: "Pending re-offer canceled by admin. Device moved back to Received for review.",
+        metadata: { deviceKey: resolvedDeviceKey },
+      }],
+    });
+
+    const orderEntries = collectOrderDeviceEntries(order);
+    const fallbackIndex = Number.parseInt(String(resolvedDeviceKey).split('::')[1] || '0', 10);
+    const matchedEntry = orderEntries.find((entry) => buildOrderDeviceKey(orderId, entry.deviceIndex) === resolvedDeviceKey)
+      || orderEntries[fallbackIndex]
+      || orderEntries[0]
+      || null;
+    const matchedItem = matchedEntry?.item || {};
+    const modelName = matchedItem.modelName || matchedItem.model || matchedItem.device || order.device || 'Device on file';
+
+    if (order.shippingInfo?.email) {
+      await transporter.sendMail({
+        from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
+        to: order.shippingInfo.email,
+        subject: `Re-offer Canceled for Order #${order.id}`,
+        html: buildReofferCanceledEmailHtml({
+          customerName: order.shippingInfo.fullName,
+          orderId: order.id,
+          modelName,
+        }),
+      });
+
+      await recordCustomerEmail(
+        orderId,
+        'Re-offer canceled email sent to customer.',
+        { deviceKey: resolvedDeviceKey, modelName },
+      );
+    }
+
+    res.json({
+      message: "Re-offer canceled. Device moved back to Received for review.",
+      orderId,
+      deviceKey: resolvedDeviceKey,
+      status: updatePayload.status,
+    });
+  } catch (err) {
+    console.error("Error cancelling re-offer:", err);
+    res.status(500).json({ error: "Failed to cancel re-offer" });
   }
 });
 
