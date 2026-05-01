@@ -21,12 +21,13 @@
     "express": "^4.19.2",
     "express-rate-limit": "^7.4.0",
     "fast-xml-parser": "^4.5.0",
-    "firebase-functions": "^4.9.0",
+    "firebase-admin": "^13.8.0",
+    "firebase-functions": "^7.2.5",
+    "ipaddr.js": "^2.2.0",
+    "maxmind": "^5.0.1",
     "nodemailer": "^6.9.16",
     "pdf-lib": "^1.17.1",
-    "pg": "^8.18.0",
-    "ipaddr.js": "^2.2.0",
-    "maxmind": "^5.0.1"
+    "pg": "^8.18.0"
   },
   "bin": {
     "price": "scripts/price.js"
