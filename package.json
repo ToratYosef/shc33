@@ -31,5 +31,9 @@
   },
   "bin": {
     "price": "scripts/price.js"
+  },
+  "overrides": {
+    "whatwg-url": "^14.2.0",
+    "tr46": "^5.0.0"
   }
 }
