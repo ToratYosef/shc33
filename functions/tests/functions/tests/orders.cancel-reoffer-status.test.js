@@ -53,15 +53,11 @@ function createRouterDeps(overrides = {}) {
       updateCalls.push({ orderId, payload, options });
       const existing = ordersById.get(orderId) || { id: orderId };
       const merged = { ...existing, ...payload, id: orderId };
-      delete merged.reOffer;
-      delete merged.reoffer;
-      delete merged.qcCompletedAt;
-      delete merged.qcDeviceMatch;
-      delete merged.qcDeviceName;
-      delete merged.qcStorage;
-      delete merged.qcColor;
-      delete merged.qcHistory;
-      delete merged.qcResults;
+      for (const [key, value] of Object.entries(payload)) {
+        if (value === '__DELETE__') {
+          delete merged[key];
+        }
+      }
       ordersById.set(orderId, merged);
       return { order: merged };
     },
@@ -247,4 +243,136 @@ test('cancel re-offer status reset rejects invalid transition and remains explic
   assert.equal(secondResponse.status, 409);
   assert.equal(secondResponse.body.code, 'INVALID_STATUS_TRANSITION');
   assert.equal(updateCalls.length, 0);
+});
+
+test('DELETE /orders/:id/re-offer clears re-offer fields and resets statuses', async () => {
+  const { deps, updateCalls } = createRouterDeps({
+    orders: [
+      {
+        id: 'SHC-20001',
+        status: 're-offered-pending',
+        reOffer: { newPrice: 100 },
+        reofferByDevice: { 'SHC-20001::0': { newPrice: 100 } },
+        reOfferHistory: [{ newPrice: 100 }],
+        reOfferEvents: [{ type: 'sent' }],
+        reOfferUpdatedAt: 'old',
+        requoteAmount: 100,
+        updatedQuote: 100,
+        acceptedAt: 'old-accepted',
+        declinedAt: 'old-declined',
+        reOfferToken: 'token',
+        reOfferExpiresAt: 'expires',
+        deviceStatusByKey: {
+          'SHC-20001::0': 're-offered-pending',
+          'SHC-20001::1': 'processing',
+        },
+      },
+    ],
+  });
+  const router = createOrdersRouter(deps);
+  const app = express();
+  app.use(express.json());
+  app.use(router);
+
+  const response = await request(app, {
+    method: 'DELETE',
+    path: '/orders/SHC-20001/re-offer',
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.ok, true);
+  assert.equal(response.body.order.status, 'received');
+  assert.deepEqual(response.body.order.deviceStatusByKey, {
+    'SHC-20001::0': 'received',
+    'SHC-20001::1': 'processing',
+  });
+  assert.equal(Object.prototype.hasOwnProperty.call(response.body.order, 'reOffer'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(response.body.order, 'reofferByDevice'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(response.body.order, 'reOfferHistory'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(response.body.order, 'reOfferEvents'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(response.body.order, 'requoteAmount'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(response.body.order, 'acceptedAt'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(response.body.order, 'declinedAt'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(response.body.order, 'reOfferToken'), false);
+  assert.equal(updateCalls.length, 1);
+  assert.equal(updateCalls[0].payload.reOffer, '__DELETE__');
+  assert.equal(updateCalls[0].payload.reofferByDevice, '__DELETE__');
+  assert.equal(updateCalls[0].payload.reOfferToken, '__DELETE__');
+  assert.deepEqual(updateCalls[0].payload.deviceStatusByKey, {
+    'SHC-20001::0': 'received',
+    'SHC-20001::1': 'processing',
+  });
+  assert.equal(updateCalls[0].options.logEntries[0].type, 'reoffer');
+  assert.equal(updateCalls[0].options.logEntries[0].message, 'Admin cancelled and cleared re-offer data');
+});
+
+test('DELETE /orders/:id/re-offer restores emailed status when unresolved issue context exists', async () => {
+  const { deps } = createRouterDeps({
+    orders: [
+      {
+        id: 'SHC-20002',
+        status: 're_offered_declined',
+        reOfferByDevice: { 'SHC-20002::0': { newPrice: 75 } },
+        qcIssuesByDevice: {
+          'SHC-20002::0': {
+            password_locked: { resolved: false },
+          },
+        },
+        deviceStatusByKey: {
+          'SHC-20002::0': 're_offered_declined',
+        },
+      },
+    ],
+  });
+  const router = createOrdersRouter(deps);
+  const app = express();
+  app.use(express.json());
+  app.use(router);
+
+  const response = await request(app, {
+    method: 'DELETE',
+    path: '/orders/SHC-20002/re-offer',
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.order.status, 'emailed');
+  assert.equal(response.body.order.deviceStatusByKey['SHC-20002::0'], 'emailed');
+  assert.equal(Object.prototype.hasOwnProperty.call(response.body.order, 'reOfferByDevice'), false);
+});
+
+test('DELETE /orders/:id/re-offer requires admin auth and existing order', async () => {
+  const unauthorized = createRouterDeps({
+    orders: [{ id: 'SHC-20003', status: 're-offered-pending' }],
+    authenticateAdminRequest: async () => ({
+      ok: false,
+      status: 401,
+      error: 'Authentication required',
+      code: 'AUTH_MISSING',
+    }),
+  });
+  const unauthorizedApp = express();
+  unauthorizedApp.use(express.json());
+  unauthorizedApp.use(createOrdersRouter(unauthorized.deps));
+
+  const unauthorizedResponse = await request(unauthorizedApp, {
+    method: 'DELETE',
+    path: '/orders/SHC-20003/re-offer',
+  });
+
+  assert.equal(unauthorizedResponse.status, 401);
+  assert.equal(unauthorizedResponse.body.code, 'AUTH_MISSING');
+  assert.equal(unauthorized.updateCalls.length, 0);
+
+  const notFound = createRouterDeps();
+  const notFoundApp = express();
+  notFoundApp.use(express.json());
+  notFoundApp.use(createOrdersRouter(notFound.deps));
+
+  const notFoundResponse = await request(notFoundApp, {
+    method: 'DELETE',
+    path: '/orders/SHC-404/re-offer',
+  });
+
+  assert.equal(notFoundResponse.status, 404);
+  assert.equal(notFound.updateCalls.length, 0);
 });
