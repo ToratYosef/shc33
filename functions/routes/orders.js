@@ -386,6 +386,137 @@ function createOrdersRouter({
   const firestore = admin.firestore();
   const FieldValue = admin.firestore.FieldValue;
   const Timestamp = admin.firestore.Timestamp;
+
+  const REOFFER_STATUS_VALUES = new Set([
+    're-offered-pending',
+    're-offered-declined',
+    're-offered-accepted',
+    're-offered-auto-accepted',
+    'requote-accepted',
+  ]);
+
+  const REOFFER_FIELDS_TO_DELETE = [
+    'reOffer',
+    'reoffer',
+    'reOfferByDevice',
+    'reofferByDevice',
+    'deviceReofferByKey',
+    'deviceReOfferByKey',
+    'reOfferHistory',
+    'reofferHistory',
+    'reOfferEvents',
+    'reofferEvents',
+    'reOfferUpdatedAt',
+    'reofferUpdatedAt',
+    'requote',
+    'requoteAmount',
+    'updatedQuote',
+    'acceptedAt',
+    'declinedAt',
+    'requoteAcceptedAt',
+    'reofferAcceptedAt',
+    'reOfferAcceptedAt',
+    'reofferDeclinedAt',
+    'reOfferDeclinedAt',
+    'reofferAutoAcceptedAt',
+    'reOfferAutoAcceptedAt',
+    'reofferCanceledAt',
+    'reofferCanceledDeviceKey',
+    'reOfferDecision',
+    'reofferDecision',
+    'reOfferDecisionByDevice',
+    'reofferDecisionByDevice',
+    'reOfferToken',
+    'reofferToken',
+    'reOfferTokenByDevice',
+    'reofferTokenByDevice',
+    'reOfferExpiresAt',
+    'reofferExpiresAt',
+    'reOfferExpiration',
+    'reofferExpiration',
+    'reOfferAutoAcceptDate',
+    'reofferAutoAcceptDate',
+  ];
+
+  function isReofferStatus(value) {
+    return REOFFER_STATUS_VALUES.has(normalizeStatusValue(value));
+  }
+
+  function hasUnresolvedIssueMap(issueMap) {
+    if (!issueMap || typeof issueMap !== 'object' || Array.isArray(issueMap)) {
+      return false;
+    }
+
+    return Object.values(issueMap).some((issue) => {
+      if (!issue || typeof issue !== 'object') {
+        return false;
+      }
+      return !issue.resolved && !issue.resolvedAt;
+    });
+  }
+
+  function shouldFallbackToEmailed(order = {}, deviceKey = '') {
+    const qcIssuesByDevice = order.qcIssuesByDevice && typeof order.qcIssuesByDevice === 'object'
+      ? order.qcIssuesByDevice
+      : {};
+
+    if (deviceKey && hasUnresolvedIssueMap(qcIssuesByDevice[deviceKey])) {
+      return true;
+    }
+
+    if (!deviceKey && Object.values(qcIssuesByDevice).some(hasUnresolvedIssueMap)) {
+      return true;
+    }
+
+    if (deviceKey && order.unlockInfoByDevice && typeof order.unlockInfoByDevice === 'object' && order.unlockInfoByDevice[deviceKey]) {
+      return true;
+    }
+
+    return Boolean(
+      order.qcAwaitingResponse ||
+      order.lastConditionEmailSentAt ||
+      order.lastConditionEmailReason ||
+      order.conditionEmailReason ||
+      order.lastConditionEmailNotes
+    );
+  }
+
+  function resolvePreReofferStatus(order = {}, deviceKey = '') {
+    return shouldFallbackToEmailed(order, deviceKey) ? 'emailed' : 'received';
+  }
+
+  function buildCancelReofferUpdatePayload(order = {}) {
+    const updatePayload = {};
+    REOFFER_FIELDS_TO_DELETE.forEach((field) => {
+      updatePayload[field] = FieldValue.delete();
+    });
+
+    const deviceStatusByKey = order.deviceStatusByKey && typeof order.deviceStatusByKey === 'object' && !Array.isArray(order.deviceStatusByKey)
+      ? order.deviceStatusByKey
+      : null;
+
+    if (deviceStatusByKey) {
+      const nextDeviceStatusByKey = { ...deviceStatusByKey };
+      let changed = false;
+      for (const [deviceKey, status] of Object.entries(deviceStatusByKey)) {
+        if (!isReofferStatus(status)) {
+          continue;
+        }
+        nextDeviceStatusByKey[deviceKey] = resolvePreReofferStatus(order, deviceKey);
+        changed = true;
+      }
+      if (changed) {
+        updatePayload.deviceStatusByKey = nextDeviceStatusByKey;
+      }
+    }
+
+    if (isReofferStatus(order.status)) {
+      updatePayload.status = resolvePreReofferStatus(order);
+    }
+
+    return updatePayload;
+  }
+
   const SWIFT_BUYBACK_ADDRESS = {
     name: 'SHC Sales',
     company_name: 'SecondHandCell',
@@ -2090,6 +2221,61 @@ function createOrdersRouter({
     } catch (error) {
       console.error('Error canceling re-offer status:', error);
       return res.status(500).json({ error: 'Failed to cancel re-offer.' });
+    }
+  });
+
+
+  router.delete('/orders/:id/re-offer', async (req, res) => {
+    const orderId = String(req.params.id || '').trim();
+    if (!orderId || orderId.includes('/')) {
+      return res.status(400).json({ error: 'A valid order ID is required.', code: 'BAD_ORDER_ID' });
+    }
+
+    const authResult = await resolvedAuthenticateAdminRequest(req);
+    if (!authResult.ok) {
+      return res.status(authResult.status).json({
+        error: authResult.error,
+        code: authResult.code,
+      });
+    }
+
+    try {
+      const orderRef = ordersCollection.doc(orderId);
+      const orderSnapshot = await orderRef.get();
+      if (!orderSnapshot.exists) {
+        return res.status(404).json({ error: 'Order not found.' });
+      }
+
+      const existingOrder = { id: orderSnapshot.id || orderId, ...(orderSnapshot.data() || {}) };
+      const actorUid = req.user?.uid || authResult.uid || null;
+      const actorEmail = req.user?.email || authResult.email || authResult.token?.email || null;
+      const updatePayload = buildCancelReofferUpdatePayload(existingOrder);
+
+      await updateOrderBoth(orderId, updatePayload, {
+        autoLogStatus: false,
+        logEntries: [
+          {
+            type: 'reoffer',
+            message: 'Admin cancelled and cleared re-offer data',
+            metadata: {
+              actorUid,
+              actorEmail,
+              previousStatus: existingOrder.status || null,
+            },
+          },
+        ],
+      });
+
+      const updatedSnapshot = await orderRef.get();
+      const updatedOrder = {
+        id: updatedSnapshot.id || orderId,
+        ...(updatedSnapshot.data() || {}),
+      };
+
+      return res.status(200).json({ ok: true, order: updatedOrder });
+    } catch (error) {
+      console.error('Error clearing re-offer data:', error);
+      return res.status(500).json({ error: 'Failed to clear re-offer data.' });
     }
   });
 
