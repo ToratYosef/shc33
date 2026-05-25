@@ -30,6 +30,19 @@ const { getShipStationCredentials } = require('./services/shipstation');
 const wholesaleRouter = require('./routes/wholesale'); // <-- wholesale.js is loaded here
 const createEmailsRouter = require('./routes/emails');
 const createOrdersRouter = require('./routes/orders');
+const {
+  assignUnassignedToTicket,
+  buildAuthUrl,
+  connectWithCode,
+  disconnectGmail,
+  ensureTicket,
+  getConnectionStatus,
+  getTicket,
+  listInbox,
+  markTicketRead,
+  sendTrackedEmail,
+  syncGmail,
+} = require('./services/gmailTickets');
 
 initFirebaseAdmin();
 const db = admin.firestore();
@@ -887,6 +900,62 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+async function authenticateAdminHttpRequest(req) {
+  if (isAuthDisabled()) {
+    req.user = { uid: "public", email: "public@localhost", superAdmin: true };
+    return { ok: true, uid: "public", adminData: { superAdmin: true } };
+  }
+
+  const authHeader = String(req.headers?.authorization || "").trim();
+  if (!authHeader.toLowerCase().startsWith("bearer ")) {
+    return { ok: false, status: 401, error: "Authentication required" };
+  }
+
+  try {
+    const token = authHeader.slice(7).trim();
+    const decoded = await admin.auth().verifyIdToken(token);
+    const adminDoc = decoded?.uid ? await adminsCollection.doc(decoded.uid).get() : null;
+    if (!adminDoc?.exists) {
+      return { ok: false, status: 403, error: "Admin access required" };
+    }
+    const adminData = adminDoc.data() || {};
+    req.user = { ...decoded, adminData };
+    return { ok: true, uid: decoded.uid, adminData };
+  } catch (error) {
+    return { ok: false, status: 403, error: "Admin access required", details: error?.message || String(error) };
+  }
+}
+
+function isSuperAdminData(data = {}) {
+  const role = String(data.role || data.adminRole || "").trim().toLowerCase();
+  return Boolean(
+    data.superAdmin === true ||
+    data.isSuperAdmin === true ||
+    role === "super_admin" ||
+    role === "superadmin" ||
+    role === "owner"
+  );
+}
+
+async function requireAdminHttp(req, res) {
+  const authResult = await authenticateAdminHttpRequest(req);
+  if (!authResult.ok) {
+    res.status(authResult.status || 403).json({ error: authResult.error || "Admin access required" });
+    return null;
+  }
+  return authResult;
+}
+
+async function requireSuperAdminHttp(req, res) {
+  const authResult = await requireAdminHttp(req, res);
+  if (!authResult) return null;
+  if (!isSuperAdminData(authResult.adminData || {})) {
+    res.status(403).json({ error: "Super admin access required" });
+    return null;
+  }
+  return authResult;
+}
+
 app.use((req, res, next) => {
   if (!API_ACTION_LOGGING_ENABLED) {
     return next();
@@ -912,6 +981,194 @@ app.use((req, res, next) => {
   });
 
   return next();
+});
+
+app.get('/admin/gmail/status', async (req, res) => {
+  const authResult = await requireAdminHttp(req, res);
+  if (!authResult) return;
+  try {
+    const status = await getConnectionStatus();
+    res.json({ ok: true, ...status });
+  } catch (error) {
+    console.error('Failed to load Gmail status:', error);
+    res.status(500).json({ error: error?.message || 'Failed to load Gmail status' });
+  }
+});
+
+app.post('/admin/gmail/connect-url', async (req, res) => {
+  const authResult = await requireSuperAdminHttp(req, res);
+  if (!authResult) return;
+  try {
+    const state = `gmail_${Date.now()}_${randomUUID()}`;
+    await db.collection('gmailOAuthStates').doc(state).set({
+      uid: authResult.uid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      used: false,
+    });
+    res.json({ ok: true, url: buildAuthUrl({ state, promptConsent: true }) });
+  } catch (error) {
+    console.error('Failed to create Gmail connect URL:', error);
+    res.status(500).json({ error: error?.message || 'Failed to create Gmail connect URL' });
+  }
+});
+
+app.get('/auth/google/callback', async (req, res) => {
+  const code = String(req.query?.code || '').trim();
+  const state = String(req.query?.state || '').trim();
+  const adminRedirect = 'https://secondhandcell.com/admin/?gmail=';
+  if (!code) {
+    return res.redirect(`${adminRedirect}error&reason=missing_code`);
+  }
+  if (!state) {
+    return res.redirect(`${adminRedirect}error&reason=missing_state`);
+  }
+
+  try {
+    let uid = null;
+    const stateRef = db.collection('gmailOAuthStates').doc(state);
+    const stateSnap = await stateRef.get();
+    const stateData = stateSnap.exists ? stateSnap.data() || {} : {};
+    if (!stateSnap.exists || stateData.used === true) {
+      return res.redirect(`${adminRedirect}error&reason=invalid_state`);
+    }
+    uid = stateData.uid || null;
+    await stateRef.set({
+      used: true,
+      usedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    await connectWithCode(code, { uid });
+    return res.redirect(`${adminRedirect}connected`);
+  } catch (error) {
+    console.error('Gmail OAuth callback failed:', error);
+    await db.collection('config').doc('gmailWorkspace').set({
+      status: 'needs_reconnect',
+      lastError: error?.message || String(error),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true }).catch(() => {});
+    return res.redirect(`${adminRedirect}error&reason=${encodeURIComponent(error?.message || 'callback_failed')}`);
+  }
+});
+
+app.post('/admin/gmail/disconnect', async (req, res) => {
+  const authResult = await requireSuperAdminHttp(req, res);
+  if (!authResult) return;
+  try {
+    await disconnectGmail(authResult.uid);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Failed to disconnect Gmail:', error);
+    res.status(500).json({ error: error?.message || 'Failed to disconnect Gmail' });
+  }
+});
+
+app.post('/admin/gmail/sync', async (req, res) => {
+  const authResult = await requireAdminHttp(req, res);
+  if (!authResult) return;
+  try {
+    const maxResults = Math.max(1, Math.min(200, Number(req.body?.maxResults || 50)));
+    const result = await syncGmail({ maxResults, query: req.body?.query || '' });
+    res.json({ ok: true, result });
+  } catch (error) {
+    console.error('Failed to sync Gmail:', error);
+    await db.collection('config').doc('gmailWorkspace').set({
+      status: 'needs_reconnect',
+      lastError: error?.message || String(error),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true }).catch(() => {});
+    res.status(500).json({ error: error?.message || 'Failed to sync Gmail' });
+  }
+});
+
+app.get('/admin/email-inbox', async (req, res) => {
+  const authResult = await requireAdminHttp(req, res);
+  if (!authResult) return;
+  try {
+    const tickets = await listInbox({
+      filter: String(req.query?.filter || 'all'),
+      limit: Number(req.query?.limit || 50),
+    });
+    res.json({ ok: true, tickets });
+  } catch (error) {
+    console.error('Failed to load email inbox:', error);
+    res.status(500).json({ error: error?.message || 'Failed to load email inbox' });
+  }
+});
+
+app.post('/admin/email-inbox/assign', async (req, res) => {
+  const authResult = await requireAdminHttp(req, res);
+  if (!authResult) return;
+  try {
+    const unassignedId = String(req.body?.unassignedId || '').trim();
+    const orderId = String(req.body?.orderId || '').trim();
+    if (!unassignedId || !orderId) {
+      return res.status(400).json({ error: 'Unassigned email ID and order ID are required.' });
+    }
+    const result = await assignUnassignedToTicket(unassignedId, orderId, { uid: authResult.uid });
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    console.error('Failed to assign unassigned email:', error);
+    res.status(500).json({ error: error?.message || 'Failed to assign email' });
+  }
+});
+
+app.get('/orders/:id/email-ticket', async (req, res) => {
+  const authResult = await requireAdminHttp(req, res);
+  if (!authResult) return;
+  try {
+    const orderId = String(req.params.id || '').trim();
+    const ticket = await getTicket(orderId);
+    res.json({ ok: true, ticket });
+  } catch (error) {
+    console.error('Failed to load order email ticket:', error);
+    res.status(500).json({ error: error?.message || 'Failed to load ticket' });
+  }
+});
+
+app.post('/orders/:id/email-ticket/send', async (req, res) => {
+  const authResult = await requireAdminHttp(req, res);
+  if (!authResult) return;
+  try {
+    const orderId = String(req.params.id || '').trim();
+    const orderSnap = await ordersCollection.doc(orderId).get();
+    const order = orderSnap.exists ? { id: orderSnap.id, ...orderSnap.data() } : { id: orderId };
+    const to = String(req.body?.to || order?.shippingInfo?.email || order?.customerEmail || order?.email || '').trim();
+    const subject = String(req.body?.subject || `Order ${orderId}`).trim();
+    const message = String(req.body?.message || '').trim();
+    if (!to || !subject || !message) {
+      return res.status(400).json({ error: 'To, subject, and message are required.' });
+    }
+    const html = `
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111827;font-size:15px;line-height:24px;">
+        ${message.split(/\n{2,}/).map((paragraph) => `<p>${paragraph.split(/\n/).map((line) => String(line).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]))).join('<br>')}</p>`).join('')}
+      </div>
+    `;
+    const result = await sendTrackedEmail({
+      to,
+      subject,
+      text: message,
+      html,
+      orderId,
+      headers: { 'X-SHC-Order-ID': orderId },
+    }, { orderId, fallbackTransporter, forceTicket: true });
+    const ticket = await getTicket(orderId);
+    res.json({ ok: true, result, ticket });
+  } catch (error) {
+    console.error('Failed to send ticket email:', error);
+    res.status(500).json({ error: error?.message || 'Failed to send email' });
+  }
+});
+
+app.post('/orders/:id/email-ticket/read', async (req, res) => {
+  const authResult = await requireAdminHttp(req, res);
+  if (!authResult) return;
+  try {
+    const result = await markTicketRead(req.params.id);
+    res.json({ ok: true, result });
+  } catch (error) {
+    console.error('Failed to mark ticket read:', error);
+    res.status(500).json({ error: error?.message || 'Failed to mark ticket read' });
+  }
 });
 
 app.use('/wholesale', wholesaleRouter);
@@ -3525,7 +3782,15 @@ if (!normalizedEmailUser || !normalizedEmailPass) {
   );
 }
 
-const transporter = nodemailer.createTransport(transporterConfig);
+const fallbackTransporter = nodemailer.createTransport(transporterConfig);
+const transporter = {
+  sendMail(mailOptions) {
+    return sendTrackedEmail(mailOptions, { fallbackTransporter });
+  },
+  verify(callback) {
+    return fallbackTransporter.verify(callback);
+  },
+};
 
 // Verify transporter connection (this will help catch auth errors early)
 transporter.verify(function(error, success) {
@@ -5233,6 +5498,10 @@ async function recordCustomerEmail(orderId, message, metadata = {}, options = {}
   if (!orderId || !message) {
     return null;
   }
+
+  await ensureTicket(orderId).catch((error) => {
+    console.error('Failed to ensure email ticket while recording customer email:', error?.message || error);
+  });
 
   const cleanedMetadata = {};
   if (metadata && typeof metadata === "object") {

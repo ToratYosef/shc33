@@ -2848,6 +2848,9 @@ apiRouter.use(expressApp);
 const mountPath = isServerless && apiBasePath === '/api' ? '/' : apiBasePath;
 app.use(mountPath, apiRouter);
 
+// Google OAuth requires this exact callback path, not the normal /server prefix.
+app.get('/auth/google/callback', (req, res, next) => expressApp(req, res, next));
+
 app.use(notFoundHandler);
 app.use(errorHandler);
 
