@@ -764,6 +764,48 @@ function normalizeImageUrl(url) {
   );
 }
 
+
+function isExcludedSamsungFoldFlipModel(model = {}) {
+  const brand = String(model.brand || "").trim().toLowerCase();
+  if (brand !== "samsung") return false;
+
+  const haystacks = [
+    model.slug,
+    ...(Array.isArray(model.slugs) ? model.slugs : []),
+    model.name,
+    model.deeplink,
+  ]
+    .filter(Boolean)
+    .map((v) => String(v).toLowerCase());
+
+  const hasFlip = haystacks.some((value) => /(^|[^a-z0-9])z?-?flip([^a-z0-9]|$)/.test(value));
+  const hasFold = haystacks.some((value) => /(^|[^a-z0-9])z?-?fold([^a-z0-9]|$)/.test(value));
+  return hasFlip || hasFold;
+}
+
+async function purgeExcludedSamsungFoldFlipModels(db) {
+  const modelsSnap = await db.collection("devices").doc("samsung").collection("models").get();
+  let removed = 0;
+
+  for (const doc of modelsSnap.docs) {
+    const data = doc.data() || {};
+    const candidate = {
+      brand: "samsung",
+      slug: doc.id,
+      slugs: Array.isArray(data.slugs) ? data.slugs : [],
+      name: data.name,
+      deeplink: data.deeplink,
+    };
+    if (!isExcludedSamsungFoldFlipModel(candidate)) continue;
+
+    await doc.ref.delete();
+    removed++;
+    console.log(`[import] removed excluded model devices/samsung/models/${doc.id}`);
+  }
+
+  return removed;
+}
+
 function parseDevicePricesXmlForImport(content) {
   const parser = new DOMParser();
   const xmlDocument = parser.parseFromString(content, "application/xml");
@@ -857,6 +899,9 @@ async function importToFirestoreAlways(updatedXmlText) {
   const db = getFirestoreDb();
   const admin = require("firebase-admin");
   const { models, warnings } = parseDevicePricesXmlForImport(updatedXmlText);
+  const filteredModels = models.filter((model) => !isExcludedSamsungFoldFlipModel(model));
+  const excludedCount = models.length - filteredModels.length;
+  const purgedCount = await purgeExcludedSamsungFoldFlipModels(db);
   const historyDayId = new Date().toISOString().slice(0, 10);
 
   let success = 0;
@@ -864,7 +909,7 @@ async function importToFirestoreAlways(updatedXmlText) {
   let changedDocs = 0;
   let changedPriceLeaves = 0;
 
-  for (const model of models) {
+  for (const model of filteredModels) {
     const collectionPath = `devices/${model.brand}/models`;
     const allSlugs = Array.isArray(model.slugs) && model.slugs.length ? model.slugs : [model.slug];
     const primarySlug = allSlugs[0];
@@ -915,7 +960,20 @@ async function importToFirestoreAlways(updatedXmlText) {
     }
   }
 
-  return { modelsCount: models.length, warnings, success, fail, changedDocs, changedPriceLeaves };
+  if (excludedCount > 0) {
+    console.log(`[import] skipped excluded samsung fold/flip models from XML=${excludedCount}`);
+  }
+
+  return {
+    modelsCount: filteredModels.length,
+    excludedCount,
+    purgedCount,
+    warnings,
+    success,
+    fail,
+    changedDocs,
+    changedPriceLeaves,
+  };
 }
 
 function countPriceLeafDiffs(beforePrices, afterPrices) {
