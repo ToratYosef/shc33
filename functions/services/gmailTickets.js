@@ -129,6 +129,28 @@ function makeSnippet(mailOptions = {}) {
   return String(source).replace(/\s+/g, " ").trim().slice(0, 220);
 }
 
+
+function cleanCustomerReplyBody(input = "") {
+  const text = String(input || "").replace(/\r\n?/g, "\n");
+  const lines = text.split("\n");
+  const stopPatterns = [
+    /^On\s.+wrote:\s*$/i,
+    /^-+\s*Original Message\s*-+$/i,
+    /^From:\s*SecondHandCell/i,
+    /^SecondHandCell\.com\s*$/i,
+    /^Turn Your Old\s+Phone Into Cash!/i,
+    /^Order confirmation\b/i,
+  ];
+  const out = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('>')) break;
+    if (stopPatterns.some((pattern) => pattern.test(trimmed))) break;
+    out.push(line);
+  }
+  return out.join("\n").trim();
+}
+
 function safeDocId(value) {
   return String(value || "")
     .trim()
@@ -546,6 +568,8 @@ async function sendTrackedEmail(mailOptions = {}, options = {}) {
       subject: mailOptions.subject || "",
       html: mailOptions.html || "",
       text: mailOptions.text || stripHtml(mailOptions.html || ""),
+      rawAdminMessage: mailOptions.text || '',
+      renderedHtmlEmail: mailOptions.html || '',
       snippet: makeSnippet(mailOptions),
       gmailMessageId: result.id || null,
       gmailThreadId: result.threadId || gmailThreadId || null,
@@ -677,6 +701,8 @@ async function importGmailMessage(messageId) {
       html: parsed.html,
       text: parsed.text,
       snippet: parsed.snippet || parsed.text || stripHtml(parsed.html),
+      rawEmailBody: parsed.text || stripHtml(parsed.html),
+      cleanedEmailBody: cleanCustomerReplyBody(parsed.text || stripHtml(parsed.html)),
       gmailMessageId: parsed.gmailMessageId,
       gmailThreadId: parsed.gmailThreadId,
       inReplyTo: parsed.inReplyTo,
@@ -770,6 +796,8 @@ async function importParsedGmailMessage(full) {
       html: parsed.html,
       text: parsed.text,
       snippet: parsed.snippet || parsed.text || stripHtml(parsed.html),
+      rawEmailBody: parsed.text || stripHtml(parsed.html),
+      cleanedEmailBody: cleanCustomerReplyBody(parsed.text || stripHtml(parsed.html)),
       gmailMessageId: parsed.gmailMessageId,
       gmailThreadId: parsed.gmailThreadId,
       inReplyTo: parsed.inReplyTo,
@@ -825,6 +853,8 @@ async function assignUnassignedToTicket(unassignedId, orderId, metadata = {}) {
     html: message.html || "",
     text: message.text || "",
     snippet: message.snippet || message.text || stripHtml(message.html || ""),
+    rawEmailBody: message.text || stripHtml(message.html || ""),
+    cleanedEmailBody: cleanCustomerReplyBody(message.text || stripHtml(message.html || "")),
     gmailMessageId: message.gmailMessageId || safeId,
     gmailThreadId: message.gmailThreadId || null,
     inReplyTo: message.inReplyTo || "",
