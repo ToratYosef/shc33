@@ -1,13 +1,12 @@
 const axios = require("axios");
-const functions = require("firebase-functions");
 
 /**
  * Sends a Zendesk comment (public or private) for a given order.
  */
 async function sendZendeskComment(orderData, subject, html_body, isPublic) {
     try {
-        const zendeskUrl = functions.config().zendesk.url;
-        const zendeskToken = functions.config().zendesk.token;
+        const zendeskUrl = process.env.ZENDESK_URL;
+        const zendeskToken = process.env.ZENDESK_TOKEN;
         if (!zendeskUrl || !zendeskToken) {
             console.warn("Zendesk configuration not complete. Cannot send notification.");
             return;

@@ -115,6 +115,96 @@ function extractEmailAddress(value) {
   return (match ? match[1] : raw.split(",")[0] || "").trim().toLowerCase();
 }
 
+const EMAIL_TYPE_LABELS = {
+  order_received: "Order received email",
+  device_received: "Device received email",
+  fmi: "FMI email",
+  offer: "Offer email",
+  reoffer: "Reoffer email",
+  payment_update: "Payment update email",
+  shipping_label: "Shipping label email",
+  order_complete: "Order complete email",
+  manual_admin: "Manual admin email",
+  sent_email: "Sent email",
+};
+
+function inferEmailType(message = {}) {
+  if (message.emailType) return String(message.emailType);
+  if (message.rawAdminMessage) return "manual_admin";
+  const subject = String(message.subject || "").toLowerCase();
+  if (subject.includes("shipping label")) return "shipping_label";
+  if (subject.includes("order received") || subject.includes("order confirmation")) return "order_received";
+  if (subject.includes("device received") || subject.includes("arrived")) return "device_received";
+  if (subject.includes("reoffer")) return "reoffer";
+  if (subject.includes("offer")) return "offer";
+  if (subject.includes("payment")) return "payment_update";
+  if (subject.includes("find my") || subject.includes("fmi")) return "fmi";
+  if (subject.includes("order complete") || subject.includes("completed")) return "order_complete";
+  return "sent_email";
+}
+
+function toIsoOrNull(value) {
+  if (!value) return null;
+  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (typeof value === "string") return value;
+  return null;
+}
+
+function normalizeDirection(direction = "") {
+  const normalized = String(direction || "").toLowerCase();
+  if (["inbound", "received"].includes(normalized)) return "received";
+  if (["outbound", "sent"].includes(normalized)) return "sent";
+  return "unknown";
+}
+
+function normalizeTicketMessage(id, message = {}) {
+  const fromRaw = message.from || message.sender || message.fromEmail || "";
+  const toRaw = message.to || message.toEmail || "";
+  const fromEmail = extractEmailAddress(fromRaw) || (message.fromEmail ? String(message.fromEmail).toLowerCase() : "");
+  const toEmail = extractEmailAddress(toRaw) || (message.toEmail ? String(message.toEmail).toLowerCase() : "");
+  const storedDirection = normalizeDirection(message.direction || "");
+  const backendSentMarker =
+    ["sent", "sent_fallback", "failed"].includes(String(message.status || "").toLowerCase()) &&
+    Boolean(message.renderedHtmlEmail || message.rawAdminMessage || message.html);
+  let direction = storedDirection;
+  if (fromEmail.includes(CONNECTED_MAILBOX) || String(fromRaw).toLowerCase().includes(CONNECTED_MAILBOX)) {
+    direction = "sent";
+  } else if (Array.isArray(message.labelIds) && message.labelIds.includes("SENT")) {
+    direction = "sent";
+  } else if (backendSentMarker) {
+    direction = "sent";
+  } else if (toEmail.includes(CONNECTED_MAILBOX) && !fromEmail.includes(CONNECTED_MAILBOX)) {
+    direction = "received";
+  } else if (direction === "unknown") {
+    direction = detectMessageDirection({ from: fromRaw, to: toRaw, labelIds: message.labelIds || [] });
+  }
+  if (storedDirection === "received" && fromEmail.includes(CONNECTED_MAILBOX)) {
+    direction = "sent";
+  }
+  const emailType = direction === "sent" ? inferEmailType(message) : null;
+  const emailTypeLabel = direction === "sent" ? (EMAIL_TYPE_LABELS[emailType] || "Sent email") : null;
+  return {
+    id,
+    direction,
+    emailType,
+    emailTypeLabel,
+    subject: message.subject || null,
+    fromName: direction === "received" ? (message.fromName || null) : null,
+    fromEmail: fromEmail || (direction === "sent" ? CONNECTED_MAILBOX : null),
+    toEmail: toEmail || null,
+    timestamp: toIsoOrNull(message.sentAt || message.receivedAt || message.createdAt),
+    status: message.status || null,
+    isRead: direction === "received" ? Boolean(message.read ?? message.isRead) : (direction === "sent" ? true : null),
+    rawAdminMessage: message.rawAdminMessage || null,
+    renderedHtmlEmail: message.renderedHtmlEmail || message.html || null,
+    rawEmailBody: message.rawEmailBody || message.text || null,
+    cleanedEmailBody: message.cleanedEmailBody || null,
+    gmailMessageId: message.gmailMessageId || null,
+    gmailThreadId: message.gmailThreadId || null,
+    labelIds: Array.isArray(message.labelIds) ? message.labelIds : null,
+  };
+}
+
 function stripHtml(html = "") {
   return String(html)
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -127,6 +217,29 @@ function stripHtml(html = "") {
 function makeSnippet(mailOptions = {}) {
   const source = mailOptions.text || stripHtml(mailOptions.html || "") || mailOptions.subject || "";
   return String(source).replace(/\s+/g, " ").trim().slice(0, 220);
+}
+
+
+function cleanCustomerReplyBody(input = "") {
+  const text = String(input || "").replace(/\r\n?/g, "\n");
+  const lines = text.split("\n");
+  const stopPatterns = [
+    /^On\s.+wrote:\s*$/i,
+    /^.+wrote:\s*$/i,
+    /^-+\s*Original Message\s*-+$/i,
+    /^From:\s*SecondHandCell/i,
+    /^SecondHandCell\.com\s*$/i,
+    /^Turn Your Old\s+Phone Into Cash!/i,
+    /^Order confirmation\b/i,
+  ];
+  const out = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('>')) break;
+    if (stopPatterns.some((pattern) => pattern.test(trimmed))) break;
+    out.push(line);
+  }
+  return out.join("\n").trim();
 }
 
 function safeDocId(value) {
@@ -413,30 +526,38 @@ async function saveTicketMessage(orderId, message = {}) {
   }
 
   const now = admin.firestore.FieldValue.serverTimestamp();
-  const direction = message.direction || "outbound";
+  const direction = normalizeDirection(message.direction || "unknown");
+  const cleanedBody = message.cleanedEmailBody || cleanCustomerReplyBody(message.rawEmailBody || message.text || stripHtml(message.html || ""));
+  const preview = direction === "received"
+    ? (cleanedBody || message.subject || message.snippet || "")
+    : (message.subject || message.rawAdminMessage || message.snippet || makeSnippet(message));
   const payload = {
     ...message,
     orderId,
     ticketId: orderId,
     direction,
-    read: direction === "outbound" ? true : Boolean(message.read),
+    read: direction === "sent" ? true : (direction === "received" ? Boolean(message.read) : null),
+    isRead: direction === "sent" ? true : (direction === "received" ? Boolean(message.read) : null),
+    emailType: direction === "sent" ? inferEmailType(message) : null,
+    emailTypeLabel: direction === "sent" ? (EMAIL_TYPE_LABELS[inferEmailType(message)] || "Sent email") : null,
+    cleanedEmailBody: direction === "received" ? cleanedBody : null,
     createdAt: message.createdAt || now,
     updatedAt: now,
   };
   await messageRef.set(cleanFirestorePayload(payload), { merge: true });
 
-  const incrementUnread = direction === "inbound" && !payload.read && !existing.exists;
+  const incrementUnread = direction === "received" && !payload.read && !existing.exists;
   await ticketRef.set(
     {
       lastMessageAt: payload.sentAt || payload.receivedAt || now,
-      lastMessagePreview: message.snippet || makeSnippet(message),
+      lastMessagePreview: preview,
       lastMessageDirection: direction,
-      lastMessageFromCustomer: direction === "inbound",
+      lastMessageFromCustomer: direction === "received",
       lastSubject: message.subject || "",
       lastGmailThreadId: message.gmailThreadId || null,
       messageCount: admin.firestore.FieldValue.increment(existing.exists ? 0 : 1),
       unreadCount: incrementUnread ? admin.firestore.FieldValue.increment(1) : admin.firestore.FieldValue.increment(0),
-      waitingOn: direction === "inbound" ? "us" : "customer",
+      waitingOn: direction === "received" ? "admin" : "customer",
       updatedAt: now,
     },
     { merge: true }
@@ -446,12 +567,12 @@ async function saveTicketMessage(orderId, message = {}) {
     {
       emailTicketId: orderId,
       emailTicketLastMessageAt: payload.sentAt || payload.receivedAt || now,
-      emailTicketLastPreview: message.snippet || makeSnippet(message),
+      emailTicketLastPreview: preview,
       emailTicketLastDirection: direction,
-      emailTicketLastFromCustomer: direction === "inbound",
+      emailTicketLastFromCustomer: direction === "received",
       emailTicketMessageCount: admin.firestore.FieldValue.increment(existing.exists ? 0 : 1),
       emailTicketUnreadCount: incrementUnread ? admin.firestore.FieldValue.increment(1) : admin.firestore.FieldValue.increment(0),
-      emailTicketWaitingOn: direction === "inbound" ? "us" : "customer",
+      emailTicketWaitingOn: direction === "received" ? "admin" : "customer",
       emailTicketUpdatedAt: now,
     },
     { merge: true }
@@ -466,6 +587,20 @@ async function saveTicketMessage(orderId, message = {}) {
     await messageIndexCollection().doc(safeDocId(message.gmailMessageId)).set(
       {
         gmailMessageId: message.gmailMessageId,
+        gmailThreadId: message.gmailThreadId || null,
+        orderId,
+        ticketId: orderId,
+        direction,
+        importedAt: now,
+      },
+      { merge: true }
+    );
+  }
+  if (message.rfcMessageId) {
+    await messageIndexCollection().doc(safeDocId(message.rfcMessageId)).set(
+      {
+        rfcMessageId: message.rfcMessageId,
+        gmailMessageId: message.gmailMessageId || null,
         gmailThreadId: message.gmailThreadId || null,
         orderId,
         ticketId: orderId,
@@ -538,7 +673,7 @@ async function sendTrackedEmail(mailOptions = {}, options = {}) {
       { orderId, gmailThreadId }
     );
     await saveTicketMessage(orderId, {
-      direction: "outbound",
+      direction: "sent",
       status: "sent",
       from: CONNECTED_MAILBOX,
       to: normalizeAddress(mailOptions.to),
@@ -546,6 +681,8 @@ async function sendTrackedEmail(mailOptions = {}, options = {}) {
       subject: mailOptions.subject || "",
       html: mailOptions.html || "",
       text: mailOptions.text || stripHtml(mailOptions.html || ""),
+      rawAdminMessage: mailOptions.text || '',
+      renderedHtmlEmail: mailOptions.html || '',
       snippet: makeSnippet(mailOptions),
       gmailMessageId: result.id || null,
       gmailThreadId: result.threadId || gmailThreadId || null,
@@ -554,7 +691,7 @@ async function sendTrackedEmail(mailOptions = {}, options = {}) {
     return { ...result, orderId, ticketTracked: true };
   } catch (error) {
     await saveTicketMessage(orderId, {
-      direction: "outbound",
+      direction: "sent",
       status: "failed",
       from: CONNECTED_MAILBOX,
       to: normalizeAddress(mailOptions.to),
@@ -569,7 +706,7 @@ async function sendTrackedEmail(mailOptions = {}, options = {}) {
     if (fallbackTransporter && String(process.env.GMAIL_TICKET_FALLBACK || "true").toLowerCase() !== "false") {
       const fallbackResult = await fallbackTransporter.sendMail(mailOptions);
       await saveTicketMessage(orderId, {
-        direction: "outbound",
+        direction: "sent",
         status: "sent_fallback",
         from: mailOptions.from || CONNECTED_MAILBOX,
         to: normalizeAddress(mailOptions.to),
@@ -616,12 +753,23 @@ function parseGmailMessage(message = {}) {
     date: getHeader(headers, "Date"),
     inReplyTo: getHeader(headers, "In-Reply-To"),
     references: getHeader(headers, "References"),
+    rfcMessageId: getHeader(headers, "Message-ID"),
     shcOrderId: normalizeOrderId(getHeader(headers, "X-SHC-Order-ID")),
     snippet: message.snippet || "",
     html: content.html.join("\n"),
     text: content.text.join("\n"),
     internalDate: message.internalDate,
+    labelIds: Array.isArray(message.labelIds) ? message.labelIds : [],
   };
+}
+
+function detectMessageDirection({ from = "", to = "", labelIds = [] } = {}) {
+  const fromEmail = extractEmailAddress(from);
+  const toEmail = extractEmailAddress(to);
+  if (Array.isArray(labelIds) && labelIds.includes("SENT")) return "sent";
+  if (fromEmail === CONNECTED_MAILBOX) return "sent";
+  if (toEmail === CONNECTED_MAILBOX && fromEmail && fromEmail !== CONNECTED_MAILBOX) return "received";
+  return "unknown";
 }
 
 async function resolveTicketForIncoming(parsed = {}) {
@@ -631,6 +779,24 @@ async function resolveTicketForIncoming(parsed = {}) {
       return normalizeOrderId(mapped.data().orderId);
     }
   }
+
+  const replyHeaders = [parsed.inReplyTo, parsed.references]
+    .filter(Boolean)
+    .join(" ")
+    .match(/<[^>]+>/g) || [];
+  for (const headerId of replyHeaders) {
+    const indexed = await messageIndexCollection().doc(safeDocId(headerId)).get();
+    if (indexed.exists && indexed.data()?.orderId) {
+      return normalizeOrderId(indexed.data().orderId);
+    }
+  }
+
+  const headerOrderId = normalizeOrderId(parsed.shcOrderId || "");
+  if (headerOrderId) {
+    const orderSnap = await db.collection("orders").doc(headerOrderId).get();
+    if (orderSnap.exists) return headerOrderId;
+  }
+
   const fromHeader = [parsed.subject, parsed.shcOrderId, parsed.text, parsed.html].join(" ");
   const orderId = normalizeOrderId(fromHeader);
   if (orderId) {
@@ -651,7 +817,8 @@ async function importGmailMessage(messageId) {
   });
   const parsed = parseGmailMessage(full);
   const fromEmail = extractEmailAddress(parsed.from);
-  if (fromEmail === CONNECTED_MAILBOX) {
+  const detectedDirection = detectMessageDirection(parsed);
+  if (detectedDirection === "sent") {
     await messageIndexCollection().doc(safeDocId(messageId)).set({
       gmailMessageId: messageId,
       gmailThreadId: parsed.gmailThreadId || null,
@@ -667,8 +834,11 @@ async function importGmailMessage(messageId) {
     : admin.firestore.FieldValue.serverTimestamp();
 
   if (orderId) {
+    const rawEmailBody = parsed.text || stripHtml(parsed.html);
+    const cleanedEmailBody = cleanCustomerReplyBody(rawEmailBody);
     await saveTicketMessage(orderId, {
-      direction: "inbound",
+      direction: detectedDirection,
+      fromName: String(parsed.from || "").split("<")[0].replace(/\"/g, "").trim() || null,
       status: "received",
       from: parsed.from,
       to: parsed.to,
@@ -677,12 +847,15 @@ async function importGmailMessage(messageId) {
       html: parsed.html,
       text: parsed.text,
       snippet: parsed.snippet || parsed.text || stripHtml(parsed.html),
+      rawEmailBody,
+      cleanedEmailBody,
       gmailMessageId: parsed.gmailMessageId,
       gmailThreadId: parsed.gmailThreadId,
       inReplyTo: parsed.inReplyTo,
       references: parsed.references,
       receivedAt,
-      read: false,
+      read: detectedDirection === "received" ? false : true,
+      labelIds: parsed.labelIds || [],
     });
     return { imported: true, orderId };
   }
@@ -744,7 +917,8 @@ async function importNewGmailMessage(messageId, { syncSinceMs = 0 } = {}) {
 async function importParsedGmailMessage(full) {
   const parsed = parseGmailMessage(full);
   const fromEmail = extractEmailAddress(parsed.from);
-  if (fromEmail === CONNECTED_MAILBOX) {
+  const detectedDirection = detectMessageDirection(parsed);
+  if (detectedDirection === "sent") {
     await messageIndexCollection().doc(safeDocId(parsed.gmailMessageId)).set({
       gmailMessageId: parsed.gmailMessageId,
       gmailThreadId: parsed.gmailThreadId || null,
@@ -760,8 +934,11 @@ async function importParsedGmailMessage(full) {
     : admin.firestore.FieldValue.serverTimestamp();
 
   if (orderId) {
+    const rawEmailBody = parsed.text || stripHtml(parsed.html);
+    const cleanedEmailBody = cleanCustomerReplyBody(rawEmailBody);
     await saveTicketMessage(orderId, {
-      direction: "inbound",
+      direction: detectedDirection,
+      fromName: String(parsed.from || "").split("<")[0].replace(/\"/g, "").trim() || null,
       status: "received",
       from: parsed.from,
       to: parsed.to,
@@ -770,12 +947,15 @@ async function importParsedGmailMessage(full) {
       html: parsed.html,
       text: parsed.text,
       snippet: parsed.snippet || parsed.text || stripHtml(parsed.html),
+      rawEmailBody,
+      cleanedEmailBody,
       gmailMessageId: parsed.gmailMessageId,
       gmailThreadId: parsed.gmailThreadId,
       inReplyTo: parsed.inReplyTo,
       references: parsed.references,
       receivedAt,
-      read: false,
+      read: detectedDirection === "received" ? false : true,
+      labelIds: parsed.labelIds || [],
     });
     return { imported: true, orderId };
   }
@@ -816,7 +996,8 @@ async function assignUnassignedToTicket(unassignedId, orderId, metadata = {}) {
 
   const message = unassignedSnap.data() || {};
   await saveTicketMessage(normalizedOrderId, {
-    direction: "inbound",
+    direction: "received",
+    fromName: String(message.from || "").split("<")[0].replace(/\"/g, "").trim() || null,
     status: "received",
     from: message.from || "",
     to: message.to || "",
@@ -825,6 +1006,8 @@ async function assignUnassignedToTicket(unassignedId, orderId, metadata = {}) {
     html: message.html || "",
     text: message.text || "",
     snippet: message.snippet || message.text || stripHtml(message.html || ""),
+    rawEmailBody: message.text || stripHtml(message.html || ""),
+    cleanedEmailBody: cleanCustomerReplyBody(message.text || stripHtml(message.html || "")),
     gmailMessageId: message.gmailMessageId || safeId,
     gmailThreadId: message.gmailThreadId || null,
     inReplyTo: message.inReplyTo || "",
@@ -906,18 +1089,43 @@ async function getTicket(orderId, { create = false } = {}) {
     .orderBy("createdAt", "asc")
     .limit(100)
     .get();
-  return {
+  const ticket = {
     id: normalizedOrderId,
     ...(ticketSnap.data() || {}),
-    messages: messagesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+    messages: messagesSnap.docs
+      .map((doc) => normalizeTicketMessage(doc.id, doc.data() || {}))
+      .sort((a, b) => String(a.timestamp || "").localeCompare(String(b.timestamp || ""))),
   };
+  ticket.messages.forEach((msg) => {
+    console.log("[EmailTicketNormalized]", JSON.stringify({
+      orderId: normalizedOrderId,
+      id: msg.id || null,
+      direction: msg.direction || null,
+      fromEmail: msg.fromEmail || null,
+      toEmail: msg.toEmail || null,
+      subject: msg.subject || null,
+      emailType: msg.emailType || null,
+      emailTypeLabel: msg.emailTypeLabel || null,
+      timestamp: msg.timestamp || null,
+      gmailMessageId: msg.gmailMessageId || null,
+      gmailThreadId: msg.gmailThreadId || null,
+      labelIds: msg.labelIds || null,
+    }));
+  });
+  if (normalizedOrderId === "SHC-23471") {
+    const target = ticket.messages.filter((msg) =>
+      String(msg.subject || "").includes("Order #SHC-23471 Received — Your USPS Shipping Label Inside")
+    );
+    console.log("[EmailTicketDebug SHC-23471]", JSON.stringify(target));
+  }
+  return ticket;
 }
 
 async function markTicketRead(orderId) {
   const normalizedOrderId = normalizeOrderId(orderId);
   if (!normalizedOrderId) return null;
   const ticketRef = ticketsCollection().doc(normalizedOrderId);
-  const unread = await ticketRef.collection("messages").where("direction", "==", "inbound").where("read", "==", false).get();
+  const unread = await ticketRef.collection("messages").where("direction", "==", "received").where("read", "==", false).get();
   const batch = db.batch();
   unread.docs.forEach((doc) => batch.set(doc.ref, { read: true, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }));
   batch.set(ticketRef, { unreadCount: 0, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
