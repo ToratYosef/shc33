@@ -776,7 +776,22 @@ function resolveOrderIdFromDevice(device = {}) {
   return null;
 }
 
+function requireEnvVar(name) {
+  const value = String(process.env[name] || '').trim();
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
+function validateCriticalEnv() {
+  requireEnvVar('EMAIL_USER');
+  requireEnvVar('EMAIL_PASS');
+  requireEnvVar('SHIPENGINE_API_KEY');
+}
+
 const app = express();
+validateCriticalEnv();
 const API_ACTION_LOGGING_ENABLED = !['0', 'false', 'off', 'no'].includes(
   String(process.env.API_ACTION_LOGGING_ENABLED || 'true').trim().toLowerCase()
 );
@@ -4250,30 +4265,10 @@ function buildManualVoidShippingCleanupPayload() {
 }
 
 function getShipEngineApiKey() {
-  try {
-    if (functions.config().shipengine && functions.config().shipengine.key) {
-      return functions.config().shipengine.key;
-    }
-  } catch (error) {
-    console.warn("Unable to read functions.config().shipengine.key:", error.message);
-  }
-  return process.env.SHIPENGINE_KEY || null;
+  return process.env.SHIPENGINE_API_KEY || process.env.SHIPENGINE_KEY || null;
 }
 
 function getLabelVoidNotificationEmail() {
-  try {
-    if (
-      functions.config().notifications &&
-      functions.config().notifications.void_labels_to
-    ) {
-      return functions.config().notifications.void_labels_to;
-    }
-    if (functions.config().email && functions.config().email.user) {
-      return functions.config().email.user;
-    }
-  } catch (error) {
-    console.warn("Unable to read notification email config:", error.message);
-  }
   return (
     process.env.LABEL_VOID_NOTIFICATIONS_TO ||
     process.env.VOID_NOTIFICATION_EMAIL ||
@@ -10939,32 +10934,12 @@ function getWholesaleNotificationInbox() {
   if (process.env.INFO_EMAIL) {
     return process.env.INFO_EMAIL;
   }
-  try {
-    if (
-      functions.config().notifications &&
-      functions.config().notifications.wholesale_to
-    ) {
-      return functions.config().notifications.wholesale_to;
-    }
-  } catch (error) {
-    console.warn(
-      "Unable to read notifications.wholesale_to config:",
-      error.message
-    );
-  }
   return "info@secondhandcell.com";
 }
 
 function getWholesaleFromAddress() {
   if (process.env.EMAIL_USER) {
     return process.env.EMAIL_USER;
-  }
-  try {
-    if (functions.config().email && functions.config().email.user) {
-      return functions.config().email.user;
-    }
-  } catch (error) {
-    console.warn("Unable to read email.user config:", error.message);
   }
   return "info@secondhandcell.com";
 }
