@@ -1093,6 +1093,84 @@ async function syncGmail({ maxResults = 50, query = "" } = {}) {
   return result;
 }
 
+async function syncTicketThreads(orderId, { debug = false } = {}) {
+  const normalizedOrderId = normalizeOrderId(orderId);
+  if (!normalizedOrderId) return { ok: false, reason: "invalid_order_id", imported: 0, skipped: 0 };
+  const ticketSnap = await ticketsCollection().doc(normalizedOrderId).get();
+  if (!ticketSnap.exists) {
+    return { ok: false, reason: "ticket_not_found", imported: 0, skipped: 0 };
+  }
+
+  const ticket = ticketSnap.data() || {};
+  const ids = new Set();
+  if (ticket.lastGmailThreadId) ids.add(String(ticket.lastGmailThreadId));
+  const mappedSnap = await threadMapCollection().where("orderId", "==", normalizedOrderId).get();
+  mappedSnap.docs.forEach((doc) => {
+    const tid = String(doc.data()?.gmailThreadId || "").trim();
+    if (tid) ids.add(tid);
+  });
+  const gmailThreadIds = Array.from(ids).filter(Boolean);
+  if (debug) {
+    console.log("[EmailSync] orderId", normalizedOrderId);
+    console.log("[EmailSync] ticketId", normalizedOrderId);
+    console.log("[EmailSync] tracked threadIds", gmailThreadIds);
+  }
+  if (!gmailThreadIds.length) {
+    if (debug) console.log("[EmailSync] no threadIds found");
+    return { ok: true, imported: 0, skipped: 0, reason: "no_thread_ids" };
+  }
+
+  const result = { ok: true, imported: 0, skipped: 0, failed: 0 };
+  for (const gmailThreadId of gmailThreadIds) {
+    try {
+      const thread = await gmailRequest("get", `/threads/${encodeURIComponent(gmailThreadId)}`, null, {
+        params: { format: "full" },
+      });
+      const messages = Array.isArray(thread.messages) ? thread.messages : [];
+      if (debug) console.log("[EmailSync] fetched Gmail thread", gmailThreadId, "messages:", messages.length);
+      if (!messages.length && debug) console.log("[EmailSync] no new messages in Gmail thread");
+      for (const full of messages) {
+        const messageId = String(full.id || "").trim();
+        if (!messageId) continue;
+        const existing = await messageIndexCollection().doc(safeDocId(messageId)).get();
+        const alreadyImported = existing.exists;
+        const parsed = parseGmailMessage(full);
+        const direction = detectMessageDirection(parsed);
+        if (debug) {
+          console.log("[EmailSync] message", {
+            gmailMessageId: parsed.gmailMessageId || null,
+            gmailThreadId: parsed.gmailThreadId || null,
+            fromEmail: extractEmailAddress(parsed.from) || null,
+            toEmail: extractEmailAddress(parsed.to) || null,
+            subject: parsed.subject || null,
+            labelIds: parsed.labelIds || [],
+            direction,
+            alreadyImported,
+          });
+        }
+        if (alreadyImported) {
+          result.skipped += 1;
+          if (debug) console.log("[EmailSync] message already imported");
+          continue;
+        }
+        const imported = await importParsedGmailMessage(full);
+        if (imported?.imported) result.imported += 1;
+        else result.skipped += 1;
+      }
+    } catch (error) {
+      result.failed += 1;
+      if (debug) console.log("[EmailSync] Gmail API error", error?.message || error);
+      console.error("Failed to sync Gmail thread:", gmailThreadId, error?.message || error);
+      await configRef().set({
+        status: "needs_reconnect",
+        lastError: error?.message || String(error),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true }).catch(() => {});
+    }
+  }
+  return result;
+}
+
 async function getTicket(orderId, { create = false } = {}) {
   const normalizedOrderId = normalizeOrderId(orderId);
   if (!normalizedOrderId) return null;
@@ -1185,5 +1263,6 @@ module.exports = {
   markTicketRead,
   normalizeOrderId,
   sendTrackedEmail,
+  syncTicketThreads,
   syncGmail,
 };
