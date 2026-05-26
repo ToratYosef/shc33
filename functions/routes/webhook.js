@@ -2,13 +2,17 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const { ordersCollection, updateOrderBoth } = require('../db/db');
-const functions = require('firebase-functions');
 const { info, error } = require('firebase-functions/logger');
 
 // Middleware to verify ShipStation webhook signature
 const verifyShipStationSignature = (req, res, next) => {
     const signature = req.headers['x-shipstation-signature'];
-    const secret = functions.config().shipstation.webhook_secret;
+    const secret = process.env.SHIPSTATION_WEBHOOK_SECRET;
+
+    if (!secret) {
+        error('ShipStation webhook secret is not configured (SHIPSTATION_WEBHOOK_SECRET).');
+        return res.status(500).send('Server webhook secret is not configured.');
+    }
 
     if (!signature) {
         error('Webhook received without signature header.');

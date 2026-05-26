@@ -2,7 +2,6 @@ const nodemailer = require("nodemailer");
 const admin = require('firebase-admin');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
-const functions = require("firebase-functions");
 const {
     sendTrackedEmail,
 } = require("./gmailTickets");
@@ -62,8 +61,8 @@ function isAdminTokenDocActive(data = {}) {
 const fallbackTransporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
-        user: functions.config().email.user,
-        pass: functions.config().email.pass,
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
     },
 });
 
