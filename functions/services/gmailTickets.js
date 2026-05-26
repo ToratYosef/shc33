@@ -158,17 +158,31 @@ function normalizeDirection(direction = "") {
 }
 
 function normalizeTicketMessage(id, message = {}) {
-  let direction = normalizeDirection(message.direction);
-  if (direction === "unknown") {
-    direction = detectMessageDirection({
-      from: message.from || message.fromEmail || "",
-      to: message.to || message.toEmail || "",
-      labelIds: message.labelIds || [],
-    });
+  const fromRaw = message.from || message.sender || message.fromEmail || "";
+  const toRaw = message.to || message.toEmail || "";
+  const fromEmail = extractEmailAddress(fromRaw) || (message.fromEmail ? String(message.fromEmail).toLowerCase() : "");
+  const toEmail = extractEmailAddress(toRaw) || (message.toEmail ? String(message.toEmail).toLowerCase() : "");
+  const storedDirection = normalizeDirection(message.direction || "");
+  const backendSentMarker =
+    ["sent", "sent_fallback", "failed"].includes(String(message.status || "").toLowerCase()) &&
+    Boolean(message.renderedHtmlEmail || message.rawAdminMessage || message.html);
+  let direction = storedDirection;
+  if (fromEmail.includes(CONNECTED_MAILBOX) || String(fromRaw).toLowerCase().includes(CONNECTED_MAILBOX)) {
+    direction = "sent";
+  } else if (Array.isArray(message.labelIds) && message.labelIds.includes("SENT")) {
+    direction = "sent";
+  } else if (backendSentMarker) {
+    direction = "sent";
+  } else if (toEmail.includes(CONNECTED_MAILBOX) && !fromEmail.includes(CONNECTED_MAILBOX)) {
+    direction = "received";
+  } else if (direction === "unknown") {
+    direction = detectMessageDirection({ from: fromRaw, to: toRaw, labelIds: message.labelIds || [] });
+  }
+  if (storedDirection === "received" && fromEmail.includes(CONNECTED_MAILBOX)) {
+    direction = "sent";
   }
   const emailType = direction === "sent" ? inferEmailType(message) : null;
   const emailTypeLabel = direction === "sent" ? (EMAIL_TYPE_LABELS[emailType] || "Sent email") : null;
-  const fromRaw = message.from || message.fromEmail || "";
   return {
     id,
     direction,
@@ -176,8 +190,8 @@ function normalizeTicketMessage(id, message = {}) {
     emailTypeLabel,
     subject: message.subject || null,
     fromName: direction === "received" ? (message.fromName || null) : null,
-    fromEmail: extractEmailAddress(fromRaw) || message.fromEmail || null,
-    toEmail: extractEmailAddress(message.to || message.toEmail || "") || message.toEmail || null,
+    fromEmail: fromEmail || (direction === "sent" ? CONNECTED_MAILBOX : null),
+    toEmail: toEmail || null,
     timestamp: toIsoOrNull(message.sentAt || message.receivedAt || message.createdAt),
     status: message.status || null,
     isRead: direction === "received" ? Boolean(message.read ?? message.isRead) : (direction === "sent" ? true : null),
@@ -187,6 +201,7 @@ function normalizeTicketMessage(id, message = {}) {
     cleanedEmailBody: message.cleanedEmailBody || null,
     gmailMessageId: message.gmailMessageId || null,
     gmailThreadId: message.gmailThreadId || null,
+    labelIds: Array.isArray(message.labelIds) ? message.labelIds : null,
   };
 }
 
@@ -1074,13 +1089,36 @@ async function getTicket(orderId, { create = false } = {}) {
     .orderBy("createdAt", "asc")
     .limit(100)
     .get();
-  return {
+  const ticket = {
     id: normalizedOrderId,
     ...(ticketSnap.data() || {}),
     messages: messagesSnap.docs
       .map((doc) => normalizeTicketMessage(doc.id, doc.data() || {}))
       .sort((a, b) => String(a.timestamp || "").localeCompare(String(b.timestamp || ""))),
   };
+  ticket.messages.forEach((msg) => {
+    console.log("[EmailTicketNormalized]", JSON.stringify({
+      orderId: normalizedOrderId,
+      id: msg.id || null,
+      direction: msg.direction || null,
+      fromEmail: msg.fromEmail || null,
+      toEmail: msg.toEmail || null,
+      subject: msg.subject || null,
+      emailType: msg.emailType || null,
+      emailTypeLabel: msg.emailTypeLabel || null,
+      timestamp: msg.timestamp || null,
+      gmailMessageId: msg.gmailMessageId || null,
+      gmailThreadId: msg.gmailThreadId || null,
+      labelIds: msg.labelIds || null,
+    }));
+  });
+  if (normalizedOrderId === "SHC-23471") {
+    const target = ticket.messages.filter((msg) =>
+      String(msg.subject || "").includes("Order #SHC-23471 Received — Your USPS Shipping Label Inside")
+    );
+    console.log("[EmailTicketDebug SHC-23471]", JSON.stringify(target));
+  }
+  return ticket;
 }
 
 async function markTicketRead(orderId) {
