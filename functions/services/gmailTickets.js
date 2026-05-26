@@ -201,6 +201,7 @@ function normalizeTicketMessage(id, message = {}) {
     cleanedEmailBody: message.cleanedEmailBody || null,
     gmailMessageId: message.gmailMessageId || null,
     gmailThreadId: message.gmailThreadId || null,
+    rfcMessageId: message.rfcMessageId || null,
     labelIds: Array.isArray(message.labelIds) ? message.labelIds : null,
   };
 }
@@ -222,7 +223,10 @@ function makeSnippet(mailOptions = {}) {
 
 function cleanCustomerReplyBody(input = "") {
   const text = String(input || "").replace(/\r\n?/g, "\n");
-  const lines = text.split("\n");
+  const sanitized = text
+    .replace(/<blockquote[\s\S]*?<\/blockquote>/gi, "\n")
+    .replace(/<div[^>]*class=["'][^"']*gmail_quote[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, "\n");
+  const lines = sanitized.split("\n");
   const stopPatterns = [
     /^On\s.+wrote:\s*$/i,
     /^.+wrote:\s*$/i,
@@ -526,7 +530,8 @@ async function saveTicketMessage(orderId, message = {}) {
   }
 
   const now = admin.firestore.FieldValue.serverTimestamp();
-  const direction = normalizeDirection(message.direction || "unknown");
+  const normalizedSeed = normalizeTicketMessage("tmp", message);
+  const direction = normalizeDirection(normalizedSeed.direction || message.direction || "unknown");
   const cleanedBody = message.cleanedEmailBody || cleanCustomerReplyBody(message.rawEmailBody || message.text || stripHtml(message.html || ""));
   const preview = direction === "received"
     ? (cleanedBody || message.subject || message.snippet || "")
@@ -665,6 +670,8 @@ async function sendTrackedEmail(mailOptions = {}, options = {}) {
   const gmailThreadId = options.gmailThreadId || ticketSnap.data()?.lastGmailThreadId || "";
 
   try {
+    const providedEmailType = String(options.emailType || "").trim().toLowerCase();
+    const resolvedEmailType = EMAIL_TYPE_LABELS[providedEmailType] ? providedEmailType : "sent_email";
     const result = await sendViaGmail(
       {
         ...mailOptions,
@@ -679,13 +686,16 @@ async function sendTrackedEmail(mailOptions = {}, options = {}) {
       to: normalizeAddress(mailOptions.to),
       customerEmail: toEmail,
       subject: mailOptions.subject || "",
+      emailType: resolvedEmailType,
+      emailTypeLabel: EMAIL_TYPE_LABELS[resolvedEmailType],
       html: mailOptions.html || "",
       text: mailOptions.text || stripHtml(mailOptions.html || ""),
-      rawAdminMessage: mailOptions.text || '',
-      renderedHtmlEmail: mailOptions.html || '',
+      rawAdminMessage: resolvedEmailType === "manual_admin" ? (options.rawAdminMessage || mailOptions.text || "") : null,
+      renderedHtmlEmail: mailOptions.html || "",
       snippet: makeSnippet(mailOptions),
       gmailMessageId: result.id || null,
       gmailThreadId: result.threadId || gmailThreadId || null,
+      rfcMessageId: result?.id ? `<${result.id}>` : null,
       sentAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     return { ...result, orderId, ticketTracked: true };
@@ -760,6 +770,7 @@ function parseGmailMessage(message = {}) {
     text: content.text.join("\n"),
     internalDate: message.internalDate,
     labelIds: Array.isArray(message.labelIds) ? message.labelIds : [],
+    headers,
   };
 }
 
@@ -779,6 +790,13 @@ async function resolveTicketForIncoming(parsed = {}) {
       return normalizeOrderId(mapped.data().orderId);
     }
   }
+
+  const customOrderId = normalizeOrderId(getHeader(parsed.headers || [], "X-Order-ID"));
+  if (customOrderId) return customOrderId;
+  const customTicketId = normalizeOrderId(getHeader(parsed.headers || [], "X-Ticket-ID"));
+  if (customTicketId) return customTicketId;
+  const customAppThreadId = normalizeOrderId(getHeader(parsed.headers || [], "X-App-Thread-ID"));
+  if (customAppThreadId) return customAppThreadId;
 
   const replyHeaders = [parsed.inReplyTo, parsed.references]
     .filter(Boolean)
@@ -1075,6 +1093,84 @@ async function syncGmail({ maxResults = 50, query = "" } = {}) {
   return result;
 }
 
+async function syncTicketThreads(orderId, { debug = false } = {}) {
+  const normalizedOrderId = normalizeOrderId(orderId);
+  if (!normalizedOrderId) return { ok: false, reason: "invalid_order_id", imported: 0, skipped: 0 };
+  const ticketSnap = await ticketsCollection().doc(normalizedOrderId).get();
+  if (!ticketSnap.exists) {
+    return { ok: false, reason: "ticket_not_found", imported: 0, skipped: 0 };
+  }
+
+  const ticket = ticketSnap.data() || {};
+  const ids = new Set();
+  if (ticket.lastGmailThreadId) ids.add(String(ticket.lastGmailThreadId));
+  const mappedSnap = await threadMapCollection().where("orderId", "==", normalizedOrderId).get();
+  mappedSnap.docs.forEach((doc) => {
+    const tid = String(doc.data()?.gmailThreadId || "").trim();
+    if (tid) ids.add(tid);
+  });
+  const gmailThreadIds = Array.from(ids).filter(Boolean);
+  if (debug) {
+    console.log("[EmailSync] orderId", normalizedOrderId);
+    console.log("[EmailSync] ticketId", normalizedOrderId);
+    console.log("[EmailSync] tracked threadIds", gmailThreadIds);
+  }
+  if (!gmailThreadIds.length) {
+    if (debug) console.log("[EmailSync] no threadIds found");
+    return { ok: true, imported: 0, skipped: 0, reason: "no_thread_ids" };
+  }
+
+  const result = { ok: true, imported: 0, skipped: 0, failed: 0 };
+  for (const gmailThreadId of gmailThreadIds) {
+    try {
+      const thread = await gmailRequest("get", `/threads/${encodeURIComponent(gmailThreadId)}`, null, {
+        params: { format: "full" },
+      });
+      const messages = Array.isArray(thread.messages) ? thread.messages : [];
+      if (debug) console.log("[EmailSync] fetched Gmail thread", gmailThreadId, "messages:", messages.length);
+      if (!messages.length && debug) console.log("[EmailSync] no new messages in Gmail thread");
+      for (const full of messages) {
+        const messageId = String(full.id || "").trim();
+        if (!messageId) continue;
+        const existing = await messageIndexCollection().doc(safeDocId(messageId)).get();
+        const alreadyImported = existing.exists;
+        const parsed = parseGmailMessage(full);
+        const direction = detectMessageDirection(parsed);
+        if (debug) {
+          console.log("[EmailSync] message", {
+            gmailMessageId: parsed.gmailMessageId || null,
+            gmailThreadId: parsed.gmailThreadId || null,
+            fromEmail: extractEmailAddress(parsed.from) || null,
+            toEmail: extractEmailAddress(parsed.to) || null,
+            subject: parsed.subject || null,
+            labelIds: parsed.labelIds || [],
+            direction,
+            alreadyImported,
+          });
+        }
+        if (alreadyImported) {
+          result.skipped += 1;
+          if (debug) console.log("[EmailSync] message already imported");
+          continue;
+        }
+        const imported = await importParsedGmailMessage(full);
+        if (imported?.imported) result.imported += 1;
+        else result.skipped += 1;
+      }
+    } catch (error) {
+      result.failed += 1;
+      if (debug) console.log("[EmailSync] Gmail API error", error?.message || error);
+      console.error("Failed to sync Gmail thread:", gmailThreadId, error?.message || error);
+      await configRef().set({
+        status: "needs_reconnect",
+        lastError: error?.message || String(error),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true }).catch(() => {});
+    }
+  }
+  return result;
+}
+
 async function getTicket(orderId, { create = false } = {}) {
   const normalizedOrderId = normalizeOrderId(orderId);
   if (!normalizedOrderId) return null;
@@ -1096,23 +1192,22 @@ async function getTicket(orderId, { create = false } = {}) {
       .map((doc) => normalizeTicketMessage(doc.id, doc.data() || {}))
       .sort((a, b) => String(a.timestamp || "").localeCompare(String(b.timestamp || ""))),
   };
-  ticket.messages.forEach((msg) => {
-    console.log("[EmailTicketNormalized]", JSON.stringify({
-      orderId: normalizedOrderId,
-      id: msg.id || null,
-      direction: msg.direction || null,
-      fromEmail: msg.fromEmail || null,
-      toEmail: msg.toEmail || null,
-      subject: msg.subject || null,
-      emailType: msg.emailType || null,
-      emailTypeLabel: msg.emailTypeLabel || null,
-      timestamp: msg.timestamp || null,
-      gmailMessageId: msg.gmailMessageId || null,
-      gmailThreadId: msg.gmailThreadId || null,
-      labelIds: msg.labelIds || null,
-    }));
-  });
   if (normalizedOrderId === "SHC-23471") {
+    ticket.messages.forEach((msg) => {
+      console.log("[EmailTicketNormalized SHC-23471]", JSON.stringify({
+        id: msg.id || null,
+        direction: msg.direction || null,
+        fromEmail: msg.fromEmail || null,
+        toEmail: msg.toEmail || null,
+        subject: msg.subject || null,
+        emailType: msg.emailType || null,
+        emailTypeLabel: msg.emailTypeLabel || null,
+        timestamp: msg.timestamp || null,
+        gmailMessageId: msg.gmailMessageId || null,
+        gmailThreadId: msg.gmailThreadId || null,
+        labelIds: msg.labelIds || null,
+      }));
+    });
     const target = ticket.messages.filter((msg) =>
       String(msg.subject || "").includes("Order #SHC-23471 Received — Your USPS Shipping Label Inside")
     );
@@ -1168,5 +1263,6 @@ module.exports = {
   markTicketRead,
   normalizeOrderId,
   sendTrackedEmail,
+  syncTicketThreads,
   syncGmail,
 };

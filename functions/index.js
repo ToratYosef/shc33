@@ -40,8 +40,10 @@ const {
   getTicket,
   listInbox,
   markTicketRead,
+  normalizeOrderId,
   sendTrackedEmail,
   syncGmail,
+  syncTicketThreads,
 } = require('./services/gmailTickets');
 const { FROM_ADDRESS, renderAdminEmailTemplate } = require('./helpers/adminEmailTemplate');
 
@@ -1133,11 +1135,29 @@ app.get('/orders/:id/email-ticket', async (req, res) => {
   if (!authResult) return;
   try {
     const orderId = String(req.params.id || '').trim();
+    const shouldRefresh = ['1', 'true', 'yes'].includes(String(req.query?.refresh || '').toLowerCase());
+    if (shouldRefresh) {
+      await syncTicketThreads(orderId, { debug: normalizeOrderId(orderId) === 'SHC-23459' });
+    }
     const ticket = await getTicket(orderId);
     res.json({ ok: true, ticket });
   } catch (error) {
     console.error('Failed to load order email ticket:', error);
     res.status(500).json({ error: error?.message || 'Failed to load ticket' });
+  }
+});
+
+app.post('/orders/:id/email-ticket/refresh', async (req, res) => {
+  const authResult = await requireAdminHttp(req, res);
+  if (!authResult) return;
+  try {
+    const orderId = String(req.params.id || '').trim();
+    const syncResult = await syncTicketThreads(orderId, { debug: normalizeOrderId(orderId) === 'SHC-23459' });
+    const ticket = await getTicket(orderId);
+    res.json({ ok: true, syncResult, ticket });
+  } catch (error) {
+    console.error('Failed to refresh order email ticket:', error);
+    res.status(500).json({ error: error?.message || 'Failed to refresh ticket' });
   }
 });
 
