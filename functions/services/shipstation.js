@@ -1,25 +1,13 @@
 const axios = require("axios");
-const functions = require("firebase-functions");
-
 let cachedCredentials;
-
-function readShipStationConfig() {
-    try {
-        const config = functions.config?.() || functions.config();
-        return config && typeof config === 'object' ? config.shipstation || {} : {};
-    } catch (error) {
-        return {};
-    }
-}
 
 function getShipStationCredentials() {
     if (cachedCredentials !== undefined) {
         return cachedCredentials;
     }
 
-    const config = readShipStationConfig();
-    const key = process.env.SHIPSTATION_KEY || config?.key || null;
-    const secret = process.env.SHIPSTATION_SECRET || config?.secret || null;
+    const key = process.env.SHIPSTATION_KEY || null;
+    const secret = process.env.SHIPSTATION_SECRET || null;
 
     if (key && secret) {
         cachedCredentials = { key, secret };
