@@ -158,7 +158,14 @@ function normalizeDirection(direction = "") {
 }
 
 function normalizeTicketMessage(id, message = {}) {
-  const direction = normalizeDirection(message.direction);
+  let direction = normalizeDirection(message.direction);
+  if (direction === "unknown") {
+    direction = detectMessageDirection({
+      from: message.from || message.fromEmail || "",
+      to: message.to || message.toEmail || "",
+      labelIds: message.labelIds || [],
+    });
+  }
   const emailType = direction === "sent" ? inferEmailType(message) : null;
   const emailTypeLabel = direction === "sent" ? (EMAIL_TYPE_LABELS[emailType] || "Sent email") : null;
   const fromRaw = message.from || message.fromEmail || "";
@@ -574,6 +581,20 @@ async function saveTicketMessage(orderId, message = {}) {
       { merge: true }
     );
   }
+  if (message.rfcMessageId) {
+    await messageIndexCollection().doc(safeDocId(message.rfcMessageId)).set(
+      {
+        rfcMessageId: message.rfcMessageId,
+        gmailMessageId: message.gmailMessageId || null,
+        gmailThreadId: message.gmailThreadId || null,
+        orderId,
+        ticketId: orderId,
+        direction,
+        importedAt: now,
+      },
+      { merge: true }
+    );
+  }
   return messageRef;
 }
 
@@ -717,6 +738,7 @@ function parseGmailMessage(message = {}) {
     date: getHeader(headers, "Date"),
     inReplyTo: getHeader(headers, "In-Reply-To"),
     references: getHeader(headers, "References"),
+    rfcMessageId: getHeader(headers, "Message-ID"),
     shcOrderId: normalizeOrderId(getHeader(headers, "X-SHC-Order-ID")),
     snippet: message.snippet || "",
     html: content.html.join("\n"),
@@ -742,6 +764,24 @@ async function resolveTicketForIncoming(parsed = {}) {
       return normalizeOrderId(mapped.data().orderId);
     }
   }
+
+  const replyHeaders = [parsed.inReplyTo, parsed.references]
+    .filter(Boolean)
+    .join(" ")
+    .match(/<[^>]+>/g) || [];
+  for (const headerId of replyHeaders) {
+    const indexed = await messageIndexCollection().doc(safeDocId(headerId)).get();
+    if (indexed.exists && indexed.data()?.orderId) {
+      return normalizeOrderId(indexed.data().orderId);
+    }
+  }
+
+  const headerOrderId = normalizeOrderId(parsed.shcOrderId || "");
+  if (headerOrderId) {
+    const orderSnap = await db.collection("orders").doc(headerOrderId).get();
+    if (orderSnap.exists) return headerOrderId;
+  }
+
   const fromHeader = [parsed.subject, parsed.shcOrderId, parsed.text, parsed.html].join(" ");
   const orderId = normalizeOrderId(fromHeader);
   if (orderId) {
@@ -779,6 +819,8 @@ async function importGmailMessage(messageId) {
     : admin.firestore.FieldValue.serverTimestamp();
 
   if (orderId) {
+    const rawEmailBody = parsed.text || stripHtml(parsed.html);
+    const cleanedEmailBody = cleanCustomerReplyBody(rawEmailBody);
     await saveTicketMessage(orderId, {
       direction: detectedDirection,
       fromName: String(parsed.from || "").split("<")[0].replace(/\"/g, "").trim() || null,
@@ -790,14 +832,15 @@ async function importGmailMessage(messageId) {
       html: parsed.html,
       text: parsed.text,
       snippet: parsed.snippet || parsed.text || stripHtml(parsed.html),
-      rawEmailBody: parsed.text || stripHtml(parsed.html),
-      cleanedEmailBody: cleanCustomerReplyBody(parsed.text || stripHtml(parsed.html)),
+      rawEmailBody,
+      cleanedEmailBody,
       gmailMessageId: parsed.gmailMessageId,
       gmailThreadId: parsed.gmailThreadId,
       inReplyTo: parsed.inReplyTo,
       references: parsed.references,
       receivedAt,
       read: detectedDirection === "received" ? false : true,
+      labelIds: parsed.labelIds || [],
     });
     return { imported: true, orderId };
   }
@@ -876,6 +919,8 @@ async function importParsedGmailMessage(full) {
     : admin.firestore.FieldValue.serverTimestamp();
 
   if (orderId) {
+    const rawEmailBody = parsed.text || stripHtml(parsed.html);
+    const cleanedEmailBody = cleanCustomerReplyBody(rawEmailBody);
     await saveTicketMessage(orderId, {
       direction: detectedDirection,
       fromName: String(parsed.from || "").split("<")[0].replace(/\"/g, "").trim() || null,
@@ -887,14 +932,15 @@ async function importParsedGmailMessage(full) {
       html: parsed.html,
       text: parsed.text,
       snippet: parsed.snippet || parsed.text || stripHtml(parsed.html),
-      rawEmailBody: parsed.text || stripHtml(parsed.html),
-      cleanedEmailBody: cleanCustomerReplyBody(parsed.text || stripHtml(parsed.html)),
+      rawEmailBody,
+      cleanedEmailBody,
       gmailMessageId: parsed.gmailMessageId,
       gmailThreadId: parsed.gmailThreadId,
       inReplyTo: parsed.inReplyTo,
       references: parsed.references,
       receivedAt,
       read: detectedDirection === "received" ? false : true,
+      labelIds: parsed.labelIds || [],
     });
     return { imported: true, orderId };
   }
