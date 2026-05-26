@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const functions = require('firebase-functions/v1');
 const { admin, initFirebaseAdmin } = require('../helpers/firebaseAdmin');
 const axios = require('axios');
 const { URLSearchParams } = require('url');
@@ -43,22 +42,8 @@ function initializeStripe() {
 }
 
 
-function readConfigValue(path, fallback = null) {
-    try {
-        return path.split('.').reduce((current, key) => {
-            if (current && Object.prototype.hasOwnProperty.call(current, key)) {
-                return current[key];
-            }
-            return undefined;
-        }, functions.config()) ?? fallback;
-    } catch (error) {
-        return fallback;
-    }
-}
-
 function getStripeSecretKey() {
     return (
-        readConfigValue('stripe.secret') ||
         process.env.STRIPE_SECRET_KEY ||
         process.env.STRIPE_SECRET
     );
@@ -66,7 +51,6 @@ function getStripeSecretKey() {
 
 function getStripePublishableKey() {
     return (
-        readConfigValue('stripe.publishable') ||
         process.env.STRIPE_PUBLISHABLE_KEY ||
         process.env.STRIPE_PUBLIC_KEY
     );
@@ -76,21 +60,19 @@ function getStripeWebhookSecret() {
     // Fetches the Stripe Webhook Secret from environment/config
     // The user MUST set this in their Firebase Environment config or .env file
     return (
-        readConfigValue('stripe.webhook_secret') ||
         process.env.STRIPE_WEBHOOK_SECRET
     );
 }
 
 function getShipEngineKey() {
     return (
-        readConfigValue('shipengine.key') ||
+        process.env.SHIPENGINE_API_KEY ||
         process.env.SHIPENGINE_KEY_TEST
     );
 }
 
 function getShipEngineCarrierCode() {
     return (
-        readConfigValue('shipengine.sandbox_carrier_code') ||
         process.env.SHIPENGINE_SANDBOX_CARRIER_CODE ||
         DEFAULT_CARRIER_CODE
     );
@@ -98,17 +80,12 @@ function getShipEngineCarrierCode() {
 
 function getShipEngineServiceCode() {
     return (
-        readConfigValue('shipengine.sandbox_service_code') ||
         process.env.SHIPENGINE_SANDBOX_SERVICE_CODE ||
         null
     );
 }
 
 function getShipFromAddress() {
-    const configured = readConfigValue('shipengine.from');
-    if (configured && typeof configured === 'object') {
-        return configured;
-    }
     return {
         name: process.env.SHIPENGINE_FROM_NAME || 'SecondHandCell Warehouse',
         phone: process.env.SHIPENGINE_FROM_PHONE || '2015551234',
