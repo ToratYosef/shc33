@@ -43,6 +43,7 @@ const {
   sendTrackedEmail,
   syncGmail,
 } = require('./services/gmailTickets');
+const { FROM_ADDRESS, renderAdminEmailTemplate } = require('./helpers/adminEmailTemplate');
 
 initFirebaseAdmin();
 const db = admin.firestore();
@@ -1125,6 +1126,28 @@ app.get('/orders/:id/email-ticket', async (req, res) => {
   }
 });
 
+app.post('/orders/:id/email-ticket/preview', async (req, res) => {
+  const authResult = await requireAdminHttp(req, res);
+  if (!authResult) return;
+  try {
+    const orderId = String(req.params.id || '').trim();
+    const orderSnap = await ordersCollection.doc(orderId).get();
+    const order = orderSnap.exists ? { id: orderSnap.id, ...orderSnap.data() } : { id: orderId };
+    const to = String(req.body?.customerEmail || order?.shippingInfo?.email || order?.customerEmail || order?.email || '').trim();
+    const customerName = String(req.body?.customerName || order?.shippingInfo?.fullName || order?.customerName || '').trim();
+    const subject = String(req.body?.subject || `Order ${orderId}`).trim();
+    const rawAdminMessage = String(req.body?.rawAdminMessage || req.body?.message || '').trim();
+    if (!subject || !rawAdminMessage) {
+      return res.status(400).json({ error: 'Subject and rawAdminMessage are required.' });
+    }
+    const renderedHtmlEmail = renderAdminEmailTemplate({ emailTitle: subject, customerName, rawAdminMessage, orderId });
+    res.json({ ok: true, subject, to, from: FROM_ADDRESS, renderedHtmlEmail });
+  } catch (error) {
+    console.error('Failed to preview ticket email:', error);
+    res.status(500).json({ error: error?.message || 'Failed to preview email' });
+  }
+});
+
 app.post('/orders/:id/email-ticket/send', async (req, res) => {
   const authResult = await requireAdminHttp(req, res);
   if (!authResult) return;
@@ -1134,20 +1157,17 @@ app.post('/orders/:id/email-ticket/send', async (req, res) => {
     const order = orderSnap.exists ? { id: orderSnap.id, ...orderSnap.data() } : { id: orderId };
     const to = String(req.body?.to || order?.shippingInfo?.email || order?.customerEmail || order?.email || '').trim();
     const subject = String(req.body?.subject || `Order ${orderId}`).trim();
-    const message = String(req.body?.message || '').trim();
-    if (!to || !subject || !message) {
-      return res.status(400).json({ error: 'To, subject, and message are required.' });
+    const rawAdminMessage = String(req.body?.rawAdminMessage || req.body?.message || '').trim();
+    if (!to || !subject || !rawAdminMessage) {
+      return res.status(400).json({ error: 'To, subject, and rawAdminMessage are required.' });
     }
-    const html = `
-      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111827;font-size:15px;line-height:24px;">
-        ${message.split(/\n{2,}/).map((paragraph) => `<p>${paragraph.split(/\n/).map((line) => String(line).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]))).join('<br>')}</p>`).join('')}
-      </div>
-    `;
+    const customerName = String(req.body?.customerName || order?.shippingInfo?.fullName || order?.customerName || '').trim();
+    const renderedHtmlEmail = renderAdminEmailTemplate({ emailTitle: subject, customerName, rawAdminMessage, orderId });
     const result = await sendTrackedEmail({
       to,
       subject,
-      text: message,
-      html,
+      text: rawAdminMessage,
+      html: renderedHtmlEmail,
       orderId,
       headers: { 'X-SHC-Order-ID': orderId },
     }, { orderId, fallbackTransporter, forceTicket: true });
