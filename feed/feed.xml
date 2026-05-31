@@ -21,8 +21,8 @@
         <tmobile>
           <flawless>147</flawless>
           <good>147</good>
-          <fair>96</fair>
-          <broken>85</broken>
+          <fair>99</fair>
+          <broken>88</broken>
         </tmobile>
         <unlocked>
           <flawless>165</flawless>
@@ -43,21 +43,21 @@
         </att>
         <verizon>
           <flawless>176</flawless>
-          <good>174</good>
-          <fair>112</fair>
-          <broken>99</broken>
+          <good>176</good>
+          <fair>116</fair>
+          <broken>104</broken>
         </verizon>
         <tmobile>
           <flawless>176</flawless>
-          <good>171</good>
-          <fair>110</fair>
-          <broken>97</broken>
+          <good>176</good>
+          <fair>114</fair>
+          <broken>102</broken>
         </tmobile>
         <unlocked>
           <flawless>195</flawless>
           <good>195</good>
           <fair>152</fair>
-          <broken>116</broken>
+          <broken>117</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -78,9 +78,9 @@
         </verizon>
         <tmobile>
           <flawless>195</flawless>
-          <good>191</good>
-          <fair>122</fair>
-          <broken>110</broken>
+          <good>195</good>
+          <fair>126</fair>
+          <broken>114</broken>
         </tmobile>
         <unlocked>
           <flawless>213</flawless>
@@ -135,13 +135,13 @@
           <flawless>202</flawless>
           <good>202</good>
           <fair>142</fair>
-          <broken>99</broken>
+          <broken>102</broken>
         </att>
         <verizon>
           <flawless>202</flawless>
           <good>202</good>
           <fair>137</fair>
-          <broken>95</broken>
+          <broken>99</broken>
         </verizon>
         <tmobile>
           <flawless>202</flawless>
@@ -164,7 +164,7 @@
           <flawless>231</flawless>
           <good>231</good>
           <fair>172</fair>
-          <broken>115</broken>
+          <broken>118</broken>
         </att>
         <verizon>
           <flawless>231</flawless>
@@ -193,7 +193,7 @@
           <flawless>246</flawless>
           <good>246</good>
           <fair>197</fair>
-          <broken>126</broken>
+          <broken>129</broken>
         </att>
         <verizon>
           <flawless>246</flawless>
@@ -234,14 +234,14 @@
           <broken>205</broken>
         </att>
         <verizon>
-          <flawless>349</flawless>
-          <good>328</good>
+          <flawless>350</flawless>
+          <good>326</good>
           <fair>194</fair>
-          <broken>135</broken>
+          <broken>136</broken>
         </verizon>
         <tmobile>
           <flawless>339</flawless>
-          <good>286</good>
+          <good>284</good>
           <fair>214</fair>
           <broken>120</broken>
         </tmobile>
@@ -264,13 +264,13 @@
         </att>
         <verizon>
           <flawless>252</flawless>
-          <good>238</good>
+          <good>236</good>
           <fair>151</fair>
           <broken>100</broken>
         </verizon>
         <tmobile>
           <flawless>235</flawless>
-          <good>223</good>
+          <good>203.5</good>
           <fair>144</fair>
           <broken>94</broken>
         </tmobile>
@@ -295,11 +295,11 @@
           <flawless>281</flawless>
           <good>281</good>
           <fair>169</fair>
-          <broken>121</broken>
+          <broken>122</broken>
         </verizon>
         <tmobile>
           <flawless>280</flawless>
-          <good>248</good>
+          <good>246</good>
           <fair>184</fair>
           <broken>104</broken>
         </tmobile>
@@ -321,10 +321,10 @@
           <broken>185</broken>
         </att>
         <verizon>
-          <flawless>334</flawless>
-          <good>315</good>
+          <flawless>335</flawless>
+          <good>313</good>
           <fair>194</fair>
-          <broken>130</broken>
+          <broken>131</broken>
         </verizon>
         <tmobile>
           <flawless>290</flawless>
@@ -355,26 +355,26 @@
         <att>
           <flawless>171</flawless>
           <good>171</good>
-          <fair>125</fair>
-          <broken>94</broken>
+          <fair>127</fair>
+          <broken>93</broken>
         </att>
         <verizon>
           <flawless>171</flawless>
           <good>171</good>
-          <fair>122</fair>
-          <broken>90</broken>
+          <fair>123</fair>
+          <broken>92</broken>
         </verizon>
         <tmobile>
           <flawless>171</flawless>
           <good>171</good>
-          <fair>121</fair>
-          <broken>88</broken>
+          <fair>123</fair>
+          <broken>90</broken>
         </tmobile>
         <unlocked>
           <flawless>190</flawless>
           <good>190</good>
-          <fair>139</fair>
-          <broken>105</broken>
+          <fair>141</fair>
+          <broken>106</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -384,26 +384,26 @@
         <att>
           <flawless>209</flawless>
           <good>209</good>
-          <fair>146</fair>
-          <broken>108</broken>
+          <fair>147</fair>
+          <broken>109</broken>
         </att>
         <verizon>
           <flawless>209</flawless>
           <good>209</good>
-          <fair>146</fair>
-          <broken>108</broken>
+          <fair>147</fair>
+          <broken>109</broken>
         </verizon>
         <tmobile>
           <flawless>209</flawless>
           <good>209</good>
-          <fair>140</fair>
-          <broken>104</broken>
+          <fair>142</fair>
+          <broken>105</broken>
         </tmobile>
         <unlocked>
           <flawless>227</flawless>
           <good>227</good>
           <fair>168</fair>
-          <broken>126</broken>
+          <broken>127</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -414,19 +414,19 @@
           <flawless>231</flawless>
           <good>231</good>
           <fair>191</fair>
-          <broken>133</broken>
+          <broken>134</broken>
         </att>
         <verizon>
           <flawless>231</flawless>
           <good>231</good>
           <fair>176</fair>
-          <broken>132</broken>
+          <broken>133</broken>
         </verizon>
         <tmobile>
           <flawless>231</flawless>
           <good>231</good>
           <fair>169</fair>
-          <broken>125</broken>
+          <broken>126</broken>
         </tmobile>
         <unlocked>
           <flawless>249</flawless>
@@ -575,7 +575,7 @@
       <priceValue>
         <att>
           <flawless>227</flawless>
-          <good>205</good>
+          <good>203.5</good>
           <fair>146</fair>
           <broken>121</broken>
         </att>
@@ -588,13 +588,13 @@
         <tmobile>
           <flawless>232</flawless>
           <good>203.5</good>
-          <fair>133</fair>
+          <fair>128</fair>
           <broken>111</broken>
         </tmobile>
         <unlocked>
           <flawless>252</flawless>
           <good>252</good>
-          <fair>200</fair>
+          <fair>205</fair>
           <broken>146</broken>
         </unlocked>
       </priceValue>
@@ -623,7 +623,7 @@
         <unlocked>
           <flawless>275</flawless>
           <good>275</good>
-          <fair>227</fair>
+          <fair>228</fair>
           <broken>164</broken>
         </unlocked>
       </priceValue>
@@ -671,20 +671,20 @@
       <priceValue>
         <att>
           <flawless>375</flawless>
-          <good>328</good>
-          <fair>261</fair>
+          <good>326</good>
+          <fair>259</fair>
           <broken>244</broken>
         </att>
         <verizon>
           <flawless>342</flawless>
-          <good>309</good>
+          <good>307</good>
           <fair>214</fair>
           <broken>189</broken>
         </verizon>
         <tmobile>
           <flawless>390</flawless>
-          <good>338</good>
-          <fair>276</fair>
+          <good>336</good>
+          <fair>274</fair>
           <broken>179</broken>
         </tmobile>
         <unlocked>
@@ -700,19 +700,19 @@
       <priceValue>
         <att>
           <flawless>295</flawless>
-          <good>263</good>
+          <good>248</good>
           <fair>184</fair>
           <broken>129</broken>
         </att>
         <verizon>
           <flawless>252</flawless>
-          <good>235</good>
+          <good>226</good>
           <fair>144</fair>
           <broken>144</broken>
         </verizon>
         <tmobile>
           <flawless>307</flawless>
-          <good>263</good>
+          <good>256</good>
           <fair>197</fair>
           <broken>124</broken>
         </tmobile>
@@ -720,7 +720,7 @@
           <flawless>327</flawless>
           <good>327</good>
           <fair>276</fair>
-          <broken>184</broken>
+          <broken>185</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -729,19 +729,19 @@
       <priceValue>
         <att>
           <flawless>315</flawless>
-          <good>283</good>
+          <good>270</good>
           <fair>204</fair>
           <broken>166</broken>
         </att>
         <verizon>
           <flawless>300</flawless>
-          <good>278</good>
+          <good>258</good>
           <fair>157</fair>
           <broken>154</broken>
         </verizon>
         <tmobile>
           <flawless>330</flawless>
-          <good>283</good>
+          <good>276</good>
           <fair>217</fair>
           <broken>134</broken>
         </tmobile>
@@ -758,20 +758,20 @@
       <priceValue>
         <att>
           <flawless>345</flawless>
-          <good>293</good>
+          <good>291</good>
           <fair>232</fair>
           <broken>206</broken>
         </att>
         <verizon>
           <flawless>320</flawless>
-          <good>290</good>
+          <good>286.5</good>
           <fair>184</fair>
           <broken>169</broken>
         </verizon>
         <tmobile>
           <flawless>360</flawless>
-          <good>308</good>
-          <fair>246</fair>
+          <good>306</good>
+          <fair>245</fair>
           <broken>159</broken>
         </tmobile>
         <unlocked>
@@ -810,7 +810,7 @@
           <flawless>235</flawless>
           <good>235</good>
           <fair>163</fair>
-          <broken>121</broken>
+          <broken>120</broken>
         </tmobile>
         <unlocked>
           <flawless>254</flawless>
@@ -827,7 +827,7 @@
           <flawless>283</flawless>
           <good>283</good>
           <fair>192</fair>
-          <broken>143</broken>
+          <broken>142</broken>
         </att>
         <verizon>
           <flawless>283</flawless>
@@ -892,26 +892,26 @@
       <priceValue>
         <att>
           <flawless>252</flawless>
-          <good>233</good>
+          <good>224</good>
           <fair>164</fair>
           <broken>131</broken>
         </att>
         <verizon>
           <flawless>252</flawless>
-          <good>233</good>
+          <good>224</good>
           <fair>154</fair>
           <broken>136</broken>
         </verizon>
         <tmobile>
           <flawless>252</flawless>
-          <good>233</good>
+          <good>224</good>
           <fair>164</fair>
           <broken>114</broken>
         </tmobile>
         <unlocked>
           <flawless>279</flawless>
           <good>279</good>
-          <fair>249</fair>
+          <fair>247</fair>
           <broken>159</broken>
         </unlocked>
       </priceValue>
@@ -921,26 +921,26 @@
       <priceValue>
         <att>
           <flawless>276</flawless>
-          <good>248</good>
+          <good>244</good>
           <fair>164</fair>
           <broken>141</broken>
         </att>
         <verizon>
           <flawless>302</flawless>
-          <good>263</good>
+          <good>258</good>
           <fair>163</fair>
           <broken>146</broken>
         </verizon>
         <tmobile>
           <flawless>275</flawless>
-          <good>248</good>
+          <good>244</good>
           <fair>164</fair>
           <broken>124</broken>
         </tmobile>
         <unlocked>
           <flawless>322</flawless>
           <good>322</good>
-          <fair>274</fair>
+          <fair>272</fair>
           <broken>174</broken>
         </unlocked>
       </priceValue>
@@ -950,7 +950,7 @@
       <priceValue>
         <att>
           <flawless>339</flawless>
-          <good>338</good>
+          <good>336</good>
           <fair>216</fair>
           <broken>151</broken>
         </att>
@@ -962,7 +962,7 @@
         </verizon>
         <tmobile>
           <flawless>315</flawless>
-          <good>271</good>
+          <good>269</good>
           <fair>185</fair>
           <broken>134</broken>
         </tmobile>
@@ -989,26 +989,26 @@
         <att>
           <flawless>399</flawless>
           <good>399</good>
-          <fair>290</fair>
-          <broken>230</broken>
+          <fair>296</fair>
+          <broken>224</broken>
         </att>
         <verizon>
           <flawless>399</flawless>
           <good>399</good>
-          <fair>284</fair>
-          <broken>272</broken>
+          <fair>290</fair>
+          <broken>220</broken>
         </verizon>
         <tmobile>
           <flawless>399</flawless>
           <good>399</good>
-          <fair>300</fair>
-          <broken>230</broken>
+          <fair>297</fair>
+          <broken>218</broken>
         </tmobile>
         <unlocked>
           <flawless>419</flawless>
           <good>419</good>
-          <fair>402</fair>
-          <broken>314</broken>
+          <fair>401</fair>
+          <broken>299</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -1018,26 +1018,26 @@
         <att>
           <flawless>299</flawless>
           <good>299</good>
-          <fair>217</fair>
+          <fair>220</fair>
           <broken>184</broken>
         </att>
         <verizon>
           <flawless>299</flawless>
           <good>299</good>
-          <fair>221</fair>
-          <broken>207</broken>
+          <fair>225</fair>
+          <broken>169</broken>
         </verizon>
         <tmobile>
           <flawless>299</flawless>
           <good>299</good>
-          <fair>219</fair>
-          <broken>164</broken>
+          <fair>223</fair>
+          <broken>168</broken>
         </tmobile>
         <unlocked>
           <flawless>319</flawless>
           <good>319</good>
-          <fair>284</fair>
-          <broken>227</broken>
+          <fair>282</fair>
+          <broken>202</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -1047,26 +1047,26 @@
         <att>
           <flawless>335</flawless>
           <good>335</good>
-          <fair>234</fair>
-          <broken>197</broken>
+          <fair>237</fair>
+          <broken>179</broken>
         </att>
         <verizon>
           <flawless>335</flawless>
           <good>335</good>
-          <fair>243</fair>
-          <broken>240</broken>
+          <fair>246</fair>
+          <broken>186</broken>
         </verizon>
         <tmobile>
           <flawless>335</flawless>
           <good>335</good>
-          <fair>243</fair>
-          <broken>182</broken>
+          <fair>246</fair>
+          <broken>186</broken>
         </tmobile>
         <unlocked>
           <flawless>355</flawless>
           <good>355</good>
-          <fair>332</fair>
-          <broken>248</broken>
+          <fair>331</fair>
+          <broken>232</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -1076,26 +1076,26 @@
         <att>
           <flawless>363</flawless>
           <good>363</good>
-          <fair>301</fair>
-          <broken>227</broken>
+          <fair>306</fair>
+          <broken>232</broken>
         </att>
         <verizon>
           <flawless>363</flawless>
           <good>363</good>
-          <fair>256</fair>
-          <broken>242</broken>
+          <fair>261</fair>
+          <broken>198</broken>
         </verizon>
         <tmobile>
           <flawless>363</flawless>
           <good>363</good>
-          <fair>346</fair>
-          <broken>192</broken>
+          <fair>260</fair>
+          <broken>196</broken>
         </tmobile>
         <unlocked>
           <flawless>383</flawless>
           <good>383</good>
-          <fair>362</fair>
-          <broken>281</broken>
+          <fair>361</fair>
+          <broken>269</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -1112,28 +1112,28 @@
       <storageSize>1TB</storageSize>
       <priceValue>
         <att>
-          <flawless>439</flawless>
-          <good>402</good>
-          <fair>351</fair>
-          <broken>280</broken>
+          <flawless>435</flawless>
+          <good>396</good>
+          <fair>349</fair>
+          <broken>265</broken>
         </att>
         <verizon>
-          <flawless>429</flawless>
-          <good>398</good>
-          <fair>321</fair>
-          <broken>322</broken>
+          <flawless>425</flawless>
+          <good>392</good>
+          <fair>274</fair>
+          <broken>266</broken>
         </verizon>
         <tmobile>
-          <flawless>454</flawless>
-          <good>421</good>
-          <fair>364</fair>
-          <broken>280</broken>
+          <flawless>450</flawless>
+          <good>411</good>
+          <fair>362</fair>
+          <broken>265</broken>
         </tmobile>
         <unlocked>
           <flawless>475</flawless>
           <good>475</good>
           <fair>458</fair>
-          <broken>371</broken>
+          <broken>356</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -1141,28 +1141,28 @@
       <storageSize>256GB</storageSize>
       <priceValue>
         <att>
-          <flawless>376</flawless>
-          <good>347</good>
-          <fair>273</fair>
-          <broken>217</broken>
+          <flawless>372</flawless>
+          <good>325</good>
+          <fair>270</fair>
+          <broken>199</broken>
         </att>
         <verizon>
-          <flawless>369</flawless>
-          <good>342</good>
-          <fair>256</fair>
-          <broken>252</broken>
+          <flawless>365</flawless>
+          <good>325</good>
+          <fair>214</fair>
+          <broken>209</broken>
         </verizon>
         <tmobile>
-          <flawless>376</flawless>
-          <good>359</good>
-          <fair>288</fair>
-          <broken>217</broken>
+          <flawless>372</flawless>
+          <good>334</good>
+          <fair>284</fair>
+          <broken>199</broken>
         </tmobile>
         <unlocked>
           <flawless>423</flawless>
           <good>423</good>
-          <fair>387</fair>
-          <broken>326</broken>
+          <fair>386</fair>
+          <broken>311</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -1170,28 +1170,28 @@
       <storageSize>512GB</storageSize>
       <priceValue>
         <att>
-          <flawless>394</flawless>
-          <good>387</good>
-          <fair>308</fair>
-          <broken>250</broken>
+          <flawless>390</flawless>
+          <good>359</good>
+          <fair>304</fair>
+          <broken>236</broken>
         </att>
         <verizon>
-          <flawless>391</flawless>
-          <good>367</good>
-          <fair>296</fair>
-          <broken>297</broken>
+          <flawless>387</flawless>
+          <good>345</good>
+          <fair>239</fair>
+          <broken>236</broken>
         </verizon>
         <tmobile>
-          <flawless>409</flawless>
-          <good>389</good>
-          <fair>321</fair>
-          <broken>258</broken>
+          <flawless>405</flawless>
+          <good>366</good>
+          <fair>319</fair>
+          <broken>235</broken>
         </tmobile>
         <unlocked>
           <flawless>438</flawless>
           <good>438</good>
-          <fair>420</fair>
-          <broken>361</broken>
+          <fair>421</fair>
+          <broken>346</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -1256,7 +1256,7 @@
         </tmobile>
         <unlocked>
           <flawless>464</flawless>
-          <good>460</good>
+          <good>464</good>
           <fair>373</fair>
           <broken>265</broken>
         </unlocked>
@@ -1557,7 +1557,7 @@
           <flawless>562</flawless>
           <good>502</good>
           <fair>427</fair>
-          <broken>305</broken>
+          <broken>315</broken>
         </att>
         <verizon>
           <flawless>542</flawless>
@@ -1622,7 +1622,7 @@
       <priceValue>
         <att>
           <flawless>65</flawless>
-          <good>50</good>
+          <good>49</good>
           <fair>35</fair>
           <broken>16</broken>
         </att>
@@ -1634,13 +1634,13 @@
         </verizon>
         <tmobile>
           <flawless>63</flawless>
-          <good>49</good>
+          <good>47</good>
           <fair>29</fair>
           <broken>16</broken>
         </tmobile>
         <unlocked>
-          <flawless>95</flawless>
-          <good>63</good>
+          <flawless>96</flawless>
+          <good>61</good>
           <fair>45</fair>
           <broken>20</broken>
         </unlocked>
@@ -1651,25 +1651,25 @@
       <priceValue>
         <att>
           <flawless>87</flawless>
-          <good>67</good>
+          <good>65</good>
           <fair>40</fair>
           <broken>21</broken>
         </att>
         <verizon>
           <flawless>87</flawless>
-          <good>72</good>
+          <good>70</good>
           <fair>38</fair>
           <broken>20</broken>
         </verizon>
         <tmobile>
           <flawless>74</flawless>
-          <good>55</good>
+          <good>53</good>
           <fair>34</fair>
           <broken>20</broken>
         </tmobile>
         <unlocked>
           <flawless>97</flawless>
-          <good>93</good>
+          <good>91</good>
           <fair>50</fair>
           <broken>23</broken>
         </unlocked>
@@ -1689,26 +1689,26 @@
       <priceValue>
         <att>
           <flawless>62</flawless>
-          <good>41</good>
-          <fair>28</fair>
+          <good>39</good>
+          <fair>26</fair>
           <broken>16</broken>
         </att>
         <verizon>
-          <flawless>59</flawless>
-          <good>41</good>
-          <fair>28</fair>
+          <flawless>57</flawless>
+          <good>39</good>
+          <fair>26</fair>
           <broken>16</broken>
         </verizon>
         <tmobile>
-          <flawless>59</flawless>
-          <good>41</good>
-          <fair>28</fair>
-          <broken>13</broken>
+          <flawless>57</flawless>
+          <good>39</good>
+          <fair>26</fair>
+          <broken>11</broken>
         </tmobile>
         <unlocked>
-          <flawless>69</flawless>
-          <good>60</good>
-          <fair>38</fair>
+          <flawless>67</flawless>
+          <good>58</good>
+          <fair>36</fair>
           <broken>16</broken>
         </unlocked>
       </priceValue>
@@ -1717,27 +1717,27 @@
       <storageSize>256GB</storageSize>
       <priceValue>
         <att>
-          <flawless>68</flawless>
-          <good>52</good>
-          <fair>38</fair>
+          <flawless>66</flawless>
+          <good>50</good>
+          <fair>36</fair>
           <broken>21</broken>
         </att>
         <verizon>
-          <flawless>64</flawless>
-          <good>54</good>
-          <fair>34</fair>
+          <flawless>62</flawless>
+          <good>52</good>
+          <fair>32</fair>
           <broken>21</broken>
         </verizon>
         <tmobile>
-          <flawless>68</flawless>
-          <good>49</good>
+          <flawless>66</flawless>
+          <good>47</good>
           <fair>35</fair>
           <broken>16</broken>
         </tmobile>
         <unlocked>
-          <flawless>83</flawless>
-          <good>74</good>
-          <fair>48</fair>
+          <flawless>81</flawless>
+          <good>72</good>
+          <fair>46</fair>
           <broken>21</broken>
         </unlocked>
       </priceValue>
@@ -1756,19 +1756,19 @@
       <priceValue>
         <att>
           <flawless>84</flawless>
-          <good>80</good>
+          <good>78</good>
           <fair>39</fair>
           <broken>22</broken>
         </att>
         <verizon>
           <flawless>72</flawless>
-          <good>59</good>
+          <good>57</good>
           <fair>32</fair>
           <broken>17</broken>
         </verizon>
         <tmobile>
           <flawless>75</flawless>
-          <good>58</good>
+          <good>56</good>
           <fair>39</fair>
           <broken>17</broken>
         </tmobile>
@@ -1785,25 +1785,25 @@
       <priceValue>
         <att>
           <flawless>102</flawless>
-          <good>92</good>
+          <good>90</good>
           <fair>49</fair>
           <broken>25</broken>
         </att>
         <verizon>
           <flawless>93</flawless>
-          <good>72</good>
+          <good>70</good>
           <fair>40</fair>
           <broken>22</broken>
         </verizon>
         <tmobile>
           <flawless>93</flawless>
-          <good>74</good>
+          <good>72</good>
           <fair>49</fair>
           <broken>21</broken>
         </tmobile>
         <unlocked>
           <flawless>120</flawless>
-          <good>96</good>
+          <good>94</good>
           <fair>64</fair>
           <broken>29</broken>
         </unlocked>
@@ -1825,25 +1825,25 @@
           <flawless>80</flawless>
           <good>77</good>
           <fair>51</fair>
-          <broken>31</broken>
+          <broken>27</broken>
         </att>
         <verizon>
           <flawless>80</flawless>
-          <good>72</good>
+          <good>70</good>
           <fair>52</fair>
-          <broken>25</broken>
+          <broken>22</broken>
         </verizon>
         <tmobile>
           <flawless>80</flawless>
-          <good>72</good>
+          <good>70</good>
           <fair>47</fair>
-          <broken>27</broken>
+          <broken>23</broken>
         </tmobile>
         <unlocked>
           <flawless>98</flawless>
-          <good>87</good>
+          <good>82</good>
           <fair>58</fair>
-          <broken>35</broken>
+          <broken>31</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -1854,25 +1854,25 @@
           <flawless>79</flawless>
           <good>79</good>
           <fair>52</fair>
-          <broken>33</broken>
+          <broken>32</broken>
         </att>
         <verizon>
           <flawless>79</flawless>
           <good>79</good>
           <fair>55</fair>
-          <broken>26</broken>
+          <broken>23</broken>
         </verizon>
         <tmobile>
           <flawless>79</flawless>
           <good>79</good>
           <fair>48</fair>
-          <broken>29</broken>
+          <broken>25</broken>
         </tmobile>
         <unlocked>
           <flawless>98</flawless>
           <good>98</good>
           <fair>66</fair>
-          <broken>37</broken>
+          <broken>33</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -1890,27 +1890,27 @@
       <priceValue>
         <att>
           <flawless>196</flawless>
-          <good>175</good>
+          <good>173</good>
           <fair>95</fair>
-          <broken>57</broken>
+          <broken>51</broken>
         </att>
         <verizon>
           <flawless>179</flawless>
-          <good>157</good>
+          <good>150</good>
           <fair>89</fair>
-          <broken>48</broken>
+          <broken>43</broken>
         </verizon>
         <tmobile>
           <flawless>171</flawless>
-          <good>154</good>
+          <good>152</good>
           <fair>89</fair>
-          <broken>49</broken>
+          <broken>43</broken>
         </tmobile>
         <unlocked>
           <flawless>255</flawless>
-          <good>235</good>
+          <good>233</good>
           <fair>124</fair>
-          <broken>61</broken>
+          <broken>55</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -1919,27 +1919,27 @@
       <priceValue>
         <att>
           <flawless>142</flawless>
-          <good>123</good>
+          <good>121</good>
           <fair>75</fair>
-          <broken>39</broken>
+          <broken>35</broken>
         </att>
         <verizon>
           <flawless>134</flawless>
-          <good>111</good>
+          <good>109</good>
           <fair>64</fair>
-          <broken>30</broken>
+          <broken>27</broken>
         </verizon>
         <tmobile>
           <flawless>130</flawless>
-          <good>104</good>
+          <good>102</good>
           <fair>71</fair>
           <broken>35</broken>
         </tmobile>
         <unlocked>
           <flawless>186</flawless>
-          <good>159</good>
+          <good>157</good>
           <fair>99</fair>
-          <broken>45</broken>
+          <broken>41</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -1948,27 +1948,27 @@
       <priceValue>
         <att>
           <flawless>161</flawless>
-          <good>142</good>
+          <good>140</good>
           <fair>84</fair>
-          <broken>47</broken>
+          <broken>43</broken>
         </att>
         <verizon>
           <flawless>143</flawless>
-          <good>121</good>
+          <good>119</good>
           <fair>64</fair>
-          <broken>31</broken>
+          <broken>28</broken>
         </verizon>
         <tmobile>
           <flawless>143</flawless>
-          <good>121</good>
+          <good>119</good>
           <fair>79</fair>
           <broken>35</broken>
         </tmobile>
         <unlocked>
           <flawless>201</flawless>
-          <good>186</good>
+          <good>184</good>
           <fair>114</fair>
-          <broken>53</broken>
+          <broken>47</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -1977,27 +1977,27 @@
       <priceValue>
         <att>
           <flawless>174</flawless>
-          <good>157</good>
+          <good>155</good>
           <fair>89</fair>
-          <broken>53</broken>
+          <broken>47</broken>
         </att>
         <verizon>
           <flawless>167</flawless>
-          <good>145</good>
+          <good>133</good>
           <fair>84</fair>
-          <broken>45</broken>
+          <broken>40</broken>
         </verizon>
         <tmobile>
           <flawless>150</flawless>
-          <good>131</good>
+          <good>129</good>
           <fair>84</fair>
-          <broken>41</broken>
+          <broken>37</broken>
         </tmobile>
         <unlocked>
           <flawless>213</flawless>
-          <good>193</good>
+          <good>191</good>
           <fair>119</fair>
-          <broken>55</broken>
+          <broken>49</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -2015,27 +2015,27 @@
       <priceValue>
         <att>
           <flawless>95</flawless>
-          <good>95</good>
+          <good>94</good>
           <fair>58</fair>
           <broken>35</broken>
         </att>
         <verizon>
           <flawless>95</flawless>
-          <good>95</good>
+          <good>94</good>
           <fair>49</fair>
-          <broken>29</broken>
+          <broken>27</broken>
         </verizon>
         <tmobile>
           <flawless>95</flawless>
-          <good>95</good>
+          <good>94</good>
           <fair>50</fair>
-          <broken>29</broken>
+          <broken>27</broken>
         </tmobile>
         <unlocked>
           <flawless>113</flawless>
-          <good>108</good>
+          <good>106</good>
           <fair>80</fair>
-          <broken>41</broken>
+          <broken>40</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -2044,27 +2044,27 @@
       <priceValue>
         <att>
           <flawless>114</flawless>
-          <good>104</good>
+          <good>102</good>
           <fair>64</fair>
           <broken>40</broken>
         </att>
         <verizon>
           <flawless>114</flawless>
-          <good>104</good>
+          <good>102</good>
           <fair>52</fair>
           <broken>34</broken>
         </verizon>
         <tmobile>
           <flawless>114</flawless>
-          <good>104</good>
+          <good>102</good>
           <fair>59</fair>
           <broken>34</broken>
         </tmobile>
         <unlocked>
           <flawless>132</flawless>
-          <good>120</good>
+          <good>118</good>
           <fair>92</fair>
-          <broken>47</broken>
+          <broken>45</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -2082,25 +2082,25 @@
       <priceValue>
         <att>
           <flawless>131</flawless>
-          <good>123</good>
+          <good>121</good>
           <fair>69</fair>
           <broken>41</broken>
         </att>
         <verizon>
           <flawless>131</flawless>
-          <good>123</good>
+          <good>121</good>
           <fair>69</fair>
           <broken>41</broken>
         </verizon>
         <tmobile>
           <flawless>116</flawless>
-          <good>95</good>
+          <good>93</good>
           <fair>69</fair>
           <broken>33</broken>
         </tmobile>
         <unlocked>
           <flawless>150</flawless>
-          <good>144</good>
+          <good>142</good>
           <fair>94</fair>
           <broken>53</broken>
         </unlocked>
@@ -2111,25 +2111,25 @@
       <priceValue>
         <att>
           <flawless>155</flawless>
-          <good>141</good>
+          <good>139</good>
           <fair>78</fair>
           <broken>46</broken>
         </att>
         <verizon>
           <flawless>155</flawless>
-          <good>145</good>
+          <good>143</good>
           <fair>73</fair>
           <broken>46</broken>
         </verizon>
         <tmobile>
           <flawless>136</flawless>
-          <good>116</good>
+          <good>114</good>
           <fair>74</fair>
           <broken>41</broken>
         </tmobile>
         <unlocked>
           <flawless>178</flawless>
-          <good>163</good>
+          <good>161</good>
           <fair>114</fair>
           <broken>59</broken>
         </unlocked>
@@ -2178,25 +2178,25 @@
       <priceValue>
         <att>
           <flawless>298</flawless>
-          <good>278</good>
+          <good>276</good>
           <fair>199</fair>
           <broken>71</broken>
         </att>
         <verizon>
           <flawless>271</flawless>
-          <good>242</good>
+          <good>235</good>
           <fair>139</fair>
           <broken>71</broken>
         </verizon>
         <tmobile>
           <flawless>298</flawless>
-          <good>277</good>
+          <good>275</good>
           <fair>199</fair>
           <broken>59</broken>
         </tmobile>
         <unlocked>
           <flawless>355</flawless>
-          <good>326</good>
+          <good>324</good>
           <fair>246</fair>
           <broken>85</broken>
         </unlocked>
@@ -2207,25 +2207,25 @@
       <priceValue>
         <att>
           <flawless>254</flawless>
-          <good>228</good>
+          <good>226</good>
           <fair>139</fair>
           <broken>71</broken>
         </att>
         <verizon>
           <flawless>215</flawless>
-          <good>213</good>
+          <good>174</good>
           <fair>119</fair>
           <broken>56</broken>
         </verizon>
         <tmobile>
           <flawless>235</flawless>
-          <good>208</good>
+          <good>198</good>
           <fair>139</fair>
           <broken>56</broken>
         </tmobile>
         <unlocked>
           <flawless>272</flawless>
-          <good>268</good>
+          <good>266</good>
           <fair>187</fair>
           <broken>71</broken>
         </unlocked>
@@ -2236,25 +2236,25 @@
       <priceValue>
         <att>
           <flawless>281</flawless>
-          <good>249</good>
+          <good>247</good>
           <fair>159</fair>
           <broken>76</broken>
         </att>
         <verizon>
           <flawless>256</flawless>
-          <good>225</good>
+          <good>213</good>
           <fair>129</fair>
           <broken>66</broken>
         </verizon>
         <tmobile>
           <flawless>255</flawless>
-          <good>228</good>
+          <good>226</good>
           <fair>159</fair>
           <broken>56</broken>
         </tmobile>
         <unlocked>
           <flawless>303</flawless>
-          <good>294</good>
+          <good>292</good>
           <fair>207</fair>
           <broken>79</broken>
         </unlocked>
@@ -2274,25 +2274,25 @@
       <priceValue>
         <att>
           <flawless>181</flawless>
-          <good>169</good>
+          <good>167</good>
           <fair>89</fair>
           <broken>96</broken>
         </att>
         <verizon>
           <flawless>181</flawless>
-          <good>168</good>
+          <good>166</good>
           <fair>89</fair>
           <broken>66</broken>
         </verizon>
         <tmobile>
           <flawless>165</flawless>
-          <good>147</good>
+          <good>145</good>
           <fair>89</fair>
           <broken>66</broken>
         </tmobile>
         <unlocked>
           <flawless>200</flawless>
-          <good>198</good>
+          <good>196</good>
           <fair>137</fair>
           <broken>114</broken>
         </unlocked>
@@ -2303,25 +2303,25 @@
       <priceValue>
         <att>
           <flawless>225</flawless>
-          <good>198</good>
+          <good>196</good>
           <fair>99</fair>
           <broken>101</broken>
         </att>
         <verizon>
           <flawless>225</flawless>
-          <good>191</good>
+          <good>189</good>
           <fair>94</fair>
           <broken>71</broken>
         </verizon>
         <tmobile>
           <flawless>187</flawless>
-          <good>167</good>
+          <good>165</good>
           <fair>99</fair>
           <broken>71</broken>
         </tmobile>
         <unlocked>
           <flawless>251</flawless>
-          <good>219</good>
+          <good>217</good>
           <fair>149</fair>
           <broken>121</broken>
         </unlocked>
@@ -2341,7 +2341,7 @@
       <priceValue>
         <att>
           <flawless>94</flawless>
-          <good>78</good>
+          <good>76</good>
           <fair>45</fair>
           <broken>26</broken>
         </att>
@@ -2353,13 +2353,13 @@
         </verizon>
         <tmobile>
           <flawless>86</flawless>
-          <good>78</good>
+          <good>76</good>
           <fair>39</fair>
           <broken>23</broken>
         </tmobile>
         <unlocked>
           <flawless>124</flawless>
-          <good>113</good>
+          <good>111</good>
           <fair>52</fair>
           <broken>31</broken>
         </unlocked>
@@ -2370,7 +2370,7 @@
       <priceValue>
         <att>
           <flawless>108</flawless>
-          <good>96</good>
+          <good>94</good>
           <fair>52</fair>
           <broken>31</broken>
         </att>
@@ -2382,13 +2382,13 @@
         </verizon>
         <tmobile>
           <flawless>108</flawless>
-          <good>96</good>
+          <good>94</good>
           <fair>45</fair>
           <broken>26</broken>
         </tmobile>
         <unlocked>
           <flawless>157</flawless>
-          <good>137</good>
+          <good>135</good>
           <fair>62</fair>
           <broken>37</broken>
         </unlocked>
@@ -2408,25 +2408,25 @@
       <priceValue>
         <att>
           <flawless>191</flawless>
-          <good>182</good>
+          <good>180</good>
           <fair>103</fair>
           <broken>56</broken>
         </att>
         <verizon>
           <flawless>175</flawless>
-          <good>158</good>
+          <good>156</good>
           <fair>106</fair>
           <broken>51</broken>
         </verizon>
         <tmobile>
           <flawless>204</flawless>
-          <good>188</good>
+          <good>186</good>
           <fair>92</fair>
           <broken>56</broken>
         </tmobile>
         <unlocked>
           <flawless>222</flawless>
-          <good>222</good>
+          <good>221</good>
           <fair>142</fair>
           <broken>77</broken>
         </unlocked>
@@ -2437,25 +2437,25 @@
       <priceValue>
         <att>
           <flawless>203</flawless>
-          <good>183</good>
+          <good>181</good>
           <fair>106</fair>
           <broken>61</broken>
         </att>
         <verizon>
           <flawless>192</flawless>
-          <good>171</good>
+          <good>169</good>
           <fair>106</fair>
           <broken>61</broken>
         </verizon>
         <tmobile>
           <flawless>200</flawless>
-          <good>167</good>
+          <good>165</good>
           <fair>103</fair>
           <broken>46</broken>
         </tmobile>
         <unlocked>
           <flawless>275</flawless>
-          <good>243</good>
+          <good>241</good>
           <fair>174</fair>
           <broken>85</broken>
         </unlocked>
@@ -2475,25 +2475,25 @@
       <priceValue>
         <att>
           <flawless>160</flawless>
-          <good>125</good>
+          <good>123</good>
           <fair>99</fair>
           <broken>51</broken>
         </att>
         <verizon>
           <flawless>138</flawless>
-          <good>112</good>
+          <good>106</good>
           <fair>79</fair>
           <broken>46</broken>
         </verizon>
         <tmobile>
           <flawless>140</flawless>
-          <good>115</good>
+          <good>111</good>
           <fair>99</fair>
           <broken>36</broken>
         </tmobile>
         <unlocked>
           <flawless>181</flawless>
-          <good>188</good>
+          <good>161</good>
           <fair>109</fair>
           <broken>61</broken>
         </unlocked>
@@ -2504,25 +2504,25 @@
       <priceValue>
         <att>
           <flawless>184</flawless>
-          <good>147</good>
+          <good>145</good>
           <fair>99</fair>
           <broken>56</broken>
         </att>
         <verizon>
           <flawless>177</flawless>
-          <good>142</good>
+          <good>134</good>
           <fair>84</fair>
           <broken>51</broken>
         </verizon>
         <tmobile>
           <flawless>177</flawless>
-          <good>142</good>
+          <good>134</good>
           <fair>99</fair>
           <broken>41</broken>
         </tmobile>
         <unlocked>
           <flawless>232</flawless>
-          <good>202</good>
+          <good>180</good>
           <fair>114</fair>
           <broken>66</broken>
         </unlocked>
@@ -2542,25 +2542,25 @@
       <priceValue>
         <att>
           <flawless>447</flawless>
-          <good>405</good>
+          <good>393</good>
           <fair>304</fair>
           <broken>136</broken>
         </att>
         <verizon>
           <flawless>373</flawless>
-          <good>357</good>
+          <good>315</good>
           <fair>223</fair>
           <broken>106</broken>
         </verizon>
         <tmobile>
           <flawless>407</flawless>
-          <good>367</good>
+          <good>355</good>
           <fair>264</fair>
           <broken>136</broken>
         </tmobile>
         <unlocked>
           <flawless>535</flawless>
-          <good>483</good>
+          <good>481</good>
           <fair>388</fair>
           <broken>193</broken>
         </unlocked>
@@ -2571,25 +2571,25 @@
       <priceValue>
         <att>
           <flawless>392</flawless>
-          <good>373</good>
+          <good>371</good>
           <fair>224</fair>
           <broken>111</broken>
         </att>
         <verizon>
           <flawless>329</flawless>
-          <good>297</good>
+          <good>295</good>
           <fair>169</fair>
           <broken>106</broken>
         </verizon>
         <tmobile>
           <flawless>365</flawless>
-          <good>328</good>
+          <good>326</good>
           <fair>189</fair>
           <broken>111</broken>
         </tmobile>
         <unlocked>
           <flawless>439</flawless>
-          <good>430</good>
+          <good>428</good>
           <fair>312</fair>
           <broken>161</broken>
         </unlocked>
@@ -2600,25 +2600,25 @@
       <priceValue>
         <att>
           <flawless>385</flawless>
-          <good>337</good>
+          <good>335</good>
           <fair>244</fair>
           <broken>121</broken>
         </att>
         <verizon>
           <flawless>357</flawless>
-          <good>330</good>
+          <good>320</good>
           <fair>219</fair>
           <broken>106</broken>
         </verizon>
         <tmobile>
           <flawless>347</flawless>
-          <good>305</good>
+          <good>303</good>
           <fair>204</fair>
           <broken>121</broken>
         </tmobile>
         <unlocked>
           <flawless>490</flawless>
-          <good>448</good>
+          <good>446</good>
           <fair>332</fair>
           <broken>171</broken>
         </unlocked>
@@ -2638,25 +2638,25 @@
       <priceValue>
         <att>
           <flawless>221</flawless>
-          <good>205</good>
+          <good>184</good>
           <fair>114</fair>
           <broken>76</broken>
         </att>
         <verizon>
           <flawless>202</flawless>
-          <good>182</good>
+          <good>180</good>
           <fair>124</fair>
           <broken>71</broken>
         </verizon>
         <tmobile>
           <flawless>194</flawless>
-          <good>175</good>
+          <good>173</good>
           <fair>114</fair>
           <broken>61</broken>
         </tmobile>
         <unlocked>
           <flawless>287</flawless>
-          <good>264</good>
+          <good>262</good>
           <fair>174</fair>
           <broken>91</broken>
         </unlocked>
@@ -2667,25 +2667,25 @@
       <priceValue>
         <att>
           <flawless>279</flawless>
-          <good>249</good>
+          <good>247</good>
           <fair>142</fair>
           <broken>81</broken>
         </att>
         <verizon>
           <flawless>255</flawless>
-          <good>230</good>
+          <good>226</good>
           <fair>126</fair>
           <broken>81</broken>
         </verizon>
         <tmobile>
           <flawless>245</flawless>
-          <good>223</good>
+          <good>221</good>
           <fair>127</fair>
           <broken>71</broken>
         </tmobile>
         <unlocked>
           <flawless>344</flawless>
-          <good>312</good>
+          <good>310</good>
           <fair>214</fair>
           <broken>103</broken>
         </unlocked>
@@ -2705,19 +2705,19 @@
       <priceValue>
         <att>
           <flawless>246</flawless>
-          <good>234</good>
+          <good>232</good>
           <fair>149</fair>
           <broken>81</broken>
         </att>
         <verizon>
           <flawless>246</flawless>
-          <good>224</good>
+          <good>222</good>
           <fair>141</fair>
           <broken>81</broken>
         </verizon>
         <tmobile>
           <flawless>241</flawless>
-          <good>205.5</good>
+          <good>203.5</good>
           <fair>139</fair>
           <broken>76</broken>
         </tmobile>
@@ -2734,25 +2734,25 @@
       <priceValue>
         <att>
           <flawless>316</flawless>
-          <good>263</good>
+          <good>261</good>
           <fair>189</fair>
           <broken>91</broken>
         </att>
         <verizon>
           <flawless>297</flawless>
-          <good>254</good>
+          <good>252</good>
           <fair>139</fair>
           <broken>91</broken>
         </verizon>
         <tmobile>
           <flawless>282</flawless>
-          <good>241</good>
+          <good>239</good>
           <fair>164</fair>
           <broken>86</broken>
         </tmobile>
         <unlocked>
           <flawless>373</flawless>
-          <good>333</good>
+          <good>331</good>
           <fair>262</fair>
           <broken>127</broken>
         </unlocked>
@@ -2772,26 +2772,26 @@
       <priceValue>
         <att>
           <flawless>325</flawless>
-          <good>282</good>
+          <good>280</good>
           <fair>199</fair>
           <broken>96</broken>
         </att>
         <verizon>
           <flawless>329</flawless>
-          <good>282</good>
+          <good>280</good>
           <fair>199</fair>
           <broken>91</broken>
         </verizon>
         <tmobile>
           <flawless>345</flawless>
-          <good>296</good>
+          <good>294</good>
           <fair>214</fair>
           <broken>97</broken>
         </tmobile>
         <unlocked>
           <flawless>367</flawless>
           <good>367</good>
-          <fair>309</fair>
+          <fair>307</fair>
           <broken>129</broken>
         </unlocked>
       </priceValue>
@@ -2801,26 +2801,26 @@
       <priceValue>
         <att>
           <flawless>344</flawless>
-          <good>302</good>
+          <good>300</good>
           <fair>229</fair>
           <broken>96</broken>
         </att>
         <verizon>
           <flawless>334</flawless>
-          <good>289</good>
+          <good>287</good>
           <fair>229</fair>
           <broken>96</broken>
         </verizon>
         <tmobile>
           <flawless>359</flawless>
-          <good>320</good>
+          <good>318</good>
           <fair>239</fair>
           <broken>99</broken>
         </tmobile>
         <unlocked>
           <flawless>435</flawless>
-          <good>404</good>
-          <fair>334</fair>
+          <good>402</good>
+          <fair>332</fair>
           <broken>137</broken>
         </unlocked>
       </priceValue>
@@ -2839,27 +2839,27 @@
       <priceValue>
         <att>
           <flawless>584</flawless>
-          <good>517</good>
-          <fair>453</fair>
+          <good>515</good>
+          <fair>451</fair>
           <broken>235</broken>
         </att>
         <verizon>
           <flawless>579</flawless>
-          <good>512</good>
+          <good>510</good>
           <fair>289</fair>
           <broken>235</broken>
         </verizon>
         <tmobile>
           <flawless>539</flawless>
-          <good>490</good>
+          <good>488</good>
           <fair>404</fair>
           <broken>235</broken>
         </tmobile>
         <unlocked>
           <flawless>731</flawless>
-          <good>654</good>
+          <good>655</good>
           <fair>551</fair>
-          <broken>252</broken>
+          <broken>262</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -2897,27 +2897,27 @@
       <priceValue>
         <att>
           <flawless>491</flawless>
-          <good>450</good>
+          <good>448</good>
           <fair>379</fair>
           <broken>196</broken>
         </att>
         <verizon>
           <flawless>447</flawless>
-          <good>400</good>
+          <good>382</good>
           <fair>239</fair>
           <broken>196</broken>
         </verizon>
         <tmobile>
           <flawless>442</flawless>
-          <good>400</good>
+          <good>398</good>
           <fair>329</fair>
           <broken>196</broken>
         </tmobile>
         <unlocked>
           <flawless>615</flawless>
-          <good>567</good>
+          <good>568</good>
           <fair>474</fair>
-          <broken>221</broken>
+          <broken>228</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -2926,27 +2926,27 @@
       <priceValue>
         <att>
           <flawless>514</flawless>
-          <good>470</good>
-          <fair>403</fair>
+          <good>468</good>
+          <fair>401</fair>
           <broken>216</broken>
         </att>
         <verizon>
           <flawless>477</flawless>
-          <good>445</good>
+          <good>410</good>
           <fair>259</fair>
           <broken>216</broken>
         </verizon>
         <tmobile>
           <flawless>462</flawless>
-          <good>424</good>
+          <good>422</good>
           <fair>354</fair>
           <broken>216</broken>
         </tmobile>
         <unlocked>
           <flawless>669</flawless>
-          <good>592</good>
+          <good>593</good>
           <fair>499</fair>
-          <broken>231</broken>
+          <broken>238</broken>
         </unlocked>
       </priceValue>
     </prices>
@@ -2964,26 +2964,26 @@
       <priceValue>
         <att>
           <flawless>381</flawless>
-          <good>339</good>
+          <good>337</good>
           <fair>262</fair>
           <broken>95</broken>
         </att>
         <verizon>
           <flawless>330</flawless>
-          <good>290</good>
+          <good>288</good>
           <fair>149</fair>
           <broken>85</broken>
         </verizon>
         <tmobile>
           <flawless>356</flawless>
-          <good>314</good>
+          <good>312</good>
           <fair>239</fair>
           <broken>87</broken>
         </tmobile>
         <unlocked>
           <flawless>409</flawless>
-          <good>388</good>
-          <fair>313</fair>
+          <good>386</good>
+          <fair>311</fair>
           <broken>141</broken>
         </unlocked>
       </priceValue>
@@ -2993,19 +2993,19 @@
       <priceValue>
         <att>
           <flawless>441</flawless>
-          <good>391</good>
-          <fair>323</fair>
+          <good>389</good>
+          <fair>321</fair>
           <broken>112</broken>
         </att>
         <verizon>
           <flawless>392</flawless>
-          <good>342</good>
+          <good>340</good>
           <fair>170</fair>
           <broken>99</broken>
         </verizon>
         <tmobile>
           <flawless>416</flawless>
-          <good>366</good>
+          <good>364</good>
           <fair>299</fair>
           <broken>104</broken>
         </tmobile>
