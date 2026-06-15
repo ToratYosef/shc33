@@ -134,13 +134,13 @@
         <att>
           <flawless>202</flawless>
           <good>202</good>
-          <fair>139</fair>
+          <fair>142</fair>
           <broken>97</broken>
         </att>
         <verizon>
           <flawless>202</flawless>
           <good>202</good>
-          <fair>135</fair>
+          <fair>142</fair>
           <broken>97</broken>
         </verizon>
         <tmobile>
@@ -198,7 +198,7 @@
         <verizon>
           <flawless>246</flawless>
           <good>246</good>
-          <fair>164</fair>
+          <fair>165</fair>
           <broken>117</broken>
         </verizon>
         <tmobile>
@@ -293,7 +293,7 @@
         </att>
         <verizon>
           <flawless>268</flawless>
-          <good>241</good>
+          <good>227</good>
           <fair>166</fair>
           <broken>106</broken>
         </verizon>
