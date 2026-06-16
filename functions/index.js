@@ -9411,6 +9411,7 @@ async function runAutomaticReducedPayoutSweep(options = {}) {
 
     const orderDeviceEntries = collectOrderDeviceEntries(order);
     const eligibleDeviceSummaries = [];
+    const nextDeviceStatusByKey = { ...(order.deviceStatusByKey || {}) };
 
     for (const entry of orderDeviceEntries) {
       const deviceKey = buildOrderDeviceKey(order.id, entry.deviceIndex);
@@ -9600,10 +9601,30 @@ exports.autoAcceptOffers = functions.pubsub
       }
 
       const derivedStatus = deriveOrderStatusFromDevices(orderData, nextDeviceStatusByKey);
+      const acceptedAmount = Number(
+        expiredDeviceKeys.reduce((sum, key) => {
+          const offerAmount = Number(byDeviceOffers?.[key]?.newPrice);
+          return Number.isFinite(offerAmount) ? sum + offerAmount : sum;
+        }, 0).toFixed(2)
+      );
       const updatePayload = {
         acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+        reofferAutoAcceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+        qcAwaitingResponse: false,
         deviceStatusByKey: nextDeviceStatusByKey,
+        autoRequote: {
+          ...(orderData.autoRequote || {}),
+          acceptedAutomatically: true,
+          acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+          acceptedBy: 'system_auto_accept_7_day_reoffer_timeout',
+          deviceKeys: expiredDeviceKeys,
+        },
       };
+      if (Number.isFinite(acceptedAmount) && acceptedAmount > 0) {
+        updatePayload.finalPayoutAmount = acceptedAmount;
+        updatePayload.finalOfferAmount = acceptedAmount;
+        updatePayload.finalPayout = acceptedAmount;
+      }
       if (derivedStatus) {
         updatePayload.status = derivedStatus;
       }
