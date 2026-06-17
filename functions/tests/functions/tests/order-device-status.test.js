@@ -50,5 +50,13 @@ test('deriveOrderStatusFromDevices resolves declined and accepted outcomes', () 
     },
   };
   assert.equal(deriveOrderStatusFromDevices(declined), 're-offered-declined');
-});
 
+  const autoAccepted = {
+    ...order,
+    deviceStatusByKey: {
+      'ORDER123::0': 're-offered-auto-accepted',
+      'ORDER123::1': 're-offered-auto-accepted',
+    },
+  };
+  assert.equal(deriveOrderStatusFromDevices(autoAccepted), 're-offered-auto-accepted');
+});
