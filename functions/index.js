@@ -619,6 +619,29 @@ function collectOrderDeviceEntries(order = {}) {
   return entries.length ? entries : [{ deviceIndex: 0, item: order, qtyIndex: 0 }];
 }
 
+function getDeviceLabelForKey(order = {}, deviceKey = '') {
+  const orderId = order?.id || '';
+  const fallbackIndex = Number.parseInt(String(deviceKey).split('::')[1] || '0', 10);
+  const entries = collectOrderDeviceEntries(order);
+  const entry = entries.find((item) => buildOrderDeviceKey(orderId, item.deviceIndex) === deviceKey)
+    || entries.find((item) => item.deviceIndex === fallbackIndex)
+    || entries[0]
+    || { item: order };
+  const item = entry.item || order || {};
+  const parts = [
+    item.modelName,
+    item.model,
+    item.device,
+    item.name,
+    item.storage,
+    item.carrier,
+  ]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+
+  return parts.length ? parts.join(' • ') : 'Device on file';
+}
+
 function getPerDeviceOffer(item = {}, order = {}) {
   const qty = normalizeQtyValue(item?.qty ?? item?.quantity ?? 1);
   const direct = Number(item?.unitPrice ?? item?.price ?? item?.payout ?? item?.offerAmount ?? item?.estimatedQuote);
@@ -8408,6 +8431,12 @@ app.post("/orders/:id/re-offer/auto-accept", async (req, res) => {
       .filter(Boolean)
       .filter((value, index, array) => array.indexOf(value) === index);
 
+    if (!requestedDeviceKeys.length) {
+      return res.status(400).json({
+        error: 'deviceKey or deviceKeys is required for device-specific auto-accept.',
+      });
+    }
+
     const orderData = { id: orderSnap.id, ...orderSnap.data() };
     const result = await autoAcceptPendingReoffersForOrder(orderData, {
       deviceKeys: requestedDeviceKeys,
@@ -9717,12 +9746,27 @@ async function autoAcceptPendingReoffersForOrder(orderData = {}, options = {}) {
   const priceText = acceptedPrices.length
     ? acceptedPrices.map((price) => `$${price}`).join(', ')
     : 'the revised amount';
+  const deviceSummaries = expiredDeviceKeys.map((deviceKey) => ({
+    deviceKey,
+    label: getDeviceLabelForKey(orderData, deviceKey),
+    price: byDeviceOffers?.[deviceKey]?.newPrice ?? orderData?.reOffer?.newPrice ?? null,
+  }));
+  const deviceListHtml = deviceSummaries
+    .map((device) => {
+      const price = Number(device.price);
+      const priceHtml = Number.isFinite(price) ? ` — <strong>$${price.toFixed(2)}</strong>` : '';
+      return `<li>${escapeHtml(device.label)} <span style="color:#64748b;">(${escapeHtml(device.deviceKey)})</span>${priceHtml}</li>`;
+    })
+    .join('');
+  const deviceText = deviceSummaries.length === 1 ? 'this device re-offer' : 'these device re-offers';
 
   let customerEmailSent = false;
   if (sendCustomerEmail && orderData.shippingInfo?.email) {
     const customerHtmlBody = `
-      <p>Hello ${orderData.shippingInfo?.fullName || 'there'},</p>
-      <p>As we have not heard back from you regarding your revised offer, it has been automatically accepted as per our terms and conditions.</p>
+      <p>Hello ${escapeHtml(orderData.shippingInfo?.fullName || 'there')},</p>
+      <p>As we have not heard back from you regarding ${deviceText}, it has been automatically accepted as per our terms and conditions.</p>
+      <p>The auto-accepted ${expiredDeviceKeys.length > 1 ? 'devices are' : 'device is'}:</p>
+      <ul>${deviceListHtml}</ul>
       <p>Payment processing for ${expiredDeviceKeys.length > 1 ? 'the revised amounts' : 'the revised amount'} of <strong>${priceText}</strong> will now begin.</p>
       <p>Thank you,</p>
       <p>The SecondHandCell Team</p>
@@ -9745,6 +9789,7 @@ async function autoAcceptPendingReoffersForOrder(orderData = {}, options = {}) {
     source,
     deviceCount: expiredDeviceKeys.length,
     deviceKeys: expiredDeviceKeys.join(', '),
+    deviceLabels: deviceSummaries.map((device) => device.label).join(', '),
     prices: priceText,
   };
 
@@ -9770,6 +9815,7 @@ async function autoAcceptPendingReoffersForOrder(orderData = {}, options = {}) {
     orderId,
     status: derivedStatus || orderData.status,
     deviceKeys: expiredDeviceKeys,
+    devices: deviceSummaries,
     prices: priceText,
     acceptedAmount: Number.isFinite(acceptedAmount) ? acceptedAmount : null,
   };
