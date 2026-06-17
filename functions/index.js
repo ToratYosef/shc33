@@ -8307,10 +8307,16 @@ app.post("/orders/:id/re-offer", async (req, res) => {
 
 app.post("/orders/:id/cancel-reoffer", async (req, res) => {
   try {
+    const authResult = await requireAdminHttp(req, res);
+    if (!authResult) return;
+
     const orderId = String(req.params.id || '').trim();
     const requestedDeviceKey = String(req.body?.deviceKey || '').trim();
     if (!orderId) {
       return res.status(400).json({ error: "Order ID is required." });
+    }
+    if (!requestedDeviceKey) {
+      return res.status(400).json({ error: "deviceKey is required for device-specific re-offer cancel." });
     }
 
     const orderRef = ordersCollection.doc(orderId);
@@ -8320,7 +8326,7 @@ app.post("/orders/:id/cancel-reoffer", async (req, res) => {
     }
 
     const order = { id: orderDoc.id, ...orderDoc.data() };
-    const resolvedDeviceKey = requestedDeviceKey || buildOrderDeviceKey(orderId, 0);
+    const resolvedDeviceKey = requestedDeviceKey;
     const currentStatus = normalizeStatusValue(order.deviceStatusByKey?.[resolvedDeviceKey] || order.status);
     const activeOffers = {
       ...(order.reOfferByDevice || {}),
@@ -8364,18 +8370,15 @@ app.post("/orders/:id/cancel-reoffer", async (req, res) => {
       logEntries: [{
         type: "admin",
         message: "Pending re-offer canceled by admin. Device moved back to Received for review.",
-        metadata: { deviceKey: resolvedDeviceKey },
+        metadata: {
+          actorUid: req.user?.uid || authResult.uid || null,
+          actorEmail: req.user?.email || null,
+          deviceKey: resolvedDeviceKey,
+        },
       }],
     });
 
-    const orderEntries = collectOrderDeviceEntries(order);
-    const fallbackIndex = Number.parseInt(String(resolvedDeviceKey).split('::')[1] || '0', 10);
-    const matchedEntry = orderEntries.find((entry) => buildOrderDeviceKey(orderId, entry.deviceIndex) === resolvedDeviceKey)
-      || orderEntries[fallbackIndex]
-      || orderEntries[0]
-      || null;
-    const matchedItem = matchedEntry?.item || {};
-    const modelName = matchedItem.modelName || matchedItem.model || matchedItem.device || order.device || 'Device on file';
+    const modelName = getDeviceLabelForKey(order, resolvedDeviceKey);
 
     if (order.shippingInfo?.email) {
       await transporter.sendMail({
@@ -8400,6 +8403,7 @@ app.post("/orders/:id/cancel-reoffer", async (req, res) => {
       message: "Re-offer canceled. Device moved back to Received for review.",
       orderId,
       deviceKey: resolvedDeviceKey,
+      deviceLabel: modelName,
       status: updatePayload.status,
     });
   } catch (err) {
