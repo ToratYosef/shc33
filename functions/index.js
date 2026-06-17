@@ -702,6 +702,10 @@ function deriveOrderStatusFromDevices(order = {}, nextDeviceStatusByKey = null) 
     return 're-offered-declined';
   }
 
+  if (normalizedStatuses.every((status) => status === 're_offered_auto_accepted')) {
+    return 're-offered-auto-accepted';
+  }
+
   if (normalizedStatuses.some((status) => status.includes('accepted'))) {
     return 're-offered-accepted';
   }
@@ -9411,6 +9415,7 @@ async function runAutomaticReducedPayoutSweep(options = {}) {
 
     const orderDeviceEntries = collectOrderDeviceEntries(order);
     const eligibleDeviceSummaries = [];
+    const nextDeviceStatusByKey = { ...(order.deviceStatusByKey || {}) };
 
     for (const entry of orderDeviceEntries) {
       const deviceKey = buildOrderDeviceKey(order.id, entry.deviceIndex);
@@ -9552,13 +9557,26 @@ exports.autoAcceptOffers = functions.pubsub
   .onRun(async (context) => {
     const now = admin.firestore.Timestamp.now();
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-    const pendingOrders = await ordersCollection
-      .where("status", "==", "re-offered-pending")
-      .get();
+    const statusBuckets = [
+      're-offered-pending',
+      'emailed',
+      'received',
+      're-offered-accepted',
+    ];
+    const pendingSnapshots = await Promise.all(
+      statusBuckets.map((status) => ordersCollection.where('status', '==', status).get())
+    );
+    const pendingOrderDocsById = new Map();
+    pendingSnapshots.forEach((snapshot) => {
+      snapshot.docs.forEach((doc) => pendingOrderDocsById.set(doc.id, doc));
+    });
 
-    const updates = pendingOrders.docs.map(async (doc) => {
+    const updates = Array.from(pendingOrderDocsById.values()).map(async (doc) => {
       const orderData = { id: doc.id, ...doc.data() };
-      const byDeviceOffers = orderData.reOfferByDevice || {};
+      const byDeviceOffers = {
+        ...(orderData.reofferByDevice || {}),
+        ...(orderData.reOfferByDevice || {}),
+      };
       const nextDeviceStatusByKey = { ...(orderData.deviceStatusByKey || {}) };
       const expiredDeviceKeys = [];
 
@@ -9600,10 +9618,35 @@ exports.autoAcceptOffers = functions.pubsub
       }
 
       const derivedStatus = deriveOrderStatusFromDevices(orderData, nextDeviceStatusByKey);
+      const acceptedAmount = Number(
+        expiredDeviceKeys.reduce((sum, key) => {
+          const offerAmount = Number(byDeviceOffers?.[key]?.newPrice);
+          return Number.isFinite(offerAmount) ? sum + offerAmount : sum;
+        }, 0).toFixed(2)
+      );
       const updatePayload = {
         acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+        reofferAutoAcceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+        qcAwaitingResponse: false,
+        readyToPay: true,
+        readyToPayAt: admin.firestore.FieldValue.serverTimestamp(),
+        paymentReady: true,
+        paymentReadyAt: admin.firestore.FieldValue.serverTimestamp(),
+        paymentReadyReason: 'auto_reoffer_accepted',
         deviceStatusByKey: nextDeviceStatusByKey,
+        autoRequote: {
+          ...(orderData.autoRequote || {}),
+          acceptedAutomatically: true,
+          acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+          acceptedBy: 'system_auto_accept_7_day_reoffer_timeout',
+          deviceKeys: expiredDeviceKeys,
+        },
       };
+      if (Number.isFinite(acceptedAmount) && acceptedAmount > 0) {
+        updatePayload.finalPayoutAmount = acceptedAmount;
+        updatePayload.finalOfferAmount = acceptedAmount;
+        updatePayload.finalPayout = acceptedAmount;
+      }
       if (derivedStatus) {
         updatePayload.status = derivedStatus;
       }
@@ -9645,10 +9688,14 @@ exports.autoAcceptOffers = functions.pubsub
           prices: priceText,
         }
       );
+
+      return doc.id;
     });
 
-    await Promise.all(updates);
-    console.log(`Auto-accepted device offers on ${updates.length} pending orders.`);
+    const processedOrderIds = (await Promise.all(updates)).filter(Boolean);
+    console.log(
+      `Auto-accepted device offers on ${processedOrderIds.length} orders across ${pendingOrderDocsById.size} pending-candidate orders.`
+    );
     return null;
   });
 
