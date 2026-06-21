@@ -11,7 +11,8 @@
     "price": "node scripts/price.js",
     "db:migrate": "node src/db/migrate.js",
     "analytics:retention": "node scripts/analytics-retention.js",
-    "refresh-orders": "node scripts/refresh-orders.js"
+    "refresh-orders": "node scripts/refresh-orders.js",
+    "emails": "node scripts/emails.js"
   },
   "dependencies": {
     "axios": "^1.7.9",
@@ -32,7 +33,8 @@
   },
   "bin": {
     "price": "scripts/price.js",
-    "refresh-orders": "scripts/refresh-orders.js"
+    "refresh-orders": "scripts/refresh-orders.js",
+    "emails": "scripts/emails.js"
   },
   "overrides": {
     "whatwg-url": "^14.2.0",

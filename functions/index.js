@@ -9773,13 +9773,15 @@ exports.createUserRecord = functions.auth.user().onCreate(async (user) => {
   }
 });
 
-async function runAutomaticLabelReminderSweep() {
+async function runAutomaticLabelReminderSweep(options = {}) {
   const snapshot = await ordersCollection
     .where("status", "in", Array.from(LABEL_REMINDER_STATUSES))
     .get();
 
   const now = Date.now();
+  const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
   let sentCount = 0;
+  let skippedCount = 0;
 
   for (const doc of snapshot.docs) {
     const order = { id: doc.id, ...doc.data() };
@@ -9789,23 +9791,45 @@ async function runAutomaticLabelReminderSweep() {
       continue;
     }
 
-    const ageMs = now - labelStart;
     const inclusiveAgeDays = getInclusiveOrderAgeDays(labelStart, now);
     const lastEmailAt = getLastCustomerEmailMillis(order);
     if (lastEmailAt && now - lastEmailAt < LABEL_REMINDER_MIN_GAP_MS) {
+      skippedCount += 1;
+      if (onProgress) {
+        onProgress({ orderId: order.id, dayCount: inclusiveAgeDays, skipped: 'recent_email' });
+      }
       continue;
     }
 
     let targetTier = null;
-    if (ageMs >= LABEL_REMINDER_THIRD_DELAY_MS && !order.labelReminderThirdSentAt) {
-      targetTier = 3;
-    } else if (ageMs >= LABEL_REMINDER_SECOND_DELAY_MS && !order.labelReminderSecondSentAt) {
-      targetTier = 2;
-    } else if (ageMs >= LABEL_REMINDER_FIRST_DELAY_MS && !order.labelReminderFirstSentAt) {
-      targetTier = 1;
+    let skipReason = null;
+    if (inclusiveAgeDays >= 20) {
+      if (!order.labelReminderThirdSentAt) {
+        targetTier = 3;
+      } else {
+        skipReason = 'already_sent';
+      }
+    } else if (inclusiveAgeDays >= 15 && inclusiveAgeDays <= 19) {
+      if (!order.labelReminderSecondSentAt) {
+        targetTier = 2;
+      } else {
+        skipReason = 'already_sent';
+      }
+    } else if (inclusiveAgeDays >= 5 && inclusiveAgeDays <= 10) {
+      if (!order.labelReminderFirstSentAt) {
+        targetTier = 1;
+      } else {
+        skipReason = 'already_sent';
+      }
+    } else {
+      skipReason = 'not_due';
     }
 
     if (!targetTier) {
+      skippedCount += 1;
+      if (onProgress) {
+        onProgress({ orderId: order.id, dayCount: inclusiveAgeDays, skipped: skipReason || 'not_due' });
+      }
       continue;
     }
 
@@ -9813,14 +9837,26 @@ async function runAutomaticLabelReminderSweep() {
       const sent = await sendLabelReminderEmail(order, { tier: targetTier, dayCount: inclusiveAgeDays });
       if (sent) {
         sentCount += 1;
+        if (onProgress) {
+          onProgress({ orderId: order.id, dayCount: inclusiveAgeDays, reminderTier: targetTier, sent: true });
+        }
+      } else {
+        skippedCount += 1;
+        if (onProgress) {
+          onProgress({ orderId: order.id, dayCount: inclusiveAgeDays, reminderTier: targetTier, skipped: 'send_guard' });
+        }
       }
     } catch (error) {
+      skippedCount += 1;
+      if (onProgress) {
+        onProgress({ orderId: order.id, dayCount: inclusiveAgeDays, reminderTier: targetTier, failed: true, error: error?.message || 'Failed to send reminder' });
+      }
       console.error(`Failed to send label reminder for order ${order.id}:`, error);
     }
   }
 
   console.log(`Automatic label reminder sweep sent ${sentCount} reminders.`);
-  return { sentCount, scannedCount: snapshot.docs.length };
+  return { sentCount, skippedCount, scannedCount: snapshot.docs.length };
 }
 
 function getIsoMillis(value) {
@@ -10056,7 +10092,9 @@ async function runAbandonedCheckoutReminderSweep() {
     .get();
 
   const now = Date.now();
+  const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
   let sentCount = 0;
+  let skippedCount = 0;
 
   for (const doc of snapshot.docs) {
     let progress = { id: doc.id, ...doc.data() };
