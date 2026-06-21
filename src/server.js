@@ -401,17 +401,26 @@ function maybeRunScheduledMaintenanceSweep() {
     });
 }
 
-function startMaintenanceTwiceDailyScheduler() {
+function startMaintenanceHourlyScheduler() {
   if (isServerless) {
     return;
   }
 
   console.log(
-    `[maintenance-schedule] enabled: daily at 08:00 and 17:00 ${maintenanceScheduleTimezone}`
+    `[maintenance-schedule] enabled: hourly tracking refresh and label void checks`
   );
 
   maybeRunScheduledMaintenanceSweep();
-  setInterval(maybeRunScheduledMaintenanceSweep, 30 * 1000);
+  setInterval(() => {
+    runMaintenanceSweep('hourly')
+      .then((result) => {
+        const status = result.trackingRefresh.ok && result.labelVoid.ok ? 'ok' : 'partial_failure';
+        console.log(`[maintenance-schedule] ${status} trigger=${result.trigger} durationMs=${result.durationMs} trackingOk=${result.trackingRefresh.ok} labelVoidOk=${result.labelVoid.ok}`);
+      })
+      .catch((error) => {
+        console.error('[maintenance-schedule] hourly sweep failed:', error?.message || error);
+      });
+  }, 60 * 60 * 1000);
 }
 
 function ensureCurrentVisitorCsvFile(trigger = 'startup') {
@@ -2877,7 +2886,7 @@ if (!isServerless && require.main === module) {
   app.listen(port, () => {
     console.log(`API server listening on port ${port}`);
     startRepricerDailyScheduler();
-    startMaintenanceTwiceDailyScheduler();
+    startMaintenanceHourlyScheduler();
     startLiveVisitorCsvScheduler();
   });
 }
