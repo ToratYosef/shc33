@@ -29,6 +29,7 @@ const {
   updateOrderBoth,
   buildOrderDeviceKey,
   runAutomaticInboundTrackingRefresh,
+  runAutomaticLabelReminderSweep,
   runAutomaticLabelVoidSweep,
   getOrderByIdFromFirestore,
 } = require('../functions/index.js');
@@ -389,6 +390,7 @@ async function runMaintenanceSweep(trigger = 'manual') {
       trigger,
       startedAt: new Date(startedAt).toISOString(),
       trackingRefresh: { ok: true },
+      labelReminder: { ok: true },
       labelVoid: { ok: true },
     };
 
@@ -396,6 +398,16 @@ async function runMaintenanceSweep(trigger = 'manual') {
       await runAutomaticInboundTrackingRefresh();
     } catch (error) {
       result.trackingRefresh = {
+        ok: false,
+        error: error?.message || 'unknown_error',
+      };
+    }
+
+    try {
+      const reminderResult = await runAutomaticLabelReminderSweep();
+      result.labelReminder = { ok: true, ...reminderResult };
+    } catch (error) {
+      result.labelReminder = {
         ok: false,
         error: error?.message || 'unknown_error',
       };
@@ -438,12 +450,15 @@ function maybeRunScheduledMaintenanceSweep() {
 
   runMaintenanceSweep(`daily-${maintenanceScheduleTimezone}-${slotKey}`)
     .then((result) => {
-      const status = result.trackingRefresh.ok && result.labelVoid.ok ? 'ok' : 'partial_failure';
+      const status = result.trackingRefresh.ok && result.labelReminder.ok && result.labelVoid.ok ? 'ok' : 'partial_failure';
       console.log(
-        `[maintenance-schedule] ${status} trigger=${result.trigger} durationMs=${result.durationMs} trackingOk=${result.trackingRefresh.ok} labelVoidOk=${result.labelVoid.ok}`
+        `[maintenance-schedule] ${status} trigger=${result.trigger} durationMs=${result.durationMs} trackingOk=${result.trackingRefresh.ok} reminderOk=${result.labelReminder.ok} labelVoidOk=${result.labelVoid.ok}`
       );
       if (!result.trackingRefresh.ok) {
         console.error('[maintenance-schedule] tracking refresh failed:', result.trackingRefresh.error);
+      }
+      if (!result.labelReminder.ok) {
+        console.error('[maintenance-schedule] label reminder sweep failed:', result.labelReminder.error);
       }
       if (!result.labelVoid.ok) {
         console.error('[maintenance-schedule] label void sweep failed:', result.labelVoid.error);
@@ -460,15 +475,22 @@ function startMaintenanceHourlyScheduler() {
   }
 
   console.log(
-    `[maintenance-schedule] enabled: hourly tracking refresh and label void checks`
+    `[maintenance-schedule] enabled: hourly tracking refresh, label reminders, and label void checks`
   );
 
-  maybeRunScheduledMaintenanceSweep();
+  runMaintenanceSweep('startup')
+    .then((result) => {
+      const status = result.trackingRefresh.ok && result.labelReminder.ok && result.labelVoid.ok ? 'ok' : 'partial_failure';
+      console.log(`[maintenance-schedule] ${status} trigger=${result.trigger} durationMs=${result.durationMs} trackingOk=${result.trackingRefresh.ok} reminderOk=${result.labelReminder.ok} labelVoidOk=${result.labelVoid.ok}`);
+    })
+    .catch((error) => {
+      console.error('[maintenance-schedule] startup sweep failed:', error?.message || error);
+    });
   setInterval(() => {
     runMaintenanceSweep('hourly')
       .then((result) => {
-        const status = result.trackingRefresh.ok && result.labelVoid.ok ? 'ok' : 'partial_failure';
-        console.log(`[maintenance-schedule] ${status} trigger=${result.trigger} durationMs=${result.durationMs} trackingOk=${result.trackingRefresh.ok} labelVoidOk=${result.labelVoid.ok}`);
+        const status = result.trackingRefresh.ok && result.labelReminder.ok && result.labelVoid.ok ? 'ok' : 'partial_failure';
+        console.log(`[maintenance-schedule] ${status} trigger=${result.trigger} durationMs=${result.durationMs} trackingOk=${result.trackingRefresh.ok} reminderOk=${result.labelReminder.ok} labelVoidOk=${result.labelVoid.ok}`);
       })
       .catch((error) => {
         console.error('[maintenance-schedule] hourly sweep failed:', error?.message || error);

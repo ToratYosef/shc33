@@ -5833,7 +5833,7 @@ function getOrderLabelDownloadUrl(order = {}) {
   );
 }
 
-function buildLabelReminderEmail(orderId, order = {}, { tier = 1 } = {}) {
+function buildLabelReminderEmail(orderId, order = {}, { tier = 1, dayCount = null } = {}) {
   const customerName = escapeHtml(order.shippingInfo?.fullName || "there");
   const rawTrackingNumber = getInboundTrackingNumber(order);
   const trackingNumber = escapeHtml(rawTrackingNumber || "");
@@ -5845,26 +5845,34 @@ function buildLabelReminderEmail(orderId, order = {}, { tier = 1 } = {}) {
     ? `https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=${encodeURIComponent(rawTrackingNumber)}`
     : null;
 
+  const displayDayCount = Number.isFinite(Number(dayCount)) && Number(dayCount) > 0
+    ? Math.floor(Number(dayCount))
+    : null;
+  const formatDayText = (fallback) => {
+    const days = displayDayCount || fallback;
+    return `${days} ${days === 1 ? 'day' : 'days'}`;
+  };
+
   const stages = {
     1: {
-      dayLabel: '5 days',
+      dayLabel: formatDayText(5),
       subject: `Reminder: please send in your device for order #${orderId || order.id || ''}`.trim(),
       headline: 'Your shipping label is ready',
-      message: `It has been about 5 days since your order was created, and we have not seen movement on your label yet. Please print your prepaid label and send in ${deviceName} when you can.`,
+      message: `It has been ${formatDayText(5)} since your order was created, and we have not seen movement on your label yet. Please print your prepaid label and send in ${deviceName} when you can.`,
       accent: '#16A34A',
     },
     2: {
-      dayLabel: '15 days',
+      dayLabel: formatDayText(15),
       subject: `Action needed: ship your device for order #${orderId || order.id || ''}`.trim(),
       headline: 'Please ship your device soon',
-      message: `It has been about 15 days and your order is still waiting for shipment. To keep your payout moving, please send in ${deviceName} using the prepaid label below.`,
+      message: `It has been ${formatDayText(15)} and your order is still waiting for shipment. To keep your payout moving, please send in ${deviceName} using the prepaid label below.`,
       accent: '#F97316',
     },
     3: {
-      dayLabel: '20 days',
+      dayLabel: formatDayText(20),
       subject: `Final reminder: send in your device for order #${orderId || order.id || ''}`.trim(),
       headline: 'Final reminder before your label expires',
-      message: `It has been about 20 days and we still have not received tracking movement. Please send in ${deviceName} as soon as possible, or reply to this email if you need help.`,
+      message: `It has been ${formatDayText(20)} and we still have not received tracking movement. Please send in ${deviceName} as soon as possible, or reply to this email if you need help.`,
       accent: '#DC2626',
     },
   };
@@ -6001,6 +6009,14 @@ function resolveInboundTransitResetStatus(order = {}) {
 function getTimestampMillis(value) {
   const date = toDate(value);
   return date ? date.getTime() : null;
+}
+
+function getInclusiveOrderAgeDays(startMs, nowMs = Date.now()) {
+  if (!Number.isFinite(startMs)) {
+    return null;
+  }
+  const elapsedMs = Math.max(0, nowMs - startMs);
+  return Math.max(1, Math.ceil(elapsedMs / (24 * 60 * 60 * 1000)) + 1);
 }
 
 function isKitOrder(order = {}) {
@@ -6186,7 +6202,7 @@ async function sendPushNotification(tokens, title, body, data = {}, options = {}
   return response;
 }
 
-async function sendLabelReminderEmail(order, { tier = 1 } = {}) {
+async function sendLabelReminderEmail(order, { tier = 1, dayCount = null } = {}) {
   if (!order || !order.id) {
     return false;
   }
@@ -6209,7 +6225,7 @@ async function sendLabelReminderEmail(order, { tier = 1 } = {}) {
     return false;
   }
 
-  const { subject, html } = buildLabelReminderEmail(order.id, latestOrder, { tier });
+  const { subject, html } = buildLabelReminderEmail(order.id, latestOrder, { tier, dayCount });
 
   await transporter.sendMail({
     from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
@@ -6246,6 +6262,7 @@ async function sendLabelReminderEmail(order, { tier = 1 } = {}) {
       status: order.status,
       auto: true,
       reminderTier: tier,
+      dayCount: Number.isFinite(Number(dayCount)) ? Number(dayCount) : null,
     },
     {
       logType: "reminder",
@@ -9425,6 +9442,7 @@ async function runAutomaticInboundTrackingRefresh(options = {}) {
 }
 
 exports.runAutomaticLabelVoidSweep = runAutomaticLabelVoidSweep;
+exports.runAutomaticLabelReminderSweep = runAutomaticLabelReminderSweep;
 exports.runAutomaticInboundTrackingRefresh = runAutomaticInboundTrackingRefresh;
 
 exports.autoVoidExpiredLabels = functions.pubsub
@@ -9445,8 +9463,9 @@ exports.autoRefreshInboundTracking = functions.pubsub
   .onRun(async () => {
     try {
       await runAutomaticInboundTrackingRefresh();
+      await runAutomaticLabelReminderSweep();
     } catch (error) {
-      console.error('Automatic inbound tracking refresh sweep failed:', error);
+      console.error('Automatic inbound tracking refresh/reminder sweep failed:', error);
     }
     return null;
   });
@@ -9771,6 +9790,7 @@ async function runAutomaticLabelReminderSweep() {
     }
 
     const ageMs = now - labelStart;
+    const inclusiveAgeDays = getInclusiveOrderAgeDays(labelStart, now);
     const lastEmailAt = getLastCustomerEmailMillis(order);
     if (lastEmailAt && now - lastEmailAt < LABEL_REMINDER_MIN_GAP_MS) {
       continue;
@@ -9778,15 +9798,9 @@ async function runAutomaticLabelReminderSweep() {
 
     let targetTier = null;
     if (ageMs >= LABEL_REMINDER_THIRD_DELAY_MS && !order.labelReminderThirdSentAt) {
-      if (!order.labelReminderFirstSentAt) {
-        targetTier = 1;
-      } else if (!order.labelReminderSecondSentAt) {
-        targetTier = 2;
-      } else {
-        targetTier = 3;
-      }
+      targetTier = 3;
     } else if (ageMs >= LABEL_REMINDER_SECOND_DELAY_MS && !order.labelReminderSecondSentAt) {
-      targetTier = order.labelReminderFirstSentAt ? 2 : 1;
+      targetTier = 2;
     } else if (ageMs >= LABEL_REMINDER_FIRST_DELAY_MS && !order.labelReminderFirstSentAt) {
       targetTier = 1;
     }
@@ -9796,7 +9810,7 @@ async function runAutomaticLabelReminderSweep() {
     }
 
     try {
-      const sent = await sendLabelReminderEmail(order, { tier: targetTier });
+      const sent = await sendLabelReminderEmail(order, { tier: targetTier, dayCount: inclusiveAgeDays });
       if (sent) {
         sentCount += 1;
       }
@@ -9806,6 +9820,7 @@ async function runAutomaticLabelReminderSweep() {
   }
 
   console.log(`Automatic label reminder sweep sent ${sentCount} reminders.`);
+  return { sentCount, scannedCount: snapshot.docs.length };
 }
 
 function getIsoMillis(value) {
