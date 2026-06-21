@@ -10079,7 +10079,11 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
       }
     }
 
-    const { orderId } = data;
+    const { orderId, tier, reminderTier } = data || {};
+    const requestedTier = Number(tier ?? reminderTier ?? 1);
+    if (![1, 2, 3].includes(requestedTier)) {
+      throw new functions.https.HttpsError('invalid-argument', 'Reminder tier must be 1, 2, or 3');
+    }
     
     // 3. Validate orderId is provided
     if (!orderId) {
@@ -10110,7 +10114,7 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
     const { subject, html } = buildLabelReminderEmail(
       sanitizedOrderId,
       { ...order, id: sanitizedOrderId },
-      { tier: 1 }
+      { tier: requestedTier }
     );
 
     // 7. Send the email
@@ -10130,6 +10134,7 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
         logType: 'reminder',
         additionalUpdates: {
           lastReminderSentAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastManualReminderTier: requestedTier,
         },
       }
     );
@@ -10142,6 +10147,7 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
       orderId: sanitizedOrderId,
       orderStatus: order.status,
       recipientEmail: order.shippingInfo?.email,
+      reminderTier: requestedTier,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
       success: true
     };
@@ -10152,7 +10158,9 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
     
     return { 
       success: true, 
-      message: 'Reminder email sent successfully' 
+      message: 'Reminder email sent successfully',
+      reminderTier: requestedTier,
+      subject,
     };
   } catch (error) {
     console.error('Error sending reminder email:', error);
@@ -10165,6 +10173,7 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
           adminUid: authContext.uid,
           adminEmail: authContext.token?.email || 'unknown',
           orderId: data?.orderId || 'unknown',
+          reminderTier: Number(data?.tier ?? data?.reminderTier ?? 1) || null,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
           success: false,
           errorType: error.code || 'unknown',
@@ -10182,6 +10191,9 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('internal', 'Failed to send reminder email');
   }
 });
+
+// Alias for frontend/admin UI buttons that explicitly send the staged label reminder emails.
+exports.sendLabelReminderEmail = exports.sendReminderEmail;
 
 exports.sendExpiringReminderEmail = functions.https.onCall(async (data, context) => {
   let authContext = null;
