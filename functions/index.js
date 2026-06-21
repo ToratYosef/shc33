@@ -3970,9 +3970,9 @@ const AUTO_CANCEL_MONITORED_STATUSES = [
 const AUTO_CANCELLATION_ENABLED = false;
 
 const LABEL_REMINDER_STATUSES = new Set(["label_generated"]);
-const LABEL_REMINDER_FIRST_DELAY_MS = 3 * 24 * 60 * 60 * 1000;
-const LABEL_REMINDER_SECOND_DELAY_MS = 5 * 24 * 60 * 60 * 1000;
-const LABEL_REMINDER_THIRD_DELAY_MS = 7 * 24 * 60 * 60 * 1000;
+const LABEL_REMINDER_FIRST_DELAY_MS = 5 * 24 * 60 * 60 * 1000;
+const LABEL_REMINDER_SECOND_DELAY_MS = 15 * 24 * 60 * 60 * 1000;
+const LABEL_REMINDER_THIRD_DELAY_MS = 20 * 24 * 60 * 60 * 1000;
 const LABEL_REMINDER_MIN_GAP_MS = 24 * 60 * 60 * 1000;
 const ABANDONED_CHECKOUT_COLLECTION = "sellOrderProgress";
 const ABANDONED_CHECKOUT_SWEEP_MIN_GAP_MS = 6 * 60 * 60 * 1000;
@@ -5819,332 +5819,86 @@ function buildEmailLayout({
   `;
 }
 
-function buildLabelReminderEmail(orderId, order = {}) {
-  const customerName = order.shippingInfo?.fullName || "there";
-  const trackingNumber = getInboundTrackingNumber(order);
-  const deviceName = order.device || "your device";
-  const displayOrderId = orderId || order.id || "your order";
+function getOrderLabelDownloadUrl(order = {}) {
+  return (
+    order.labelDownloadUrl ||
+    order.labelPdfUrl ||
+    order.inboundLabelUrl ||
+    order.uspsLabelUrl ||
+    order.upsLabelUrl ||
+    order.shipEngineLabels?.inbound?.downloadUrl ||
+    order.shipEngineLabels?.inbound?.labelDownload?.href ||
+    order.shipEngineLabels?.inbound?.labelDownload?.pdf ||
+    null
+  );
+}
 
-  const trackingSection = trackingNumber
-    ? `
-      <div class="tracking-box">
-        <div class="tracking-label">Your Tracking Number</div>
-        <div class="tracking-number">${trackingNumber}</div>
-      </div>
-      <a href="https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=${trackingNumber}" class="cta-button">
-        📍 Track Your Shipment
-      </a>
-    `
-    : "";
+function buildLabelReminderEmail(orderId, order = {}, { tier = 1, dayCount = null } = {}) {
+  const customerName = escapeHtml(order.shippingInfo?.fullName || "there");
+  const rawTrackingNumber = getInboundTrackingNumber(order);
+  const trackingNumber = escapeHtml(rawTrackingNumber || "");
+  const deviceName = escapeHtml(order.device || "your device");
+  const displayOrderId = escapeHtml(orderId || order.id || "your order");
+  const labelDownloadUrl = getOrderLabelDownloadUrl(order);
+  const safeLabelDownloadUrl = escapeHtml(labelDownloadUrl || "");
+  const trackingUrl = rawTrackingNumber
+    ? `https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=${encodeURIComponent(rawTrackingNumber)}`
+    : null;
 
-  const subject = "⏰ Friendly Reminder: We're Waiting for Your Device! 📱";
-  const html = `
-<!DOCTYPE html>
+  const displayDayCount = Number.isFinite(Number(dayCount)) && Number(dayCount) > 0
+    ? Math.floor(Number(dayCount))
+    : null;
+  const formatDayText = (fallback) => {
+    const days = displayDayCount || fallback;
+    return `${days} ${days === 1 ? 'day' : 'days'}`;
+  };
+
+  const stages = {
+    1: {
+      dayLabel: formatDayText(5),
+      subject: `Reminder: please send in your device for order #${orderId || order.id || ''}`.trim(),
+      headline: 'Your shipping label is ready',
+      message: `It has been ${formatDayText(5)} since your order was created, and we have not seen movement on your label yet. Please print your prepaid label and send in ${deviceName} when you can.`,
+      accent: '#16A34A',
+    },
+    2: {
+      dayLabel: formatDayText(15),
+      subject: `Action needed: ship your device for order #${orderId || order.id || ''}`.trim(),
+      headline: 'Please ship your device soon',
+      message: `It has been ${formatDayText(15)} and your order is still waiting for shipment. To keep your payout moving, please send in ${deviceName} using the prepaid label below.`,
+      accent: '#F97316',
+    },
+    3: {
+      dayLabel: formatDayText(20),
+      subject: `Final reminder: send in your device for order #${orderId || order.id || ''}`.trim(),
+      headline: 'Final reminder before your label expires',
+      message: `It has been ${formatDayText(20)} and we still have not received tracking movement. Please send in ${deviceName} as soon as possible, or reply to this email if you need help.`,
+      accent: '#DC2626',
+    },
+  };
+  const stage = stages[tier] || stages[1];
+
+  const labelButton = labelDownloadUrl
+    ? `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:24px auto 8px;"><tr><td style="border-radius:999px; background:${stage.accent}; text-align:center;"><a href="${safeLabelDownloadUrl}" style="display:inline-block; color:#ffffff; text-decoration:none; font-size:15px; line-height:15px; font-weight:700; padding:16px 28px; border-radius:999px;">Print My Shipping Label</a></td></tr></table>`
+    : `<p style="margin:18px 0 0; color:#52525b; text-align:center;">If you cannot find your label, reply to this email and we will help right away.</p>`;
+  const trackingSection = rawTrackingNumber
+    ? `<div style="margin:18px 0 0; border:1px solid #e5e7eb; border-radius:14px; padding:16px; background:#f9fafb; text-align:center;"><div style="font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:#71717a; font-weight:700; margin-bottom:7px;">Tracking number</div><a href="${escapeHtml(trackingUrl)}" style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace; font-size:16px; color:#111827; text-decoration:none; word-break:break-all;">${trackingNumber}</a></div>`
+    : '';
+
+  const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>⏰ Reminder: We're Waiting for Your Device!</title>
-  <style>
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background-color: #f9fafb;
-      margin: 0;
-      padding: 0;
-      -webkit-text-size-adjust: 100%;
-      -ms-text-size-adjust: 100%;
-    }
-
-    .email-container {
-      max-width: 600px;
-      margin: 40px auto;
-      background-color: #ffffff;
-      border-radius: 16px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-      overflow: hidden;
-    }
-
-    .header {
-      background: linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ea580c 100%);
-      padding: 48px 32px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .header::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      right: -50%;
-      width: 200%;
-      height: 200%;
-      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-      animation: pulse 3s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 0.5; transform: scale(1); }
-      50% { opacity: 0.8; transform: scale(1.1); }
-    }
-
-    .emoji-icon {
-      font-size: 64px;
-      margin-bottom: 16px;
-      display: block;
-      animation: bounce 2s ease-in-out infinite;
-    }
-
-    @keyframes bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-
-    .header h1 {
-      font-size: 32px;
-      font-weight: 700;
-      color: #ffffff;
-      margin: 0;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      position: relative;
-      z-index: 1;
-    }
-
-    .header p {
-      font-size: 16px;
-      color: rgba(255,255,255,0.95);
-      margin: 12px 0 0;
-      position: relative;
-      z-index: 1;
-    }
-
-    .content {
-      padding: 40px 32px;
-      color: #374151;
-      font-size: 16px;
-      line-height: 1.6;
-    }
-
-    .greeting {
-      font-size: 18px;
-      font-weight: 600;
-      color: #111827;
-      margin-bottom: 24px;
-    }
-
-    .message-box {
-      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-      border-left: 4px solid #f59e0b;
-      border-radius: 12px;
-      padding: 24px;
-      margin: 24px 0;
-      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
-    }
-
-    .message-box p {
-      margin: 0 0 12px;
-      color: #92400e;
-      font-weight: 600;
-      font-size: 17px;
-    }
-
-    .message-box p:last-child {
-      margin-bottom: 0;
-    }
-
-    .tracking-box {
-      background: #f3f4f6;
-      border-radius: 12px;
-      padding: 20px;
-      margin: 24px 0;
-      text-align: center;
-    }
-
-    .tracking-label {
-      font-size: 13px;
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-
-    .tracking-number {
-      font-size: 24px;
-      font-weight: 700;
-      color: #1f2937;
-      font-family: 'Courier New', monospace;
-      letter-spacing: 1px;
-    }
-
-    .cta-button {
-      display: inline-block;
-      background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
-      color: #ffffff;
-      padding: 16px 32px;
-      text-decoration: none;
-      border-radius: 12px;
-      font-weight: 700;
-      font-size: 16px;
-      margin: 24px auto;
-      display: block;
-      text-align: center;
-      max-width: 280px;
-      box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3);
-      transition: all 0.3s ease;
-    }
-
-    .cta-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 32px rgba(245, 158, 11, 0.4);
-    }
-
-    .urgency-text {
-      background: #fef2f2;
-      border: 2px solid #fecaca;
-      border-radius: 12px;
-      padding: 20px;
-      margin: 24px 0;
-      text-align: center;
-    }
-
-    .urgency-text p {
-      margin: 0;
-      color: #991b1b;
-      font-weight: 600;
-      font-size: 15px;
-    }
-
-    .urgency-text .icon {
-      font-size: 24px;
-      margin-bottom: 8px;
-      display: block;
-    }
-
-    .footer {
-      background: #f9fafb;
-      padding: 32px;
-      text-align: center;
-      border-top: 1px solid #e5e7eb;
-    }
-
-    .footer p {
-      margin: 8px 0;
-      color: #6b7280;
-      font-size: 14px;
-    }
-
-    .footer a {
-      color: #f59e0b;
-      text-decoration: none;
-      font-weight: 600;
-    }
-
-    .footer a:hover {
-      text-decoration: underline;
-    }
-
-    .divider {
-      height: 1px;
-      background: linear-gradient(90deg, transparent 0%, #e5e7eb 50%, transparent 100%);
-      margin: 32px 0;
-    }
-
-    @media only screen and (max-width: 600px) {
-      .email-container {
-        margin: 20px auto;
-        border-radius: 0;
-      }
-
-      .header {
-        padding: 32px 24px;
-      }
-
-      .header h1 {
-        font-size: 24px;
-      }
-
-      .content {
-        padding: 32px 24px;
-      }
-
-      .emoji-icon {
-        font-size: 48px;
-      }
-
-      .tracking-number {
-        font-size: 18px;
-      }
-
-      .cta-button {
-        padding: 14px 24px;
-        font-size: 15px;
-      }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escapeHtml(stage.headline)}</title>
 </head>
-<body>
-  <div class="email-container">
-    <div class="header">
-      <span class="emoji-icon">⏰</span>
-      <h1>Friendly Reminder!</h1>
-      <p>We're excited to complete your device trade-in</p>
-    </div>
-
-    <div class="content">
-      <p class="greeting">Hi ${customerName},</p>
-
-      <p>We wanted to send you a quick reminder about your device trade-in for order <strong>#${displayOrderId}</strong>!</p>
-
-      <div class="message-box">
-        <p>📦 Your shipping label is ready and waiting!</p>
-        <p>We're excited to receive your <strong>${deviceName}</strong> and complete your trade-in.</p>
-      </div>
-
-      ${trackingSection}
-
-      <div class="steps-list">
-        <h3>📝 Quick Checklist Before Shipping:</h3>
-        <ol>
-          <li><strong>Back up your data</strong> - Save all photos, contacts, and files</li>
-          <li><strong>Factory reset your device</strong> - Remove all personal information</li>
-          <li><strong>Sign out of all accounts</strong> (iCloud, Google, etc.)</li>
-          <li><strong>Remove your SIM card</strong></li>
-          <li><strong>Pack securely</strong> and attach your shipping label</li>
-        </ol>
-      </div>
-
-      <div class="urgency-text">
-        <span class="icon">⚡</span>
-        <p>The sooner you ship, the sooner you get paid!</p>
-        <p>We typically process devices within 24-48 hours of receipt.</p>
-      </div>
-
-      <div class="divider"></div>
-
-      <p style="text-align: center; color: #6b7280; font-size: 15px;">
-        Have questions? Just reply to this email - we're here to help! 💬
-      </p>
-    </div>
-
-    <div class="footer">
-      <p><strong>SecondHandCell</strong></p>
-      <p>Making device trade-ins simple and rewarding</p>
-      <p style="margin-top: 16px;">
-        <a href="https://secondhandcell.com">Visit our website</a> •
-        <a href="mailto:support@secondhandcell.com">Contact Support</a>
-      </p>
-      <p style="margin-top: 16px; font-size: 12px;">
-        This is an automated reminder for your trade-in order #${displayOrderId}
-      </p>
-    </div>
-  </div>
-</body>
-</html>
-  `.trim();
-
-  return { subject, html };
+<body style="margin:0; padding:0; background-color:#f3f4f6; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#111111;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f4f6; margin:0; padding:32px 16px;"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px; background:#ffffff; border-radius:28px; overflow:hidden; border:1px solid #e5e7eb; box-shadow:0 12px 40px rgba(0,0,0,0.04);">
+<tr><td style="padding:20px 24px 16px 24px; background:#ffffff; border-bottom:1px solid #f1f1f1;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td width="84" valign="middle" style="width:84px;"><a href="https://secondhandcell.com" style="text-decoration:none; display:inline-block;"><img src="https://cdn.secondhandcell.com/images/assets/logo-white.webp" alt="SecondHandCell" style="height:44px; display:block; margin:0;" /></a></td><td align="center" valign="middle" style="padding:0 10px;"><a href="https://secondhandcell.com" style="text-decoration:none; display:inline-block;"><div style="font-family:-apple-system,BlinkMacSystemFont,'Inter',Arial,sans-serif; font-size:28px; line-height:32px; font-weight:600; letter-spacing:-0.5px; color:#111827; text-align:center;"><span style="color:#111827;">Second</span><span style="color:#16A34A;">HandCell</span></div><div style="margin-top:6px; font-family:-apple-system,BlinkMacSystemFont,'Inter',Arial,sans-serif; font-size:11px; line-height:16px; font-weight:400; color:#16A34A; text-align:center;">Turn Your Old <span style="color:#0F172A;">Phone Into Cash!</span></div></a></td><td width="84" style="width:84px;">&nbsp;</td></tr></table></td></tr>
+<tr><td style="padding:42px 36px 24px 36px; font-size:16px; line-height:26px; color:#3f3f46;"><div style="display:inline-block; padding:7px 12px; border-radius:999px; background:#f4f4f5; color:${stage.accent}; font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;">${stage.dayLabel} reminder</div><h1 style="margin:18px 0 12px; color:#111827; font-size:28px; line-height:34px; letter-spacing:-0.5px;">${escapeHtml(stage.headline)}</h1><p style="margin:0 0 16px;">Hi ${customerName},</p><p style="margin:0 0 18px;">${stage.message}</p><div style="border:1px solid #dcfce7; background:#f0fdf4; border-radius:18px; padding:20px; margin:22px 0;"><p style="margin:0 0 10px; color:#166534; font-weight:700;">Order #${displayOrderId} is still waiting for your device.</p><p style="margin:0; color:#3f6212;">Please pack your device securely, attach the prepaid label, and drop it off with the carrier. The sooner it ships, the sooner we can inspect it and pay you.</p></div>${labelButton}${trackingSection}<h2 style="margin:28px 0 10px; font-size:18px; color:#111827;">Before sending it in</h2><ul style="margin:0 0 20px 20px; padding:0; color:#3f3f46;"><li>Back up your data and factory reset the device.</li><li>Sign out of iCloud, Google, Samsung, and any lock accounts.</li><li>Remove SIM cards, cases, and accessories unless requested.</li></ul><p style="margin:0; color:#52525b;">Already shipped it? No problem — this reminder only sends while our system still shows the order as label generated, and tracking may update shortly.</p></td></tr>
+<tr><td style="padding:34px 36px 34px 36px;"><div style="border-top:1px solid #eeeeee; padding-top:22px; text-align:center; font-size:12px; line-height:20px; color:#9ca3af;"><div style="font-weight:600; color:#6b7280; margin-bottom:4px;">SecondHandCell.com</div><div><a href="https://secondhandcell.com" style="color:#8b8b8f; text-decoration:none;">SecondHandCell.com</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="mailto:sales@secondhandcell.com" style="color:#8b8b8f; text-decoration:none;">sales@secondhandcell.com</a></div><div style="margin-top:6px;">© 2026 SecondHandCell. All rights reserved.</div></div></td></tr>
+</table></td></tr></table></body></html>`;
+  return { subject: stage.subject, html };
 }
 
 
@@ -6255,6 +6009,14 @@ function resolveInboundTransitResetStatus(order = {}) {
 function getTimestampMillis(value) {
   const date = toDate(value);
   return date ? date.getTime() : null;
+}
+
+function getInclusiveOrderAgeDays(startMs, nowMs = Date.now()) {
+  if (!Number.isFinite(startMs)) {
+    return null;
+  }
+  const elapsedMs = Math.max(0, nowMs - startMs);
+  return Math.max(1, Math.ceil(elapsedMs / (24 * 60 * 60 * 1000)) + 1);
 }
 
 function isKitOrder(order = {}) {
@@ -6440,7 +6202,7 @@ async function sendPushNotification(tokens, title, body, data = {}, options = {}
   return response;
 }
 
-async function sendLabelReminderEmail(order, { tier = 1 } = {}) {
+async function sendLabelReminderEmail(order, { tier = 1, dayCount = null } = {}) {
   if (!order || !order.id) {
     return false;
   }
@@ -6450,11 +6212,24 @@ async function sendLabelReminderEmail(order, { tier = 1 } = {}) {
     return false;
   }
 
-  const { subject, html } = buildLabelReminderEmail(order.id, order);
+  if (normalizeTransitStatus(order.status) !== 'label_generated') {
+    return false;
+  }
+
+  const latestSnap = await ordersCollection.doc(order.id).get();
+  if (!latestSnap.exists) {
+    return false;
+  }
+  const latestOrder = { id: latestSnap.id, ...latestSnap.data() };
+  if (normalizeTransitStatus(latestOrder.status) !== 'label_generated') {
+    return false;
+  }
+
+  const { subject, html } = buildLabelReminderEmail(order.id, latestOrder, { tier, dayCount });
 
   await transporter.sendMail({
     from: `${process.env.EMAIL_NAME} <${process.env.EMAIL_USER}>`,
-    to: email,
+    to: latestOrder.shippingInfo?.email || email,
     subject,
     html,
   });
@@ -6463,21 +6238,21 @@ async function sendLabelReminderEmail(order, { tier = 1 } = {}) {
     lastReminderSentAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
-  if (tier === 1 && !order.labelReminderFirstSentAt) {
+  if (tier === 1 && !latestOrder.labelReminderFirstSentAt) {
     additionalUpdates.labelReminderFirstSentAt =
       admin.firestore.FieldValue.serverTimestamp();
-  } else if (tier === 2 && !order.labelReminderSecondSentAt) {
+  } else if (tier === 2 && !latestOrder.labelReminderSecondSentAt) {
     additionalUpdates.labelReminderSecondSentAt =
       admin.firestore.FieldValue.serverTimestamp();
-  } else if (tier === 3 && !order.labelReminderThirdSentAt) {
+  } else if (tier === 3 && !latestOrder.labelReminderThirdSentAt) {
     additionalUpdates.labelReminderThirdSentAt =
       admin.firestore.FieldValue.serverTimestamp();
   }
 
   const dayMarkerByTier = {
-    1: '3+',
-    2: '5+',
-    3: '7+',
+    1: '5',
+    2: '15',
+    3: '20',
   };
 
   await recordCustomerEmail(
@@ -6487,6 +6262,7 @@ async function sendLabelReminderEmail(order, { tier = 1 } = {}) {
       status: order.status,
       auto: true,
       reminderTier: tier,
+      dayCount: Number.isFinite(Number(dayCount)) ? Number(dayCount) : null,
     },
     {
       logType: "reminder",
@@ -7853,7 +7629,7 @@ async function syncInboundTrackingForOrder(order, options = {}) {
     }
   }
 
-  const shipEngineKey = options.shipengineKey || process.env.SHIPENGINE_KEY || null;
+  const shipEngineKey = options.shipengineKey || getShipEngineApiKey();
   const shipStationCredentials = options.shipstationCredentials || getShipStationCredentials();
   if (!shipEngineKey && !shipStationCredentials) {
     throw new Error('ShipEngine or ShipStation API credentials not configured.');
@@ -9565,39 +9341,108 @@ async function runAutomaticReducedPayoutSweep(options = {}) {
 
 
 
-async function runAutomaticInboundTrackingRefresh() {
+async function runAutomaticInboundTrackingRefresh(options = {}) {
   if (automaticInboundTrackingRefreshInProgress) {
     console.log('Automatic inbound tracking refresh is already running; skipping overlap run.');
-    return;
+    return { skipped: true, reason: 'already_running' };
+  }
+
+  const shipengineKey = getShipEngineApiKey();
+  const shipstationCredentials = getShipStationCredentials();
+  if (!shipengineKey && !shipstationCredentials) {
+    throw new Error('ShipEngine or ShipStation API credentials not configured. Set SHIPENGINE_API_KEY/SHIPENGINE_KEY or SHIPSTATION_KEY and SHIPSTATION_SECRET.');
   }
 
   automaticInboundTrackingRefreshInProgress = true;
 
+  const summary = {
+    scannedCount: 0,
+    refreshedCount: 0,
+    changedCount: 0,
+    skippedCount: 0,
+    failedCount: 0,
+    beforeStatusCounts: {},
+    afterStatusCounts: {},
+    failedOrders: [],
+  };
+  const onProgress = typeof options.onProgress === 'function'
+    ? options.onProgress
+    : null;
+  const countStatus = (bucket, status) => {
+    const key = normalizeTransitStatus(status) || 'unknown';
+    bucket[key] = (bucket[key] || 0) + 1;
+  };
+
   try {
-  const snapshot = await ordersCollection
-    .where('status', 'in', ['label_generated', 'phone_on_the_way'])
-    .limit(AUTO_TRACKING_REFRESH_QUERY_LIMIT)
-    .get();
+    const snapshot = await ordersCollection
+      .where('status', 'in', ['label_generated', 'phone_on_the_way'])
+      .limit(AUTO_TRACKING_REFRESH_QUERY_LIMIT)
+      .get();
 
-  for (const doc of snapshot.docs) {
-    const order = { id: doc.id, ...doc.data() };
+    summary.scannedCount = snapshot.docs.length;
 
-    if (!shouldTrackInbound(order)) {
-      continue;
+    for (const doc of snapshot.docs) {
+      const order = { id: doc.id, ...doc.data() };
+      const beforeStatus = normalizeTransitStatus(order.status) || order.status || 'unknown';
+      countStatus(summary.beforeStatusCounts, beforeStatus);
+
+      if (!shouldTrackInbound(order)) {
+        summary.skippedCount += 1;
+        countStatus(summary.afterStatusCounts, beforeStatus);
+        if (onProgress) {
+          onProgress({ orderId: order.id, beforeStatus, afterStatus: beforeStatus, skipped: 'not_trackable' });
+        }
+        continue;
+      }
+
+      try {
+        const result = await syncInboundTrackingForOrder(order, {
+          source: 'system_automatic',
+          shipengineKey,
+          shipstationCredentials,
+        });
+        const updatedStatus = normalizeTransitStatus(result?.order?.status) || beforeStatus;
+        countStatus(summary.afterStatusCounts, updatedStatus);
+        if (updatedStatus !== beforeStatus) {
+          summary.changedCount += 1;
+        }
+        if (result?.skipped) {
+          summary.skippedCount += 1;
+        } else {
+          summary.refreshedCount += 1;
+        }
+        if (onProgress) {
+          onProgress({
+            orderId: order.id,
+            beforeStatus,
+            afterStatus: updatedStatus,
+            changed: updatedStatus !== beforeStatus,
+            skipped: result?.skipped || null,
+            normalizedTrackingStatus: result?.normalizedStatus || null,
+          });
+        }
+      } catch (error) {
+        summary.failedCount += 1;
+        countStatus(summary.afterStatusCounts, beforeStatus);
+        summary.failedOrders.push({
+          orderId: order.id,
+          error: error?.message || 'Failed to refresh tracking',
+        });
+        if (onProgress) {
+          onProgress({ orderId: order.id, beforeStatus, afterStatus: beforeStatus, failed: true, error: error?.message || 'Failed to refresh tracking' });
+        }
+        console.error(`Automatic inbound tracking refresh failed for order ${order.id}:`, error.response?.data || error);
+      }
     }
 
-    try {
-      await syncInboundTrackingForOrder(order, { source: 'system_automatic' });
-    } catch (error) {
-      console.error(`Automatic inbound tracking refresh failed for order ${order.id}:`, error.response?.data || error);
-    }
-  }
+    return summary;
   } finally {
     automaticInboundTrackingRefreshInProgress = false;
   }
 }
 
 exports.runAutomaticLabelVoidSweep = runAutomaticLabelVoidSweep;
+exports.runAutomaticLabelReminderSweep = runAutomaticLabelReminderSweep;
 exports.runAutomaticInboundTrackingRefresh = runAutomaticInboundTrackingRefresh;
 
 exports.autoVoidExpiredLabels = functions.pubsub
@@ -9618,8 +9463,9 @@ exports.autoRefreshInboundTracking = functions.pubsub
   .onRun(async () => {
     try {
       await runAutomaticInboundTrackingRefresh();
+      await runAutomaticLabelReminderSweep();
     } catch (error) {
-      console.error('Automatic inbound tracking refresh sweep failed:', error);
+      console.error('Automatic inbound tracking refresh/reminder sweep failed:', error);
     }
     return null;
   });
@@ -9927,13 +9773,15 @@ exports.createUserRecord = functions.auth.user().onCreate(async (user) => {
   }
 });
 
-async function runAutomaticLabelReminderSweep() {
+async function runAutomaticLabelReminderSweep(options = {}) {
   const snapshot = await ordersCollection
     .where("status", "in", Array.from(LABEL_REMINDER_STATUSES))
     .get();
 
   const now = Date.now();
+  const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
   let sentCount = 0;
+  let skippedCount = 0;
 
   for (const doc of snapshot.docs) {
     const order = { id: doc.id, ...doc.data() };
@@ -9943,42 +9791,72 @@ async function runAutomaticLabelReminderSweep() {
       continue;
     }
 
-    const ageMs = now - labelStart;
+    const inclusiveAgeDays = getInclusiveOrderAgeDays(labelStart, now);
     const lastEmailAt = getLastCustomerEmailMillis(order);
     if (lastEmailAt && now - lastEmailAt < LABEL_REMINDER_MIN_GAP_MS) {
+      skippedCount += 1;
+      if (onProgress) {
+        onProgress({ orderId: order.id, dayCount: inclusiveAgeDays, skipped: 'recent_email' });
+      }
       continue;
     }
 
     let targetTier = null;
-    if (ageMs >= LABEL_REMINDER_THIRD_DELAY_MS && !order.labelReminderThirdSentAt) {
-      if (!order.labelReminderFirstSentAt) {
-        targetTier = 1;
-      } else if (!order.labelReminderSecondSentAt) {
+    let skipReason = null;
+    if (inclusiveAgeDays >= 20) {
+      if (!order.labelReminderThirdSentAt) {
+        targetTier = 3;
+      } else {
+        skipReason = 'already_sent';
+      }
+    } else if (inclusiveAgeDays >= 15 && inclusiveAgeDays <= 19) {
+      if (!order.labelReminderSecondSentAt) {
         targetTier = 2;
       } else {
-        targetTier = 3;
+        skipReason = 'already_sent';
       }
-    } else if (ageMs >= LABEL_REMINDER_SECOND_DELAY_MS && !order.labelReminderSecondSentAt) {
-      targetTier = order.labelReminderFirstSentAt ? 2 : 1;
-    } else if (ageMs >= LABEL_REMINDER_FIRST_DELAY_MS && !order.labelReminderFirstSentAt) {
-      targetTier = 1;
+    } else if (inclusiveAgeDays >= 5 && inclusiveAgeDays <= 10) {
+      if (!order.labelReminderFirstSentAt) {
+        targetTier = 1;
+      } else {
+        skipReason = 'already_sent';
+      }
+    } else {
+      skipReason = 'not_due';
     }
 
     if (!targetTier) {
+      skippedCount += 1;
+      if (onProgress) {
+        onProgress({ orderId: order.id, dayCount: inclusiveAgeDays, skipped: skipReason || 'not_due' });
+      }
       continue;
     }
 
     try {
-      const sent = await sendLabelReminderEmail(order, { tier: targetTier });
+      const sent = await sendLabelReminderEmail(order, { tier: targetTier, dayCount: inclusiveAgeDays });
       if (sent) {
         sentCount += 1;
+        if (onProgress) {
+          onProgress({ orderId: order.id, dayCount: inclusiveAgeDays, reminderTier: targetTier, sent: true });
+        }
+      } else {
+        skippedCount += 1;
+        if (onProgress) {
+          onProgress({ orderId: order.id, dayCount: inclusiveAgeDays, reminderTier: targetTier, skipped: 'send_guard' });
+        }
       }
     } catch (error) {
+      skippedCount += 1;
+      if (onProgress) {
+        onProgress({ orderId: order.id, dayCount: inclusiveAgeDays, reminderTier: targetTier, failed: true, error: error?.message || 'Failed to send reminder' });
+      }
       console.error(`Failed to send label reminder for order ${order.id}:`, error);
     }
   }
 
   console.log(`Automatic label reminder sweep sent ${sentCount} reminders.`);
+  return { sentCount, skippedCount, scannedCount: snapshot.docs.length };
 }
 
 function getIsoMillis(value) {
@@ -10214,7 +10092,9 @@ async function runAbandonedCheckoutReminderSweep() {
     .get();
 
   const now = Date.now();
+  const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
   let sentCount = 0;
+  let skippedCount = 0;
 
   for (const doc of snapshot.docs) {
     let progress = { id: doc.id, ...doc.data() };
@@ -10320,7 +10200,11 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
       }
     }
 
-    const { orderId } = data;
+    const { orderId, tier, reminderTier } = data || {};
+    const requestedTier = Number(tier ?? reminderTier ?? 1);
+    if (![1, 2, 3].includes(requestedTier)) {
+      throw new functions.https.HttpsError('invalid-argument', 'Reminder tier must be 1, 2, or 3');
+    }
     
     // 3. Validate orderId is provided
     if (!orderId) {
@@ -10350,7 +10234,8 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
 
     const { subject, html } = buildLabelReminderEmail(
       sanitizedOrderId,
-      { ...order, id: sanitizedOrderId }
+      { ...order, id: sanitizedOrderId },
+      { tier: requestedTier }
     );
 
     // 7. Send the email
@@ -10370,6 +10255,7 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
         logType: 'reminder',
         additionalUpdates: {
           lastReminderSentAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastManualReminderTier: requestedTier,
         },
       }
     );
@@ -10382,6 +10268,7 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
       orderId: sanitizedOrderId,
       orderStatus: order.status,
       recipientEmail: order.shippingInfo?.email,
+      reminderTier: requestedTier,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
       success: true
     };
@@ -10392,7 +10279,9 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
     
     return { 
       success: true, 
-      message: 'Reminder email sent successfully' 
+      message: 'Reminder email sent successfully',
+      reminderTier: requestedTier,
+      subject,
     };
   } catch (error) {
     console.error('Error sending reminder email:', error);
@@ -10405,6 +10294,7 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
           adminUid: authContext.uid,
           adminEmail: authContext.token?.email || 'unknown',
           orderId: data?.orderId || 'unknown',
+          reminderTier: Number(data?.tier ?? data?.reminderTier ?? 1) || null,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
           success: false,
           errorType: error.code || 'unknown',
@@ -10422,6 +10312,9 @@ exports.sendReminderEmail = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('internal', 'Failed to send reminder email');
   }
 });
+
+// Alias for frontend/admin UI buttons that explicitly send the staged label reminder emails.
+exports.sendLabelReminderEmail = exports.sendReminderEmail;
 
 exports.sendExpiringReminderEmail = functions.https.onCall(async (data, context) => {
   let authContext = null;
