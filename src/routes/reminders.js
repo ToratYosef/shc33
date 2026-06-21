@@ -34,7 +34,8 @@ async function invokeCallable(fn, data, req, res, next) {
         token: req.user.claims,
       },
     };
-    const result = await fn(data, context);
+    const callableRunner = typeof fn.run === 'function' ? fn.run.bind(fn) : fn;
+    const result = await callableRunner(data, context);
     return res.json({ ok: true, data: result });
   } catch (error) {
     const mapped = mapCallableError(error);
