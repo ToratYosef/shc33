@@ -29,6 +29,7 @@ const {
   updateOrderBoth,
   buildOrderDeviceKey,
   runAutomaticInboundTrackingRefresh,
+  runAutomaticLabelReminderSweep,
   runAutomaticLabelVoidSweep,
   getOrderByIdFromFirestore,
 } = require('../functions/index.js');
@@ -98,6 +99,59 @@ function shouldLogApiRequest(req) {
     path.startsWith('/packing-slip/') ||
     path.startsWith('/print-bundle/')
   );
+}
+
+
+const API_LOG_BODY_MAX_CHARS = Number(process.env.API_LOG_BODY_MAX_CHARS || 4000);
+const API_LOG_REDACT_KEYS = new Set([
+  'password',
+  'pass',
+  'token',
+  'idtoken',
+  'authorization',
+  'cookie',
+  'secret',
+  'apiKey',
+  'api_key',
+  'email_pass',
+]);
+
+function sanitizeForApiLog(value, depth = 0) {
+  if (depth > 5) return '[MaxDepth]';
+  if (value === null || value === undefined) return value;
+  if (Buffer.isBuffer(value)) return `[Buffer ${value.length} bytes]`;
+  if (Array.isArray(value)) {
+    return value.slice(0, 50).map((entry) => sanitizeForApiLog(entry, depth + 1));
+  }
+  if (typeof value === 'object') {
+    const out = {};
+    for (const [key, entry] of Object.entries(value)) {
+      const normalizedKey = String(key).toLowerCase();
+      if (API_LOG_REDACT_KEYS.has(normalizedKey) || normalizedKey.includes('password') || normalizedKey.includes('secret') || normalizedKey.includes('token')) {
+        out[key] = '[REDACTED]';
+      } else {
+        out[key] = sanitizeForApiLog(entry, depth + 1);
+      }
+    }
+    return out;
+  }
+  if (typeof value === 'string' && value.length > 1000) {
+    return `${value.slice(0, 1000)}…[truncated ${value.length - 1000} chars]`;
+  }
+  return value;
+}
+
+function stringifyForApiLog(value) {
+  try {
+    const sanitized = sanitizeForApiLog(value);
+    const json = typeof sanitized === 'string' ? sanitized : JSON.stringify(sanitized);
+    if (!json) return '';
+    return json.length > API_LOG_BODY_MAX_CHARS
+      ? `${json.slice(0, API_LOG_BODY_MAX_CHARS)}…[truncated ${json.length - API_LOG_BODY_MAX_CHARS} chars]`
+      : json;
+  } catch (error) {
+    return `[Unserializable: ${error?.message || 'unknown'}]`;
+  }
 }
 
 function escapeHtml(value) {
@@ -336,6 +390,7 @@ async function runMaintenanceSweep(trigger = 'manual') {
       trigger,
       startedAt: new Date(startedAt).toISOString(),
       trackingRefresh: { ok: true },
+      labelReminder: { ok: true },
       labelVoid: { ok: true },
     };
 
@@ -343,6 +398,16 @@ async function runMaintenanceSweep(trigger = 'manual') {
       await runAutomaticInboundTrackingRefresh();
     } catch (error) {
       result.trackingRefresh = {
+        ok: false,
+        error: error?.message || 'unknown_error',
+      };
+    }
+
+    try {
+      const reminderResult = await runAutomaticLabelReminderSweep();
+      result.labelReminder = { ok: true, ...reminderResult };
+    } catch (error) {
+      result.labelReminder = {
         ok: false,
         error: error?.message || 'unknown_error',
       };
@@ -385,12 +450,15 @@ function maybeRunScheduledMaintenanceSweep() {
 
   runMaintenanceSweep(`daily-${maintenanceScheduleTimezone}-${slotKey}`)
     .then((result) => {
-      const status = result.trackingRefresh.ok && result.labelVoid.ok ? 'ok' : 'partial_failure';
+      const status = result.trackingRefresh.ok && result.labelReminder.ok && result.labelVoid.ok ? 'ok' : 'partial_failure';
       console.log(
-        `[maintenance-schedule] ${status} trigger=${result.trigger} durationMs=${result.durationMs} trackingOk=${result.trackingRefresh.ok} labelVoidOk=${result.labelVoid.ok}`
+        `[maintenance-schedule] ${status} trigger=${result.trigger} durationMs=${result.durationMs} trackingOk=${result.trackingRefresh.ok} reminderOk=${result.labelReminder.ok} labelVoidOk=${result.labelVoid.ok}`
       );
       if (!result.trackingRefresh.ok) {
         console.error('[maintenance-schedule] tracking refresh failed:', result.trackingRefresh.error);
+      }
+      if (!result.labelReminder.ok) {
+        console.error('[maintenance-schedule] label reminder sweep failed:', result.labelReminder.error);
       }
       if (!result.labelVoid.ok) {
         console.error('[maintenance-schedule] label void sweep failed:', result.labelVoid.error);
@@ -401,17 +469,33 @@ function maybeRunScheduledMaintenanceSweep() {
     });
 }
 
-function startMaintenanceTwiceDailyScheduler() {
+function startMaintenanceHourlyScheduler() {
   if (isServerless) {
     return;
   }
 
   console.log(
-    `[maintenance-schedule] enabled: daily at 08:00 and 17:00 ${maintenanceScheduleTimezone}`
+    `[maintenance-schedule] enabled: hourly tracking refresh, label reminders, and label void checks`
   );
 
-  maybeRunScheduledMaintenanceSweep();
-  setInterval(maybeRunScheduledMaintenanceSweep, 30 * 1000);
+  runMaintenanceSweep('startup')
+    .then((result) => {
+      const status = result.trackingRefresh.ok && result.labelReminder.ok && result.labelVoid.ok ? 'ok' : 'partial_failure';
+      console.log(`[maintenance-schedule] ${status} trigger=${result.trigger} durationMs=${result.durationMs} trackingOk=${result.trackingRefresh.ok} reminderOk=${result.labelReminder.ok} labelVoidOk=${result.labelVoid.ok}`);
+    })
+    .catch((error) => {
+      console.error('[maintenance-schedule] startup sweep failed:', error?.message || error);
+    });
+  setInterval(() => {
+    runMaintenanceSweep('hourly')
+      .then((result) => {
+        const status = result.trackingRefresh.ok && result.labelReminder.ok && result.labelVoid.ok ? 'ok' : 'partial_failure';
+        console.log(`[maintenance-schedule] ${status} trigger=${result.trigger} durationMs=${result.durationMs} trackingOk=${result.trackingRefresh.ok} reminderOk=${result.labelReminder.ok} labelVoidOk=${result.labelVoid.ok}`);
+      })
+      .catch((error) => {
+        console.error('[maintenance-schedule] hourly sweep failed:', error?.message || error);
+      });
+  }, 60 * 60 * 1000);
 }
 
 function ensureCurrentVisitorCsvFile(trigger = 'startup') {
@@ -819,10 +903,27 @@ app.use((req, res, next) => {
   const startedAtMs = Date.now();
   const context = summarizeApiActionContext(req);
   const isAnalyticsCollection = isNoisyAnalyticsCollectionRequest(req);
+  const requestBodyLog = req.method === 'GET' || req.method === 'HEAD'
+    ? ''
+    : stringifyForApiLog(req.body || {});
+  let responseBodyForLog = null;
   req.__apiLogged = true;
 
+  const originalJson = res.json.bind(res);
+  const originalSend = res.send.bind(res);
+  res.json = (body) => {
+    responseBodyForLog = body;
+    return originalJson(body);
+  };
+  res.send = (body) => {
+    if (responseBodyForLog === null) {
+      responseBodyForLog = body;
+    }
+    return originalSend(body);
+  };
+
   if (!isAnalyticsCollection) {
-    const requestLine = `[API] -> ${req.method} ${req.originalUrl || req.url}${context ? ` | ${context}` : ''}`;
+    const requestLine = `[API] -> ${req.method} ${req.originalUrl || req.url}${context ? ` | ${context}` : ''}${requestBodyLog ? ` | body=${requestBodyLog}` : ''}`;
     console.log(requestLine);
   }
 
@@ -832,7 +933,8 @@ app.use((req, res, next) => {
     }
 
     const durationMs = Date.now() - startedAtMs;
-    const responseLine = `[API] <- ${req.method} ${req.originalUrl || req.url} ${res.statusCode} ${durationMs}ms${context ? ` | ${context}` : ''}`;
+    const responseBodyLog = stringifyForApiLog(responseBodyForLog);
+    const responseLine = `[API] <- ${req.method} ${req.originalUrl || req.url} ${res.statusCode} ${durationMs}ms${context ? ` | ${context}` : ''}${responseBodyLog ? ` | response=${responseBodyLog}` : ''}`;
     console.log(responseLine);
   });
 
@@ -2877,7 +2979,7 @@ if (!isServerless && require.main === module) {
   app.listen(port, () => {
     console.log(`API server listening on port ${port}`);
     startRepricerDailyScheduler();
-    startMaintenanceTwiceDailyScheduler();
+    startMaintenanceHourlyScheduler();
     startLiveVisitorCsvScheduler();
   });
 }
