@@ -7,7 +7,14 @@ const { runAutomaticInboundTrackingRefresh } = require('../functions/index.js');
 (async () => {
   try {
     console.log('[refresh-orders] starting inbound tracking refresh for label_generated and phone_on_the_way orders');
-    await runAutomaticInboundTrackingRefresh();
+    const summary = await runAutomaticInboundTrackingRefresh();
+    console.log('[refresh-orders] summary:', JSON.stringify(summary, null, 2));
+
+    if (summary?.failedCount > 0) {
+      console.error(`[refresh-orders] completed with ${summary.failedCount} failed order(s)`);
+      process.exit(1);
+    }
+
     console.log('[refresh-orders] completed successfully');
     process.exit(0);
   } catch (error) {

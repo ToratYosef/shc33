@@ -7612,7 +7612,7 @@ async function syncInboundTrackingForOrder(order, options = {}) {
     }
   }
 
-  const shipEngineKey = options.shipengineKey || process.env.SHIPENGINE_KEY || null;
+  const shipEngineKey = options.shipengineKey || getShipEngineApiKey();
   const shipStationCredentials = options.shipstationCredentials || getShipStationCredentials();
   if (!shipEngineKey && !shipStationCredentials) {
     throw new Error('ShipEngine or ShipStation API credentials not configured.');
@@ -9327,30 +9327,63 @@ async function runAutomaticReducedPayoutSweep(options = {}) {
 async function runAutomaticInboundTrackingRefresh() {
   if (automaticInboundTrackingRefreshInProgress) {
     console.log('Automatic inbound tracking refresh is already running; skipping overlap run.');
-    return;
+    return { skipped: true, reason: 'already_running' };
+  }
+
+  const shipengineKey = getShipEngineApiKey();
+  const shipstationCredentials = getShipStationCredentials();
+  if (!shipengineKey && !shipstationCredentials) {
+    throw new Error('ShipEngine or ShipStation API credentials not configured. Set SHIPENGINE_API_KEY/SHIPENGINE_KEY or SHIPSTATION_KEY and SHIPSTATION_SECRET.');
   }
 
   automaticInboundTrackingRefreshInProgress = true;
 
+  const summary = {
+    scannedCount: 0,
+    refreshedCount: 0,
+    skippedCount: 0,
+    failedCount: 0,
+    failedOrders: [],
+  };
+
   try {
-  const snapshot = await ordersCollection
-    .where('status', 'in', ['label_generated', 'phone_on_the_way'])
-    .limit(AUTO_TRACKING_REFRESH_QUERY_LIMIT)
-    .get();
+    const snapshot = await ordersCollection
+      .where('status', 'in', ['label_generated', 'phone_on_the_way'])
+      .limit(AUTO_TRACKING_REFRESH_QUERY_LIMIT)
+      .get();
 
-  for (const doc of snapshot.docs) {
-    const order = { id: doc.id, ...doc.data() };
+    summary.scannedCount = snapshot.docs.length;
 
-    if (!shouldTrackInbound(order)) {
-      continue;
+    for (const doc of snapshot.docs) {
+      const order = { id: doc.id, ...doc.data() };
+
+      if (!shouldTrackInbound(order)) {
+        summary.skippedCount += 1;
+        continue;
+      }
+
+      try {
+        const result = await syncInboundTrackingForOrder(order, {
+          source: 'system_automatic',
+          shipengineKey,
+          shipstationCredentials,
+        });
+        if (result?.skipped) {
+          summary.skippedCount += 1;
+        } else {
+          summary.refreshedCount += 1;
+        }
+      } catch (error) {
+        summary.failedCount += 1;
+        summary.failedOrders.push({
+          orderId: order.id,
+          error: error?.message || 'Failed to refresh tracking',
+        });
+        console.error(`Automatic inbound tracking refresh failed for order ${order.id}:`, error.response?.data || error);
+      }
     }
 
-    try {
-      await syncInboundTrackingForOrder(order, { source: 'system_automatic' });
-    } catch (error) {
-      console.error(`Automatic inbound tracking refresh failed for order ${order.id}:`, error.response?.data || error);
-    }
-  }
+    return summary;
   } finally {
     automaticInboundTrackingRefreshInProgress = false;
   }
