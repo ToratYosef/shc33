@@ -59,6 +59,16 @@ function summarizeApiActionContext(req) {
   return parts.join(' ');
 }
 
+function isNoisyAnalyticsCollectionRequest(req) {
+  const path = String(req?.originalUrl || req?.url || '').split('?')[0].trim().toLowerCase();
+  return (
+    path === '/analytics/collect' ||
+    path === '/analytics/heartbeat' ||
+    path === '/server/analytics/collect' ||
+    path === '/server/analytics/heartbeat'
+  );
+}
+
 function shouldLogApiRequest(req) {
   const path = String(req?.originalUrl || req?.url || '').split('?')[0].trim().toLowerCase();
   if (!path) return false;
@@ -808,11 +818,19 @@ app.use((req, res, next) => {
 
   const startedAtMs = Date.now();
   const context = summarizeApiActionContext(req);
+  const isAnalyticsCollection = isNoisyAnalyticsCollectionRequest(req);
   req.__apiLogged = true;
-  const requestLine = `[API] -> ${req.method} ${req.originalUrl || req.url}${context ? ` | ${context}` : ''}`;
-  console.log(requestLine);
+
+  if (!isAnalyticsCollection) {
+    const requestLine = `[API] -> ${req.method} ${req.originalUrl || req.url}${context ? ` | ${context}` : ''}`;
+    console.log(requestLine);
+  }
 
   res.on('finish', () => {
+    if (isAnalyticsCollection && res.statusCode < 400) {
+      return;
+    }
+
     const durationMs = Date.now() - startedAtMs;
     const responseLine = `[API] <- ${req.method} ${req.originalUrl || req.url} ${res.statusCode} ${durationMs}ms${context ? ` | ${context}` : ''}`;
     console.log(responseLine);
