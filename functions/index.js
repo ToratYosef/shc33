@@ -9324,7 +9324,7 @@ async function runAutomaticReducedPayoutSweep(options = {}) {
 
 
 
-async function runAutomaticInboundTrackingRefresh() {
+async function runAutomaticInboundTrackingRefresh(options = {}) {
   if (automaticInboundTrackingRefreshInProgress) {
     console.log('Automatic inbound tracking refresh is already running; skipping overlap run.');
     return { skipped: true, reason: 'already_running' };
@@ -9341,9 +9341,19 @@ async function runAutomaticInboundTrackingRefresh() {
   const summary = {
     scannedCount: 0,
     refreshedCount: 0,
+    changedCount: 0,
     skippedCount: 0,
     failedCount: 0,
+    beforeStatusCounts: {},
+    afterStatusCounts: {},
     failedOrders: [],
+  };
+  const onProgress = typeof options.onProgress === 'function'
+    ? options.onProgress
+    : null;
+  const countStatus = (bucket, status) => {
+    const key = normalizeTransitStatus(status) || 'unknown';
+    bucket[key] = (bucket[key] || 0) + 1;
   };
 
   try {
@@ -9356,9 +9366,15 @@ async function runAutomaticInboundTrackingRefresh() {
 
     for (const doc of snapshot.docs) {
       const order = { id: doc.id, ...doc.data() };
+      const beforeStatus = normalizeTransitStatus(order.status) || order.status || 'unknown';
+      countStatus(summary.beforeStatusCounts, beforeStatus);
 
       if (!shouldTrackInbound(order)) {
         summary.skippedCount += 1;
+        countStatus(summary.afterStatusCounts, beforeStatus);
+        if (onProgress) {
+          onProgress({ orderId: order.id, beforeStatus, afterStatus: beforeStatus, skipped: 'not_trackable' });
+        }
         continue;
       }
 
@@ -9368,17 +9384,36 @@ async function runAutomaticInboundTrackingRefresh() {
           shipengineKey,
           shipstationCredentials,
         });
+        const updatedStatus = normalizeTransitStatus(result?.order?.status) || beforeStatus;
+        countStatus(summary.afterStatusCounts, updatedStatus);
+        if (updatedStatus !== beforeStatus) {
+          summary.changedCount += 1;
+        }
         if (result?.skipped) {
           summary.skippedCount += 1;
         } else {
           summary.refreshedCount += 1;
         }
+        if (onProgress) {
+          onProgress({
+            orderId: order.id,
+            beforeStatus,
+            afterStatus: updatedStatus,
+            changed: updatedStatus !== beforeStatus,
+            skipped: result?.skipped || null,
+            normalizedTrackingStatus: result?.normalizedStatus || null,
+          });
+        }
       } catch (error) {
         summary.failedCount += 1;
+        countStatus(summary.afterStatusCounts, beforeStatus);
         summary.failedOrders.push({
           orderId: order.id,
           error: error?.message || 'Failed to refresh tracking',
         });
+        if (onProgress) {
+          onProgress({ orderId: order.id, beforeStatus, afterStatus: beforeStatus, failed: true, error: error?.message || 'Failed to refresh tracking' });
+        }
         console.error(`Automatic inbound tracking refresh failed for order ${order.id}:`, error.response?.data || error);
       }
     }
