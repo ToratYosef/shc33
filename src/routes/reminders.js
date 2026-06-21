@@ -38,7 +38,16 @@ async function invokeCallable(fn, data, req, res, next) {
     return res.json({ ok: true, data: result });
   } catch (error) {
     const mapped = mapCallableError(error);
-    return res.status(mapped.status).json({ ok: false, error: mapped.message });
+    console.error('[reminders] callable failed:', {
+      path: req.originalUrl || req.url,
+      method: req.method,
+      status: mapped.status,
+      message: mapped.message,
+      code: error?.code || error?.details?.code || null,
+      stack: error?.stack || null,
+      data,
+    });
+    return res.status(mapped.status).json({ ok: false, error: mapped.message, code: error?.code || null });
   }
 }
 
