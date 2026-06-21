@@ -11,16 +11,21 @@ function getHostFromHeader(value) {
   }
 }
 
-function originGuard(req, res, next) {
-  const allowedHosts = String(process.env.ANALYTICS_ALLOWED_HOSTS || '')
+function getAllowedAnalyticsHosts() {
+  const configuredHosts = String(process.env.ANALYTICS_ALLOWED_HOSTS || '')
     .split(',')
     .map(normalizeHost)
     .filter(Boolean);
 
-  if (!allowedHosts.length) {
-    return res.status(500).json({ error: 'analytics_allowed_hosts_not_configured' });
+  if (configuredHosts.length) {
+    return configuredHosts;
   }
 
+  return ['secondhandcell.com', 'api.secondhandcell.com'];
+}
+
+function originGuard(req, res, next) {
+  const allowedHosts = getAllowedAnalyticsHosts();
   const allowed = new Set(allowedHosts);
   const originHost = getHostFromHeader(req.headers.origin);
   const refererHost = getHostFromHeader(req.headers.referer);
@@ -33,3 +38,5 @@ function originGuard(req, res, next) {
 }
 
 module.exports = originGuard;
+module.exports.getAllowedAnalyticsHosts = getAllowedAnalyticsHosts;
+module.exports.normalizeHost = normalizeHost;

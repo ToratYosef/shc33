@@ -17,7 +17,7 @@ Admin (Bearer auth):
 
 - `DATABASE_URL` (required)
 - `ANALYTICS_ADMIN_TOKEN` (required for admin APIs)
-- `ANALYTICS_ALLOWED_HOSTS` (required for collect/heartbeat, CSV list of allowed Origin/Referer hosts)
+- `ANALYTICS_ALLOWED_HOSTS` (optional for collect/heartbeat, CSV list of allowed Origin/Referer hosts; defaults to `secondhandcell.com,api.secondhandcell.com`)
 - `ANALYTICS_STORE_FULL_IP` (optional, default `false`; set `true` to store full IP in `ip_full`)
 - `MAXMIND_DB_PATH` (optional path to GeoLite2-City `.mmdb`)
 - `ANALYTICS_RETENTION_DAYS` (optional, default `90`)
