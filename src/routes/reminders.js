@@ -38,14 +38,39 @@ async function invokeCallable(fn, data, req, res, next) {
     return res.json({ ok: true, data: result });
   } catch (error) {
     const mapped = mapCallableError(error);
-    return res.status(mapped.status).json({ ok: false, error: mapped.message });
+    console.error('[reminders] callable failed:', {
+      path: req.originalUrl || req.url,
+      method: req.method,
+      status: mapped.status,
+      message: mapped.message,
+      code: error?.code || error?.details?.code || null,
+      stack: error?.stack || null,
+      data,
+    });
+    return res.status(mapped.status).json({ ok: false, error: mapped.message, code: error?.code || null });
   }
+}
+
+function resolveReminderTier(body = {}) {
+  const candidate = body.tier ?? body.reminderTier ?? body.stage ?? 1;
+  const numeric = Number(candidate);
+  return [1, 2, 3].includes(numeric) ? numeric : candidate;
+}
+
+function sendLabelReminderForOrder(req, res, next) {
+  const orderId = req.params.id || req.body?.orderId;
+  const reminderTier = resolveReminderTier(req.body || {});
+  return invokeCallable(sendReminderEmail, { orderId, reminderTier }, req, res, next);
 }
 
 router.post('/admin/reminders/send', (req, res, next) => {
   const { orderId } = req.body || {};
-  return invokeCallable(sendReminderEmail, { orderId }, req, res, next);
+  const reminderTier = resolveReminderTier(req.body || {});
+  return invokeCallable(sendReminderEmail, { orderId, reminderTier }, req, res, next);
 });
+
+router.post('/orders/:id/send-label-reminder-email', sendLabelReminderForOrder);
+router.post('/orders/:id/send-reminder-email', sendLabelReminderForOrder);
 
 router.post('/admin/reminders/send-expiring', (req, res, next) => {
   const { orderId } = req.body || {};
