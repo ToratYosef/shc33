@@ -3661,6 +3661,28 @@ function isManualCustomBoxRate(rate = {}) {
   return !carrierPackagingTerms.some((term) => packageType.includes(term));
 }
 
+const MANUAL_GROUND_ONLY_SERVICE_PATTERNS = [
+  /(^|[\s_])ground($|[\s_])/i,
+  /ground_advantage/i,
+  /parcel_select/i,
+];
+
+function isManualGroundOnlyService(rate = {}) {
+  const serviceCode = String(rate.service_code || rate.serviceCode || "").trim();
+  const serviceType = String(rate.service_type || rate.serviceType || "").trim();
+  const combinedService = `${serviceCode} ${serviceType}`;
+  return MANUAL_GROUND_ONLY_SERVICE_PATTERNS.some((pattern) =>
+    pattern.test(combinedService)
+  );
+}
+
+function getManualGroundOnlyExclusionMessage(rate = {}) {
+  const serviceType = String(
+    rate.service_type || rate.serviceType || rate.service_code || "this service"
+  ).trim();
+  return `${serviceType || "This service"} was excluded because hazardous materials must use a ground-only service such as USPS Ground Advantage.`;
+}
+
 function dedupeManualShipEngineRates(rates = []) {
   const seen = new Set();
   return rates.filter((rate) => {
@@ -3756,9 +3778,12 @@ app.post("/manual-shipping-label/rates", async (req, res) => {
     const rateResponse = ratesResponse.data?.rate_response || ratesResponse.data || {};
     const returnedRates = Array.isArray(rateResponse.rates) ? rateResponse.rates : [];
     const excludedPackagingRates = returnedRates.filter((rate) => !isManualCustomBoxRate(rate));
+    const excludedNonGroundRates = returnedRates.filter((rate) =>
+      isManualCustomBoxRate(rate) && !isManualGroundOnlyService(rate)
+    );
     const rates = dedupeManualShipEngineRates(
       returnedRates
-        .filter(isManualCustomBoxRate)
+        .filter((rate) => isManualCustomBoxRate(rate) && isManualGroundOnlyService(rate))
         .map((rate) => normalizeManualShipEngineRate(rate, false))
         .filter((rate) => rate.rateId)
         .sort((a, b) => a.totalAmount - b.totalAmount)
@@ -3771,6 +3796,10 @@ app.post("/manual-shipping-label/rates", async (req, res) => {
           errors: [
             `Excluded because this rate uses ${String(rate.package_type || rate.package_code || "carrier packaging")} instead of the 6 × 4 × 2 custom box.`,
           ],
+        })),
+        excludedNonGroundRates.map((rate) => ({
+          ...normalizeManualShipEngineRate(rate, true),
+          errors: [getManualGroundOnlyExclusionMessage(rate)],
         }))
       );
 
@@ -12042,3 +12071,5 @@ exports.refreshTrackingBulkKit = functions.runWith({ timeoutSeconds: 540, memory
 exports.refreshTrackingByRequestBody = refreshTrackingByRequestBody;
 exports.runBulkKitRefresh = runBulkKitRefresh;
 exports.filterOrdersForBulkVoidCandidates = filterOrdersForBulkVoidCandidates;
+exports.isManualGroundOnlyService = isManualGroundOnlyService;
+exports.getManualGroundOnlyExclusionMessage = getManualGroundOnlyExclusionMessage;
