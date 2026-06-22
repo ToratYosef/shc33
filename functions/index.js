@@ -3661,6 +3661,40 @@ function isManualCustomBoxRate(rate = {}) {
   return !carrierPackagingTerms.some((term) => packageType.includes(term));
 }
 
+const MANUAL_GROUND_ONLY_SERVICE_PATTERNS = [
+  /(^|[\s_])ground($|[\s_])/i,
+  /ground_advantage/i,
+  /parcel_select/i,
+];
+
+function isManualGroundOnlyService(rate = {}) {
+  const serviceCode = String(rate.service_code || rate.serviceCode || "").trim();
+  const serviceType = String(rate.service_type || rate.serviceType || "").trim();
+  const combinedService = `${serviceCode} ${serviceType}`;
+  return MANUAL_GROUND_ONLY_SERVICE_PATTERNS.some((pattern) =>
+    pattern.test(combinedService)
+  );
+}
+
+function getManualGroundOnlyExclusionMessage(rate = {}) {
+  const serviceType = String(
+    rate.service_type || rate.serviceType || rate.service_code || "this service"
+  ).trim();
+  return `${serviceType || "This service"} was excluded because hazardous materials must use a ground-only service such as USPS Ground Advantage.`;
+}
+
+function parseManualHazardousMaterialsFlag(value) {
+  if (value === undefined || value === null || value === "") return true;
+  if (typeof value === "boolean") return value;
+  const normalized = String(value).trim().toLowerCase();
+  return !["0", "false", "no", "off"].includes(normalized);
+}
+
+function shouldIncludeManualShipEngineRate(rate = {}, containsHazardousMaterials = true) {
+  if (!containsHazardousMaterials) return true;
+  return isManualCustomBoxRate(rate) && isManualGroundOnlyService(rate);
+}
+
 function dedupeManualShipEngineRates(rates = []) {
   const seen = new Set();
   return rates.filter((rate) => {
@@ -3678,7 +3712,7 @@ function dedupeManualShipEngineRates(rates = []) {
   });
 }
 
-function buildManualShipEngineShipment(direction, customerAddress) {
+function buildManualShipEngineShipment(direction, customerAddress, containsHazardousMaterials = true) {
   const customer = buildManualLabelCustomerAddress(customerAddress);
   const customerToMe = direction !== "me_to_customer";
   return {
@@ -3694,9 +3728,13 @@ function buildManualShipEngineShipment(direction, customerAddress) {
         },
       },
     ],
-    advanced_options: {
-      dangerous_goods: true,
-    },
+    ...(containsHazardousMaterials
+      ? {
+          advanced_options: {
+            dangerous_goods: true,
+          },
+        }
+      : {}),
   };
 }
 
@@ -3709,6 +3747,9 @@ app.post("/manual-shipping-label/rates", async (req, res) => {
       ? "me_to_customer"
       : "customer_to_me";
     const customerAddress = req.body?.customerAddress || {};
+    const containsHazardousMaterials = parseManualHazardousMaterialsFlag(
+      req.body?.containsHazardousMaterials ?? req.body?.containsLithiumBattery
+    );
     const missingFields = validateManualLabelAddress(customerAddress);
     if (missingFields.length) {
       return res.status(400).json({
@@ -3745,7 +3786,11 @@ app.post("/manual-shipping-label/rates", async (req, res) => {
     const ratesResponse = await axios.post(
       `${SHIPENGINE_API_BASE_URL}/rates`,
       {
-        shipment: buildManualShipEngineShipment(direction, customerAddress),
+        shipment: buildManualShipEngineShipment(
+          direction,
+          customerAddress,
+          containsHazardousMaterials
+        ),
         rate_options: {
           carrier_ids: carrierIds,
         },
@@ -3755,10 +3800,17 @@ app.post("/manual-shipping-label/rates", async (req, res) => {
 
     const rateResponse = ratesResponse.data?.rate_response || ratesResponse.data || {};
     const returnedRates = Array.isArray(rateResponse.rates) ? rateResponse.rates : [];
-    const excludedPackagingRates = returnedRates.filter((rate) => !isManualCustomBoxRate(rate));
+    const excludedPackagingRates = containsHazardousMaterials
+      ? returnedRates.filter((rate) => !isManualCustomBoxRate(rate))
+      : [];
+    const excludedNonGroundRates = containsHazardousMaterials
+      ? returnedRates.filter((rate) =>
+          isManualCustomBoxRate(rate) && !isManualGroundOnlyService(rate)
+        )
+      : [];
     const rates = dedupeManualShipEngineRates(
       returnedRates
-        .filter(isManualCustomBoxRate)
+        .filter((rate) => shouldIncludeManualShipEngineRate(rate, containsHazardousMaterials))
         .map((rate) => normalizeManualShipEngineRate(rate, false))
         .filter((rate) => rate.rateId)
         .sort((a, b) => a.totalAmount - b.totalAmount)
@@ -3771,6 +3823,10 @@ app.post("/manual-shipping-label/rates", async (req, res) => {
           errors: [
             `Excluded because this rate uses ${String(rate.package_type || rate.package_code || "carrier packaging")} instead of the 6 × 4 × 2 custom box.`,
           ],
+        })),
+        excludedNonGroundRates.map((rate) => ({
+          ...normalizeManualShipEngineRate(rate, true),
+          errors: [getManualGroundOnlyExclusionMessage(rate)],
         }))
       );
 
@@ -3785,7 +3841,8 @@ app.post("/manual-shipping-label/rates", async (req, res) => {
         dimensions: "6 × 4 × 2 in",
         packageCode: "package",
         packaging: "Customer-supplied custom box",
-        containsLithiumBattery: true,
+        containsLithiumBattery: containsHazardousMaterials,
+        containsHazardousMaterials,
       },
     });
   } catch (error) {
@@ -12042,3 +12099,7 @@ exports.refreshTrackingBulkKit = functions.runWith({ timeoutSeconds: 540, memory
 exports.refreshTrackingByRequestBody = refreshTrackingByRequestBody;
 exports.runBulkKitRefresh = runBulkKitRefresh;
 exports.filterOrdersForBulkVoidCandidates = filterOrdersForBulkVoidCandidates;
+exports.isManualGroundOnlyService = isManualGroundOnlyService;
+exports.getManualGroundOnlyExclusionMessage = getManualGroundOnlyExclusionMessage;
+exports.parseManualHazardousMaterialsFlag = parseManualHazardousMaterialsFlag;
+exports.shouldIncludeManualShipEngineRate = shouldIncludeManualShipEngineRate;
