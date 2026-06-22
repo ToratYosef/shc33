@@ -7209,8 +7209,27 @@ app.put("/orders/:id/status", async (req, res) => {
     if (!status) return res.status(400).json({ error: "Status is required" });
 
     const notifyCustomer = req.body?.notifyCustomer !== false;
+    const forceManual = req.body?.forceManual === true;
     const timestamp = admin.firestore.FieldValue.serverTimestamp();
     const statusUpdate = { status, lastStatusUpdateAt: timestamp };
+    if (forceManual) {
+      const existingSnap = await ordersCollection.doc(orderId).get();
+      if (!existingSnap.exists) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      const existingOrder = { id: existingSnap.id, ...existingSnap.data() };
+      const requestedDeviceKeys = Array.isArray(req.body?.deviceKeys)
+        ? req.body.deviceKeys.map((value) => String(value || "").trim()).filter(Boolean)
+        : [];
+      const deviceKeys = requestedDeviceKeys.length
+        ? Array.from(new Set(requestedDeviceKeys))
+        : collectOrderDeviceEntries(existingOrder).map((entry) => buildOrderDeviceKey(orderId, entry.deviceIndex));
+      deviceKeys.forEach((deviceKey) => {
+        statusUpdate[`deviceStatusByKey.${deviceKey}`] = status;
+      });
+      statusUpdate.manualStatusUpdatedAt = timestamp;
+      statusUpdate.manualStatusSource = "admin";
+    }
     if (status === 'kit_sent') {
       statusUpdate.kitSentAt = timestamp;
     }
@@ -7226,6 +7245,7 @@ app.put("/orders/:id/status", async (req, res) => {
     let emailLogMessage = null;
     let emailMetadata = { status };
 
+    let notificationError = null;
     if (notifyCustomer) {
       let customerNotificationPromise = Promise.resolve();
       let customerEmailHtml = "";
@@ -7275,18 +7295,30 @@ app.put("/orders/:id/status", async (req, res) => {
         }
       }
 
-      await customerNotificationPromise;
-
-      if (emailLogMessage) {
-        await recordCustomerEmail(orderId, emailLogMessage, emailMetadata);
+      try {
+        await customerNotificationPromise;
+        if (emailLogMessage) {
+          await recordCustomerEmail(orderId, emailLogMessage, emailMetadata);
+        }
+      } catch (emailError) {
+        notificationError = emailError?.message || String(emailError);
+        console.error(`Status changed for ${orderId}, but customer notification failed:`, emailError);
       }
     }
 
-    const responseMessage = notifyCustomer
+    const responseMessage = notificationError
+      ? `Order marked as ${status}, but the customer email failed.`
+      : notifyCustomer
       ? `Order marked as ${status}`
       : `Order marked as ${status} without emailing the customer.`;
 
-    res.json({ message: responseMessage, notifyCustomer });
+    res.json({
+      message: responseMessage,
+      notifyCustomer,
+      notificationSent: notifyCustomer && !notificationError,
+      notificationError,
+      forceManual,
+    });
   } catch (err) {
     console.error("Error updating status:", err);
     res.status(500).json({ error: "Failed to update status" });
