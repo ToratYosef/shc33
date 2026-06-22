@@ -3536,6 +3536,269 @@ const handleVerifyAddress = async (req, res) => {
 
 app.post("/verify-address", handleVerifyAddress);
 
+const MANUAL_LABEL_SHC_ADDRESS = Object.freeze({
+  name: "SHC Sales",
+  company_name: "Second Hand Cell",
+  phone: "3475591707",
+  address_line1: "1602 MCDONALD AVE STE REAR ENTRANCE",
+  city_locality: "Brooklyn",
+  state_province: "NY",
+  postal_code: "11230-6336",
+  country_code: "US",
+});
+
+function buildManualLabelCustomerAddress(customerAddress = {}) {
+  return {
+    name: String(customerAddress.fullName || "").trim(),
+    phone: String(customerAddress.phone || "3475591707").trim(),
+    address_line1: String(customerAddress.streetAddress || "").trim(),
+    address_line2: String(customerAddress.addressUnit || "").trim(),
+    city_locality: String(customerAddress.city || "").trim(),
+    state_province: String(customerAddress.state || "").trim().toUpperCase(),
+    postal_code: String(customerAddress.zipCode || "").trim(),
+    country_code: "US",
+  };
+}
+
+function validateManualLabelAddress(address = {}) {
+  const requiredFields = [
+    ["fullName", address.fullName],
+    ["streetAddress", address.streetAddress],
+    ["city", address.city],
+    ["state", address.state],
+    ["zipCode", address.zipCode],
+  ];
+  return requiredFields
+    .filter(([, value]) => !String(value || "").trim())
+    .map(([field]) => field);
+}
+
+function getShipEngineAmountValue(value) {
+  const amount = Number(value?.amount ?? value);
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function getShipEngineRateTotal(rate = {}) {
+  if (Number.isFinite(Number(rate.total_amount?.amount))) {
+    return Number(rate.total_amount.amount);
+  }
+  return [
+    rate.shipping_amount,
+    rate.insurance_amount,
+    rate.confirmation_amount,
+    rate.other_amount,
+    rate.tax_amount,
+  ].reduce((sum, amount) => sum + getShipEngineAmountValue(amount), 0);
+}
+
+function normalizeShipEngineRateMessages(messages = []) {
+  return (Array.isArray(messages) ? messages : [])
+    .map((entry) => {
+      if (typeof entry === "string") return entry.trim();
+      return String(entry?.message || entry?.detail || entry?.code || "").trim();
+    })
+    .filter(Boolean);
+}
+
+function normalizeManualShipEngineRate(rate = {}, unavailable = false) {
+  const currency =
+    rate.total_amount?.currency ||
+    rate.shipping_amount?.currency ||
+    rate.insurance_amount?.currency ||
+    "usd";
+  return {
+    rateId: String(rate.rate_id || "").trim(),
+    carrierId: String(rate.carrier_id || "").trim(),
+    carrierCode: String(rate.carrier_code || "").trim(),
+    carrierNickname: String(rate.carrier_nickname || rate.carrier_friendly_name || "").trim(),
+    carrierFriendlyName: String(rate.carrier_friendly_name || rate.carrier_nickname || rate.carrier_code || "Carrier").trim(),
+    serviceCode: String(rate.service_code || "").trim(),
+    serviceType: String(rate.service_type || rate.service_code || "Shipping service").trim(),
+    packageType: String(rate.package_type || "").trim(),
+    totalAmount: Number(getShipEngineRateTotal(rate).toFixed(2)),
+    currency: String(currency || "usd").toUpperCase(),
+    deliveryDays: Number.isFinite(Number(rate.delivery_days)) ? Number(rate.delivery_days) : null,
+    estimatedDeliveryDate: rate.estimated_delivery_date || null,
+    guaranteedService: rate.guaranteed_service === true,
+    trackable: rate.trackable !== false,
+    validationStatus: rate.validation_status || null,
+    warnings: normalizeShipEngineRateMessages(rate.warning_messages || rate.warnings),
+    errors: normalizeShipEngineRateMessages(rate.error_messages || rate.errors),
+    unavailable,
+  };
+}
+
+function buildManualShipEngineShipment(direction, customerAddress) {
+  const customer = buildManualLabelCustomerAddress(customerAddress);
+  const customerToMe = direction !== "me_to_customer";
+  return {
+    ship_from: customerToMe ? customer : { ...MANUAL_LABEL_SHC_ADDRESS },
+    ship_to: customerToMe ? { ...MANUAL_LABEL_SHC_ADDRESS } : customer,
+    packages: [
+      {
+        weight: { value: 16, unit: "ounce" },
+        dimensions: { unit: "inch", length: 6, width: 4, height: 2 },
+        label_messages: {
+          reference1: `MANUAL-${Date.now()}`,
+        },
+      },
+    ],
+    advanced_options: {
+      dangerous_goods: true,
+    },
+  };
+}
+
+app.post("/manual-shipping-label/rates", async (req, res) => {
+  try {
+    const authResult = await requireAdminHttp(req, res);
+    if (!authResult) return;
+
+    const direction = req.body?.direction === "me_to_customer"
+      ? "me_to_customer"
+      : "customer_to_me";
+    const customerAddress = req.body?.customerAddress || {};
+    const missingFields = validateManualLabelAddress(customerAddress);
+    if (missingFields.length) {
+      return res.status(400).json({
+        error: `Customer address is missing: ${missingFields.join(", ")}.`,
+      });
+    }
+
+    const shipengineKey = getShipEngineApiKey();
+    if (!shipengineKey) {
+      return res.status(500).json({ error: "ShipEngine API key not configured." });
+    }
+
+    const headers = {
+      "API-Key": shipengineKey,
+      "Content-Type": "application/json",
+    };
+    const carriersResponse = await axios.get(`${SHIPENGINE_API_BASE_URL}/carriers`, {
+      headers,
+      timeout: 20000,
+    });
+    const carriers = Array.isArray(carriersResponse.data?.carriers)
+      ? carriersResponse.data.carriers
+      : [];
+    const carrierIds = carriers
+      .map((carrier) => String(carrier?.carrier_id || "").trim())
+      .filter(Boolean);
+
+    if (!carrierIds.length) {
+      return res.status(409).json({
+        error: "No connected ShipEngine carriers are available for rating.",
+      });
+    }
+
+    const ratesResponse = await axios.post(
+      `${SHIPENGINE_API_BASE_URL}/rates`,
+      {
+        shipment: buildManualShipEngineShipment(direction, customerAddress),
+        rate_options: {
+          carrier_ids: carrierIds,
+        },
+      },
+      { headers, timeout: 30000 }
+    );
+
+    const rateResponse = ratesResponse.data?.rate_response || ratesResponse.data || {};
+    const rates = (Array.isArray(rateResponse.rates) ? rateResponse.rates : [])
+      .map((rate) => normalizeManualShipEngineRate(rate, false))
+      .filter((rate) => rate.rateId)
+      .sort((a, b) => a.totalAmount - b.totalAmount);
+    const invalidRates = (Array.isArray(rateResponse.invalid_rates) ? rateResponse.invalid_rates : [])
+      .map((rate) => normalizeManualShipEngineRate(rate, true));
+
+    return res.json({
+      rates,
+      invalidRates,
+      carrierCount: carrierIds.length,
+      rateRequestId: rateResponse.rate_request_id || null,
+      shipmentId: rateResponse.shipment_id || null,
+      package: {
+        weight: "16 oz",
+        dimensions: "6 × 4 × 2 in",
+        containsLithiumBattery: true,
+      },
+    });
+  } catch (error) {
+    const status = Number(error?.response?.status || 0);
+    const responseData = error?.response?.data || null;
+    const detail = normalizeShipEngineRateMessages(responseData?.errors)[0]
+      || responseData?.message
+      || error?.message
+      || "Unable to retrieve ShipEngine rates.";
+    console.error("Manual ShipEngine rate lookup failed:", responseData || error);
+    return res.status(status >= 400 && status < 500 ? status : 502).json({
+      error: detail,
+      details: responseData?.errors || null,
+    });
+  }
+});
+
+app.post("/manual-shipping-label", async (req, res) => {
+  try {
+    const authResult = await requireAdminHttp(req, res);
+    if (!authResult) return;
+
+    const rateId = String(req.body?.rateId || "").trim();
+    if (!rateId) {
+      return res.status(400).json({
+        error: "Select a ShipEngine rate before generating the label.",
+      });
+    }
+
+    const shipengineKey = getShipEngineApiKey();
+    if (!shipengineKey) {
+      return res.status(500).json({ error: "ShipEngine API key not configured." });
+    }
+
+    const response = await axios.post(
+      `${SHIPENGINE_API_BASE_URL}/labels/rates/${encodeURIComponent(rateId)}`,
+      {
+        label_format: "pdf",
+        label_layout: "4x6",
+      },
+      {
+        headers: {
+          "API-Key": shipengineKey,
+          "Content-Type": "application/json",
+        },
+        timeout: 30000,
+      }
+    );
+    const label = response.data || {};
+    const labelDownloadUrl =
+      label.label_download?.pdf ||
+      label.label_download?.href ||
+      label.label_download_url ||
+      label.label_url ||
+      "";
+
+    return res.json({
+      labelId: label.label_id || null,
+      trackingNumber: label.tracking_number || "",
+      carrierCode: label.carrier_code || "",
+      serviceCode: label.service_code || "",
+      shipmentCost: label.shipment_cost || null,
+      labelDownloadUrl,
+    });
+  } catch (error) {
+    const status = Number(error?.response?.status || 0);
+    const responseData = error?.response?.data || null;
+    const detail = normalizeShipEngineRateMessages(responseData?.errors)[0]
+      || responseData?.message
+      || error?.message
+      || "Unable to purchase the selected ShipEngine label.";
+    console.error("Manual ShipEngine label purchase failed:", responseData || error);
+    return res.status(status >= 400 && status < 500 ? status : 502).json({
+      error: detail,
+      details: responseData?.errors || null,
+    });
+  }
+});
+
 app.post("/checkImei", async (req, res) => {
   const {
     orderId: requestOrderId,
