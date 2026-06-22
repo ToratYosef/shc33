@@ -3614,7 +3614,7 @@ function normalizeManualShipEngineRate(rate = {}, unavailable = false) {
     carrierFriendlyName: String(rate.carrier_friendly_name || rate.carrier_nickname || rate.carrier_code || "Carrier").trim(),
     serviceCode: String(rate.service_code || "").trim(),
     serviceType: String(rate.service_type || rate.service_code || "Shipping service").trim(),
-    packageType: String(rate.package_type || "").trim(),
+    packageType: String(rate.package_type || rate.package_code || "").trim(),
     totalAmount: Number(getShipEngineRateTotal(rate).toFixed(2)),
     currency: String(currency || "usd").toUpperCase(),
     deliveryDays: Number.isFinite(Number(rate.delivery_days)) ? Number(rate.delivery_days) : null,
@@ -3628,6 +3628,56 @@ function normalizeManualShipEngineRate(rate = {}, unavailable = false) {
   };
 }
 
+function isManualCustomBoxRate(rate = {}) {
+  const packageType = String(rate.package_type || rate.package_code || "")
+    .trim()
+    .toLowerCase();
+  if (!packageType) return true;
+
+  const allowedPackageTypes = new Set([
+    "package",
+    "parcel",
+    "your_packaging",
+    "your packaging",
+    "custom_package",
+    "custom package",
+    "customer_supplied_package",
+  ]);
+  if (allowedPackageTypes.has(packageType)) return true;
+
+  const carrierPackagingTerms = [
+    "envelope",
+    "letter",
+    "flat_rate",
+    "flat rate",
+    "tube",
+    "pak",
+    "carrier",
+    "box_small",
+    "box_medium",
+    "box_large",
+    "regional_rate",
+  ];
+  return !carrierPackagingTerms.some((term) => packageType.includes(term));
+}
+
+function dedupeManualShipEngineRates(rates = []) {
+  const seen = new Set();
+  return rates.filter((rate) => {
+    const key = [
+      rate.carrierId || rate.carrierCode,
+      rate.serviceCode || rate.serviceType,
+      rate.packageType || "package",
+      Number(rate.totalAmount || 0).toFixed(2),
+      rate.deliveryDays ?? "",
+      rate.estimatedDeliveryDate || "",
+    ].join("|");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function buildManualShipEngineShipment(direction, customerAddress) {
   const customer = buildManualLabelCustomerAddress(customerAddress);
   const customerToMe = direction !== "me_to_customer";
@@ -3636,6 +3686,7 @@ function buildManualShipEngineShipment(direction, customerAddress) {
     ship_to: customerToMe ? { ...MANUAL_LABEL_SHC_ADDRESS } : customer,
     packages: [
       {
+        package_code: "package",
         weight: { value: 16, unit: "ounce" },
         dimensions: { unit: "inch", length: 6, width: 4, height: 2 },
         label_messages: {
@@ -3703,12 +3754,25 @@ app.post("/manual-shipping-label/rates", async (req, res) => {
     );
 
     const rateResponse = ratesResponse.data?.rate_response || ratesResponse.data || {};
-    const rates = (Array.isArray(rateResponse.rates) ? rateResponse.rates : [])
-      .map((rate) => normalizeManualShipEngineRate(rate, false))
-      .filter((rate) => rate.rateId)
-      .sort((a, b) => a.totalAmount - b.totalAmount);
+    const returnedRates = Array.isArray(rateResponse.rates) ? rateResponse.rates : [];
+    const excludedPackagingRates = returnedRates.filter((rate) => !isManualCustomBoxRate(rate));
+    const rates = dedupeManualShipEngineRates(
+      returnedRates
+        .filter(isManualCustomBoxRate)
+        .map((rate) => normalizeManualShipEngineRate(rate, false))
+        .filter((rate) => rate.rateId)
+        .sort((a, b) => a.totalAmount - b.totalAmount)
+    );
     const invalidRates = (Array.isArray(rateResponse.invalid_rates) ? rateResponse.invalid_rates : [])
-      .map((rate) => normalizeManualShipEngineRate(rate, true));
+      .map((rate) => normalizeManualShipEngineRate(rate, true))
+      .concat(
+        excludedPackagingRates.map((rate) => ({
+          ...normalizeManualShipEngineRate(rate, true),
+          errors: [
+            `Excluded because this rate uses ${String(rate.package_type || rate.package_code || "carrier packaging")} instead of the 6 × 4 × 2 custom box.`,
+          ],
+        }))
+      );
 
     return res.json({
       rates,
@@ -3719,6 +3783,8 @@ app.post("/manual-shipping-label/rates", async (req, res) => {
       package: {
         weight: "16 oz",
         dimensions: "6 × 4 × 2 in",
+        packageCode: "package",
+        packaging: "Customer-supplied custom box",
         containsLithiumBattery: true,
       },
     });
