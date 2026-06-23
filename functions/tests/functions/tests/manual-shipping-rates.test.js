@@ -137,7 +137,7 @@ test('manual rate dedupe keeps the cheapest duplicate carrier service', () => {
   assert.equal(rates[0].rateId, 'cheap-ups-ground');
 });
 
-test('manual hazardous ShipEngine shipment includes package-level lithium dangerous goods', () => {
+test('manual hazardous ShipEngine shipment sets shipment-level dangerous goods without extra product payload', () => {
   const shipment = buildManualShipEngineShipment(
     'customer_to_me',
     {
@@ -152,12 +152,5 @@ test('manual hazardous ShipEngine shipment includes package-level lithium danger
   );
 
   assert.equal(shipment.advanced_options.dangerous_goods, true);
-  assert.equal(
-    shipment.packages[0].products[0].dangerous_goods[0].id_number,
-    'UN3481'
-  );
-  assert.equal(
-    shipment.packages[0].products[0].dangerous_goods[0].transport_mean,
-    'ground'
-  );
+  assert.equal(shipment.packages[0].products, undefined);
 });

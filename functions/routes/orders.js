@@ -765,11 +765,8 @@ function createOrdersRouter({
   }
 
 
-  const UPS_CARRIER_ID = String(
-    process.env.SHIPENGINE_UPS_CARRIER_ID ||
-      process.env.UPS_SHIPENGINE_CARRIER_ID ||
-      'se-6239425'
-  ).trim();
+  const USPS_CARRIER_ID = 'se-6239418';
+  const UPS_CARRIER_ID = 'se-6239425';
   const UPS_CONNECTION_PAYLOAD = {
     nickname: process.env.SHIPENGINE_UPS_NICKNAME || 'UPS Account',
     account_number:
@@ -2732,12 +2729,14 @@ function createOrdersRouter({
                 dimensions: EMAIL_LABEL_PACKAGE_DATA.dimensions,
                 service_code: shippingProfile.serviceCode,
                 carrier_code: 'stamps_com',
+                carrier_id: USPS_CARRIER_ID,
                 weight: { value: shippingProfile.weightOz, unit: 'ounce' },
               },
               {
                 orderId,
                 orderData,
                 carrierCode: 'stamps_com',
+                carrierId: USPS_CARRIER_ID,
                 carrierName: 'USPS',
                 serviceCode: shippingProfile.serviceCode,
                 labelType: 'usps',
@@ -3057,6 +3056,7 @@ function createOrdersRouter({
       const result = await createSingleInboundLabelForOrder(order, {
         carrierName: 'USPS',
         carrierCode: 'stamps_com',
+        carrierId: USPS_CARRIER_ID,
         serviceCode: shippingProfile.serviceCode,
         weight: { value: shippingProfile.weightOz, unit: 'ounce' },
         labelKey: 'usps',

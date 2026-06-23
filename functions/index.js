@@ -3622,6 +3622,9 @@ function normalizeShipEngineRateMessages(messages = []) {
     .filter(Boolean);
 }
 
+const SHIPENGINE_STAMPS_CARRIER_ID = "se-6239418";
+const SHIPENGINE_UPS_CARRIER_ID = "se-6239425";
+
 function normalizeManualShipEngineRate(rate = {}, unavailable = false) {
   const currency =
     rate.total_amount?.currency ||
@@ -3735,20 +3738,12 @@ function dedupeManualShipEngineRates(rates = []) {
   return Array.from(bestByService.values()).sort((a, b) => Number(a.totalAmount || 0) - Number(b.totalAmount || 0));
 }
 
-const MANUAL_SHIPENGINE_STAMPS_CARRIER_ID = String(
-  process.env.MANUAL_SHIPENGINE_STAMPS_CARRIER_ID ||
-    process.env.SHIPENGINE_STAMPS_CARRIER_ID ||
-    "se-6239418"
-).trim();
-const MANUAL_SHIPENGINE_UPS_CARRIER_ID = String(
-  process.env.MANUAL_SHIPENGINE_UPS_CARRIER_ID ||
-    process.env.SHIPENGINE_UPS_CARRIER_ID ||
-    "se-6239425"
-).trim();
+const MANUAL_SHIPENGINE_STAMPS_CARRIER_ID = "se-6239418";
+const MANUAL_SHIPENGINE_UPS_CARRIER_ID = "se-6239425";
 const MANUAL_SHIPENGINE_ALLOWED_CARRIER_IDS = [
   MANUAL_SHIPENGINE_STAMPS_CARRIER_ID,
   MANUAL_SHIPENGINE_UPS_CARRIER_ID,
-].filter(Boolean);
+];
 
 const MANUAL_LABEL_DEFAULT_PACKAGE = Object.freeze({
   weightLb: 0,
@@ -3873,18 +3868,6 @@ function buildManualShipEngineShipment(
           width: packageDetails.dimensions.width,
           height: packageDetails.dimensions.height,
         },
-        ...(containsHazardousMaterials
-          ? {
-              products: [
-                {
-                  sku: "MANUAL-PHONE-LABEL",
-                  description: "Mobile Phone",
-                  quantity: 1,
-                  dangerous_goods: buildManualLithiumDangerousGoods(),
-                },
-              ],
-            }
-          : {}),
         label_messages: {
           reference1: `MANUAL-${Date.now()}`,
         },
@@ -3931,25 +3914,7 @@ app.post("/manual-shipping-label/rates", async (req, res) => {
       "API-Key": shipengineKey,
       "Content-Type": "application/json",
     };
-    const carriersResponse = await axios.get(`${SHIPENGINE_API_BASE_URL}/carriers`, {
-      headers,
-      timeout: 20000,
-    });
-    const carriers = Array.isArray(carriersResponse.data?.carriers)
-      ? carriersResponse.data.carriers
-      : [];
-    const connectedCarrierIds = carriers
-      .map((carrier) => String(carrier?.carrier_id || "").trim())
-      .filter(Boolean);
-    const carrierIds = MANUAL_SHIPENGINE_ALLOWED_CARRIER_IDS.length
-      ? MANUAL_SHIPENGINE_ALLOWED_CARRIER_IDS
-      : connectedCarrierIds;
-
-    if (!carrierIds.length) {
-      return res.status(409).json({
-        error: "No connected ShipEngine carriers are available for rating.",
-      });
-    }
+    const carrierIds = MANUAL_SHIPENGINE_ALLOWED_CARRIER_IDS;
 
     const ratesResponse = await axios.post(
       `${SHIPENGINE_API_BASE_URL}/rates`,
@@ -6984,6 +6949,10 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
     packageData?.carrier_id,
     packageData?.carrierId,
   ].find((entry) => typeof entry === "string" && entry.trim()) || null;
+  const resolvedCarrierCode = normalizeCarrierForLogging(carrierCode || packageData?.service_code || "");
+  const resolvedCarrierId = carrierId ||
+    (resolvedCarrierCode === "ups" ? SHIPENGINE_UPS_CARRIER_ID : null) ||
+    (resolvedCarrierCode === "usps" ? SHIPENGINE_STAMPS_CARRIER_ID : null);
   const advancedOptions =
     packageData?.advanced_options && typeof packageData.advanced_options === "object"
       ? { ...packageData.advanced_options }
@@ -7042,8 +7011,8 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
   if (carrierCode) {
     payload.shipment.carrier_code = carrierCode;
   }
-  if (carrierId) {
-    payload.shipment.carrier_id = carrierId;
+  if (resolvedCarrierId) {
+    payload.shipment.carrier_id = resolvedCarrierId;
   }
   if (isHazmat) {
     payload.shipment.advanced_options = {
