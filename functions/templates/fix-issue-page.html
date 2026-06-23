@@ -8,6 +8,9 @@
   <link rel="icon" href="https://secondhandcell.com/favicon/favicon.ico">
   <link rel="stylesheet" href="https://secondhandcell.com/assets/css/tailwind.css">
   <link rel="stylesheet" href="https://secondhandcell.com/assets/css/site-chrome.css">
+  <!-- TrustBox script -->
+  <script type="text/javascript" src="//widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js" async></script>
+  <!-- End TrustBox script -->
   <script>
     window.SHC_API_BASE_URL = "https://api.secondhandcell.com/server";
     window.shcIssuePageImageReady = new Promise((resolve) => {
@@ -1044,9 +1047,11 @@
           <a href="https://www.sellcell.com/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center">
             <img src="https://cdn.secondhandcell.com/images/assets/sellcell.webp" width="150" height="107" alt="SellCell Accredited Buyer" loading="lazy" class="h-20 w-auto object-contain">
           </a>
-          <a href="https://www.trustpilot.com/review/secondhandcell.com?utm_medium=trustbox&utm_source=TrustBoxReviewCollector" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center">
-            <img src="https://secondhandcell.com/assets/stars-4.5.svg" alt="Trustpilot 5 star rating" loading="lazy" class="h-12 w-auto object-contain">
-          </a>
+          <!-- TrustBox widget - Review Collector -->
+          <div class="trustpilot-widget" data-locale="en-US" data-template-id="56278e9abfbbba0bdcd568bc" data-businessunit-id="68c8cb56da935f8a761f99a9" data-style-height="52px" data-style-width="100%" data-token="d5091e3c-702b-4ac0-9508-ca0b305f6f21">
+            <a href="https://www.trustpilot.com/review/secondhandcell.com" target="_blank" rel="noopener">Trustpilot</a>
+          </div>
+          <!-- End TrustBox widget -->
         </div>
       </div>
       <div class="border-t border-slate-700 mt-8 pt-6 text-center text-slate-400 text-sm">
@@ -1089,11 +1094,57 @@
       const IMAGE_EXTENSIONS = ['.webp', '.png', '.jpg', '.jpeg'];
       const imageUrlResolutionCache = new Map();
       const hasImageExtension = (url) => /\.(png|jpe?g|webp)(\?.*)?$/i.test(url || '');
-      const normalizeBrandFolder = (brandValue) => {
+      const normalizeBrandKey = (brandValue) => {
         const brand = String(brandValue || '').trim().toLowerCase();
+        if (brand === 'apple' || brand === 'iphone' || brand.includes('iphone')) return 'iphone';
+        if (brand === 'samsung' || brand === 'galaxy' || brand.includes('samsung')) return 'samsung';
+        return brand;
+      };
+      const buildCanonicalDeviceSlug = (brandValue, modelValue) => {
+        const brand = normalizeBrandKey(brandValue);
+        const modelSlug = slugifyModel(modelValue);
+        if (!brand || !modelSlug) return '';
+        return modelSlug.startsWith(`${brand}-`) ? modelSlug : `${brand}-${modelSlug}`;
+      };
+      const normalizeDeviceSlug = (value = '') => String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/^\/+|\/+$/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/_+/g, '-');
+      const toDeviceSlugCore = (value = '') => normalizeDeviceSlug(value)
+        .replace(/^iphone[-/]/, '')
+        .replace(/^samsung[-/]/, '')
+        .replace(/^galaxy[-/]/, '')
+        .replace(/[^a-z0-9]+/g, '');
+      const getModelDocIdCandidates = (item = {}) => {
+        const candidates = [];
+        const push = (value) => {
+          const candidate = String(value || '').trim();
+          if (candidate && !candidates.includes(candidate)) candidates.push(candidate);
+        };
+        [
+          item?.model,
+          item?.deviceSlug,
+          item?.modelSlug,
+          item?.id,
+          item?.deviceCode,
+        ].forEach(push);
+
+        const brand = normalizeBrandKey(item?.brand || '');
+        const modelNameSlug = slugifyModel(item?.modelName || item?.deviceName || item?.device || item?.deviceLabel || '');
+        if (modelNameSlug) {
+          push(modelNameSlug);
+          push(buildCanonicalDeviceSlug(brand, modelNameSlug));
+          const modelCore = toDeviceSlugCore(modelNameSlug);
+          push(modelCore);
+          push(`${brand}-${modelCore}`);
+        }
+        return candidates;
+      };
+      const normalizeBrandFolder = (brandValue) => {
+        const brand = normalizeBrandKey(brandValue);
         if (!brand) return '';
-        if (brand.includes('apple') || brand.includes('iphone')) return 'iphone';
-        if (brand.includes('samsung')) return 'samsung';
         if (brand.includes('google') || brand.includes('pixel')) return 'google';
         if (brand.includes('ipad')) return 'ipad';
         return '';
@@ -1170,9 +1221,11 @@
           item?.deviceSlug,
           item?.slug,
           item?.modelSlug,
+          item?.id,
           item?.model,
           slugifyModel(item?.model),
-          slugifyModel(item?.deviceLabel)
+          slugifyModel(item?.deviceLabel),
+          buildCanonicalDeviceSlug(item?.brand, item?.model || item?.modelName || item?.deviceLabel)
         ];
         if (folder) {
           possibleSlugs.forEach((slugValue) => {
@@ -1235,7 +1288,7 @@
         let hydratedDevice = device;
         if (typeof window.shcFetchCatalogImageUrl === 'function') {
           try {
-            const fetchedImageUrl = await window.shcFetchCatalogImageUrl(device?.brand, device?.model);
+            const fetchedImageUrl = await window.shcFetchCatalogImageUrl(device?.brand, device?.model, device);
             if (fetchedImageUrl) {
               hydratedDevice = { ...device, imageUrl: fetchedImageUrl };
             }
@@ -1243,7 +1296,7 @@
         } else if (window.shcIssuePageImageReady) {
           try {
             await window.shcIssuePageImageReady;
-            const fetchedImageUrl = await window.shcFetchCatalogImageUrl?.(device?.brand, device?.model);
+            const fetchedImageUrl = await window.shcFetchCatalogImageUrl?.(device?.brand, device?.model, device);
             if (fetchedImageUrl) {
               hydratedDevice = { ...device, imageUrl: fetchedImageUrl };
             }
@@ -1743,7 +1796,7 @@
   </script>
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, doc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import {
       browserLocalPersistence,
       createUserWithEmailAndPassword,
@@ -1773,20 +1826,18 @@
     setPersistence(auth, browserLocalPersistence).catch(() => {});
     const imageUrlLookupCache = new Map();
 
-    window.shcFetchCatalogImageUrl = async (brandValue, modelValue) => {
-      const brand = String(brandValue || '').trim();
-      const model = String(modelValue || '').trim();
-      if (!brand || !model) return '';
+    window.shcFetchCatalogImageUrl = async (brandValue, modelValue, lookupItem = {}) => {
+      const brand = String(normalizeBrandKey(brandValue || lookupItem?.brand || '') || '').trim();
+      const candidates = getModelDocIdCandidates({
+        ...lookupItem,
+        brand,
+        model: modelValue || lookupItem?.model,
+      });
+      if (!brand || !candidates.length) return '';
 
-      const cacheKey = `${brand}::${model}`;
+      const cacheKey = `${brand}::${candidates.join('|')}`;
       if (imageUrlLookupCache.has(cacheKey)) {
         return imageUrlLookupCache.get(cacheKey);
-      }
-
-      const candidates = [model];
-      const lowered = model.toLowerCase();
-      if (!candidates.includes(lowered)) {
-        candidates.push(lowered);
       }
 
       for (const candidate of candidates) {
@@ -1802,6 +1853,41 @@
           }
         } catch (_) {}
       }
+
+      try {
+        const modelsSnap = await getDocs(collection(firestoreDb, 'devices', brand, 'models'));
+        const candidateSet = new Set(candidates.map(normalizeDeviceSlug));
+        const candidateCores = Array.from(new Set(candidates.map(toDeviceSlugCore).filter(Boolean)));
+        let matchedImageUrl = '';
+        modelsSnap.forEach((modelDoc) => {
+          if (matchedImageUrl) return;
+          const data = modelDoc.data() || {};
+          const values = [
+            modelDoc.id,
+            data.slug,
+            data.modelID,
+            data.modelId,
+            data.name,
+            data.model,
+            data.modelName,
+            data.deviceName,
+          ];
+          const normalizedValues = values.map(normalizeDeviceSlug).filter(Boolean);
+          const valueCores = values.map(toDeviceSlugCore).filter(Boolean);
+          const exactMatch = normalizedValues.some((value) => candidateSet.has(value));
+          const coreMatch = valueCores.some((valueCore) => (
+            candidateCores.includes(valueCore)
+            || candidateCores.some((candidateCore) => candidateCore.length >= 5 && valueCore.includes(candidateCore))
+          ));
+          if ((exactMatch || coreMatch) && data.imageUrl) {
+            matchedImageUrl = String(data.imageUrl).trim();
+          }
+        });
+        if (matchedImageUrl) {
+          imageUrlLookupCache.set(cacheKey, matchedImageUrl);
+          return matchedImageUrl;
+        }
+      } catch (_) {}
 
       imageUrlLookupCache.set(cacheKey, '');
       return '';

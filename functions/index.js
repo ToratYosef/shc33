@@ -1518,10 +1518,14 @@ function buildCustomerFixIssueUrl(orderId, query = null) {
   return url.toString();
 }
 
-app.get(['/orders/:orderId/issue-resolved', '/api/orders/:orderId/issue-resolved'], (req, res) => {
+app.get(['/orders/:orderId/issue-resolved', '/api/orders/:orderId/issue-resolved'], (req, res, next) => {
   const orderId = String(req.params.orderId || '').trim();
   if (!orderId) {
     return res.status(400).send('Order ID is required.');
+  }
+  const originalPath = String(req.originalUrl || req.url || '').split('?')[0];
+  if (originalPath.startsWith('/server/orders/')) {
+    return next('route');
   }
 
   return res.redirect(buildCustomerFixIssueUrl(orderId, req.query));

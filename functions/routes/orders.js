@@ -553,6 +553,89 @@ function createOrdersRouter({
       .replace(/<\/script/gi, '<\\/script');
   }
 
+  function normalizeDeviceLookupText(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  function slugifyDeviceLookup(value) {
+    return normalizeDeviceLookupText(value)
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+  }
+
+  function normalizeDeviceSlug(value = '') {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/^\/+|\/+$/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/_+/g, '-');
+  }
+
+  function toDeviceSlugCore(value = '') {
+    return normalizeDeviceSlug(value)
+      .replace(/^iphone[-/]/, '')
+      .replace(/^samsung[-/]/, '')
+      .replace(/^galaxy[-/]/, '')
+      .replace(/[^a-z0-9]+/g, '');
+  }
+
+  function normalizeDeviceBrandKey(brandValue) {
+    const brand = normalizeDeviceLookupText(brandValue);
+    if (brand === 'apple' || brand === 'iphone') return 'iphone';
+    if (brand === 'samsung' || brand === 'galaxy') return 'samsung';
+    return brand;
+  }
+
+  function buildCanonicalDeviceSlug(brandValue, modelValue) {
+    const brand = normalizeDeviceBrandKey(brandValue);
+    const modelSlug = slugifyDeviceLookup(modelValue);
+    if (!brand || !modelSlug) return '';
+    return modelSlug.startsWith(`${brand}-`) ? modelSlug : `${brand}-${modelSlug}`;
+  }
+
+  function pushUniqueDeviceCandidate(candidates, value) {
+    const candidate = String(value || '').trim();
+    if (candidate && !candidates.includes(candidate)) {
+      candidates.push(candidate);
+    }
+  }
+
+  function getModelDocIdCandidates(item = {}, order = {}) {
+    const candidates = [];
+    [
+      item?.model,
+      item?.deviceSlug,
+      item?.modelSlug,
+      item?.id,
+      item?.deviceCode,
+      order?.model,
+      order?.deviceSlug,
+      order?.modelSlug,
+      order?.id,
+    ].forEach((value) => pushUniqueDeviceCandidate(candidates, value));
+
+    const brand = normalizeDeviceBrandKey(item?.brand || order?.brand || '');
+    const modelNameSlug = slugifyDeviceLookup(
+      item?.modelName
+      || item?.deviceName
+      || item?.device
+      || order?.modelName
+      || order?.deviceName
+      || order?.device
+      || ''
+    );
+    if (modelNameSlug) {
+      pushUniqueDeviceCandidate(candidates, modelNameSlug);
+      pushUniqueDeviceCandidate(candidates, buildCanonicalDeviceSlug(brand, modelNameSlug));
+      const modelCore = toDeviceSlugCore(modelNameSlug);
+      pushUniqueDeviceCandidate(candidates, modelCore);
+      pushUniqueDeviceCandidate(candidates, `${brand}-${modelCore}`);
+    }
+
+    return candidates;
+  }
+
   function getOrderDeviceInfo(order, deviceKey) {
     const parts = String(deviceKey || '').split('::');
     const idx = Number(parts[1]);
@@ -561,9 +644,9 @@ function createOrdersRouter({
     const item = Number.isFinite(idx) ? items[idx] : null;
     const model = item?.modelName || item?.deviceName || item?.model || order?.modelName || order?.device || order?.deviceName || 'Device';
     const storage = item?.storage || item?.capacity || order?.storage || '';
-    const brand = item?.brand || order?.brand || '';
+    const brand = normalizeDeviceBrandKey(item?.brand || order?.brand || '');
     const deviceSlug = item?.deviceSlug || item?.slug || '';
-    const modelSlug = item?.model || item?.deviceCode || '';
+    const modelSlug = item?.modelSlug || item?.model || item?.deviceCode || item?.id || '';
     const imageUrl =
       item?.imageUrl
       || item?.image
@@ -580,6 +663,7 @@ function createOrdersRouter({
       brand,
       deviceSlug,
       modelSlug,
+      id: item?.id || item?.model || item?.modelSlug || item?.deviceSlug || order?.id || '',
       model,
       storage,
       imageUrl,
@@ -589,14 +673,11 @@ function createOrdersRouter({
 
   async function hydrateOrderDeviceImageUrls(order = {}) {
     const items = Array.isArray(order?.items) ? order.items : [];
-    const hydrateImageForBrandModel = async (brandValue, modelValue) => {
-      const brand = String(brandValue || '').trim();
-      const model = String(modelValue || '').trim();
-      if (!brand || !model) return '';
+    const hydrateImageForItem = async (item = {}) => {
+      const brand = normalizeDeviceBrandKey(item?.brand || order?.brand || '');
+      const candidates = getModelDocIdCandidates(item, order);
+      if (!brand || !candidates.length) return '';
       try {
-        const candidates = [model];
-        const lowered = model.toLowerCase();
-        if (!candidates.includes(lowered)) candidates.push(lowered);
         for (const candidate of candidates) {
           const modelSnap = await firestore.collection('devices').doc(brand).collection('models').doc(candidate).get();
           if (modelSnap.exists) {
@@ -606,8 +687,42 @@ function createOrdersRouter({
             }
           }
         }
+
+        const modelCollectionSnap = await firestore.collection('devices').doc(brand).collection('models').get();
+        const candidateSet = new Set(candidates.map(normalizeDeviceSlug));
+        const candidateCores = new Set(candidates.map(toDeviceSlugCore).filter(Boolean));
+        let matchedImageUrl = '';
+        modelCollectionSnap.forEach((modelDoc) => {
+          if (matchedImageUrl) return;
+          const modelData = modelDoc.data() || {};
+          const values = [
+            modelDoc.id,
+            modelData.slug,
+            modelData.modelID,
+            modelData.modelId,
+            modelData.name,
+            modelData.model,
+            modelData.modelName,
+            modelData.deviceName,
+          ];
+          const normalizedValues = values.map(normalizeDeviceSlug).filter(Boolean);
+          const valueCores = values.map(toDeviceSlugCore).filter(Boolean);
+          const exactMatch = normalizedValues.some((value) => candidateSet.has(value));
+          const coreMatch = valueCores.some((valueCore) => (
+            candidateCores.has(valueCore)
+            || Array.from(candidateCores).some((candidateCore) => (
+              candidateCore.length >= 5 && valueCore.includes(candidateCore)
+            ))
+          ));
+          if ((exactMatch || coreMatch) && modelData.imageUrl) {
+            matchedImageUrl = String(modelData.imageUrl);
+          }
+        });
+        if (matchedImageUrl) {
+          return matchedImageUrl;
+        }
       } catch (error) {
-        console.warn(`Could not hydrate imageUrl for ${brand}/${model}:`, error.message);
+        console.warn(`Could not hydrate imageUrl for ${brand}/${candidates.join(',')}:`, error.message);
       }
       return '';
     };
@@ -616,7 +731,7 @@ function createOrdersRouter({
       if (order?.imageUrl || order?.image || order?.thumbnail || order?.photo) {
         return order;
       }
-      const hydratedOrderImage = await hydrateImageForBrandModel(order?.brand, order?.model || order?.modelName || order?.device || order?.deviceName);
+      const hydratedOrderImage = await hydrateImageForItem(order);
       return hydratedOrderImage ? { ...order, imageUrl: hydratedOrderImage } : order;
     }
 
@@ -631,10 +746,7 @@ function createOrdersRouter({
         return item;
       }
 
-      const hydratedImageUrl = await hydrateImageForBrandModel(
-        item.brand || order?.brand,
-        item.model || item.modelName || item.deviceName || order?.model || order?.modelName || order?.device || order?.deviceName
-      );
+      const hydratedImageUrl = await hydrateImageForItem(item);
       if (!hydratedImageUrl) {
         return item;
       }
