@@ -3718,21 +3718,37 @@ function shouldIncludeManualShipEngineRate(rate = {}, containsHazardousMaterials
 }
 
 function dedupeManualShipEngineRates(rates = []) {
-  const seen = new Set();
-  return rates.filter((rate) => {
+  const bestByService = new Map();
+  rates.forEach((rate) => {
     const key = [
-      rate.carrierId || rate.carrierCode,
+      String(rate.carrierCode || rate.carrierFriendlyName || "").toLowerCase(),
       rate.serviceCode || rate.serviceType,
       rate.packageType || "package",
-      Number(rate.totalAmount || 0).toFixed(2),
       rate.deliveryDays ?? "",
       rate.estimatedDeliveryDate || "",
     ].join("|");
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+    const existing = bestByService.get(key);
+    if (!existing || Number(rate.totalAmount || 0) < Number(existing.totalAmount || 0)) {
+      bestByService.set(key, rate);
+    }
   });
+  return Array.from(bestByService.values()).sort((a, b) => Number(a.totalAmount || 0) - Number(b.totalAmount || 0));
 }
+
+const MANUAL_SHIPENGINE_STAMPS_CARRIER_ID = String(
+  process.env.MANUAL_SHIPENGINE_STAMPS_CARRIER_ID ||
+    process.env.SHIPENGINE_STAMPS_CARRIER_ID ||
+    "se-6239418"
+).trim();
+const MANUAL_SHIPENGINE_UPS_CARRIER_ID = String(
+  process.env.MANUAL_SHIPENGINE_UPS_CARRIER_ID ||
+    process.env.SHIPENGINE_UPS_CARRIER_ID ||
+    "se-6239425"
+).trim();
+const MANUAL_SHIPENGINE_ALLOWED_CARRIER_IDS = [
+  MANUAL_SHIPENGINE_STAMPS_CARRIER_ID,
+  MANUAL_SHIPENGINE_UPS_CARRIER_ID,
+].filter(Boolean);
 
 const MANUAL_LABEL_DEFAULT_PACKAGE = Object.freeze({
   weightLb: 0,
@@ -3824,6 +3840,17 @@ function formatManualPackageDimensions(dimensions = MANUAL_LABEL_DEFAULT_PACKAGE
   return `${fmt(length)} × ${fmt(width)} × ${fmt(height)} in`;
 }
 
+function buildManualLithiumDangerousGoods() {
+  return [
+    {
+      id_number: "UN3481",
+      shipping_name: "Lithium ion batteries contained in equipment",
+      product_class: "9",
+      transport_mean: "ground",
+    },
+  ];
+}
+
 function buildManualShipEngineShipment(
   direction,
   customerAddress,
@@ -3846,6 +3873,18 @@ function buildManualShipEngineShipment(
           width: packageDetails.dimensions.width,
           height: packageDetails.dimensions.height,
         },
+        ...(containsHazardousMaterials
+          ? {
+              products: [
+                {
+                  sku: "MANUAL-PHONE-LABEL",
+                  description: "Mobile Phone",
+                  quantity: 1,
+                  dangerous_goods: buildManualLithiumDangerousGoods(),
+                },
+              ],
+            }
+          : {}),
         label_messages: {
           reference1: `MANUAL-${Date.now()}`,
         },
@@ -3899,9 +3938,12 @@ app.post("/manual-shipping-label/rates", async (req, res) => {
     const carriers = Array.isArray(carriersResponse.data?.carriers)
       ? carriersResponse.data.carriers
       : [];
-    const carrierIds = carriers
+    const connectedCarrierIds = carriers
       .map((carrier) => String(carrier?.carrier_id || "").trim())
       .filter(Boolean);
+    const carrierIds = MANUAL_SHIPENGINE_ALLOWED_CARRIER_IDS.length
+      ? MANUAL_SHIPENGINE_ALLOWED_CARRIER_IDS
+      : connectedCarrierIds;
 
     if (!carrierIds.length) {
       return res.status(409).json({
@@ -12230,3 +12272,5 @@ exports.isManualGroundOnlyService = isManualGroundOnlyService;
 exports.getManualGroundOnlyExclusionMessage = getManualGroundOnlyExclusionMessage;
 exports.parseManualHazardousMaterialsFlag = parseManualHazardousMaterialsFlag;
 exports.shouldIncludeManualShipEngineRate = shouldIncludeManualShipEngineRate;
+exports.dedupeManualShipEngineRates = dedupeManualShipEngineRates;
+exports.buildManualShipEngineShipment = buildManualShipEngineShipment;

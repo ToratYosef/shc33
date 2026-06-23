@@ -10,6 +10,8 @@ const {
   getManualGroundOnlyExclusionMessage,
   parseManualHazardousMaterialsFlag,
   shouldIncludeManualShipEngineRate,
+  dedupeManualShipEngineRates,
+  buildManualShipEngineShipment,
 } = require('../../../index');
 
 test('manual hazardous label rates allow ground-only services', () => {
@@ -102,5 +104,60 @@ test('manual hazardous label rates still reject non-ground and carrier-selected 
       true
     ),
     true
+  );
+});
+
+test('manual rate dedupe keeps the cheapest duplicate carrier service', () => {
+  const rates = dedupeManualShipEngineRates([
+    {
+      rateId: 'expensive-ups-ground',
+      carrierCode: 'ups',
+      carrierFriendlyName: 'UPS',
+      serviceCode: 'ups_ground',
+      serviceType: 'UPS Ground',
+      packageType: 'package',
+      totalAmount: 27.13,
+      deliveryDays: 4,
+      estimatedDeliveryDate: '2026-06-29T23:00:00Z',
+    },
+    {
+      rateId: 'cheap-ups-ground',
+      carrierCode: 'ups',
+      carrierFriendlyName: 'UPS',
+      serviceCode: 'ups_ground',
+      serviceType: 'UPS Ground',
+      packageType: 'package',
+      totalAmount: 9.34,
+      deliveryDays: 4,
+      estimatedDeliveryDate: '2026-06-29T23:00:00Z',
+    },
+  ]);
+
+  assert.equal(rates.length, 1);
+  assert.equal(rates[0].rateId, 'cheap-ups-ground');
+});
+
+test('manual hazardous ShipEngine shipment includes package-level lithium dangerous goods', () => {
+  const shipment = buildManualShipEngineShipment(
+    'customer_to_me',
+    {
+      fullName: 'Jane Customer',
+      streetAddress: '123 Main St',
+      city: 'Brooklyn',
+      state: 'NY',
+      zipCode: '11223',
+    },
+    true,
+    { weightLb: 0, weightOz: 8, dimensions: { length: 6, width: 4, height: 2 } }
+  );
+
+  assert.equal(shipment.advanced_options.dangerous_goods, true);
+  assert.equal(
+    shipment.packages[0].products[0].dangerous_goods[0].id_number,
+    'UN3481'
+  );
+  assert.equal(
+    shipment.packages[0].products[0].dangerous_goods[0].transport_mean,
+    'ground'
   );
 });

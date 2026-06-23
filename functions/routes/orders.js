@@ -765,7 +765,11 @@ function createOrdersRouter({
   }
 
 
-  const UPS_CARRIER_ID = 'se-5093141';
+  const UPS_CARRIER_ID = String(
+    process.env.SHIPENGINE_UPS_CARRIER_ID ||
+      process.env.UPS_SHIPENGINE_CARRIER_ID ||
+      'se-6239425'
+  ).trim();
   const UPS_CONNECTION_PAYLOAD = {
     nickname: process.env.SHIPENGINE_UPS_NICKNAME || 'UPS Account',
     account_number:
