@@ -952,17 +952,39 @@ app.use('/analytics/admin', analyticsAdminRouter);
 app.use('/server/analytics', analyticsRouter);
 app.use('/server/analytics/admin', analyticsAdminRouter);
 
+const CUSTOMER_FRONTEND_BASE_URL = 'https://secondhandcell.com';
+const BACKEND_API_BASE_URL = 'https://api.secondhandcell.com';
+
+function appendFixIssueQueryParam(url, key, value) {
+  if (!key || key === 'orderId' || key === 'id') {
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((entry) => appendFixIssueQueryParam(url, key, entry));
+    return;
+  }
+  if (value !== undefined && value !== null) {
+    url.searchParams.append(key, String(value));
+  }
+}
+
+function buildCustomerFixIssueUrl(orderId, query = null) {
+  const url = new URL('/fix-issue.html', CUSTOMER_FRONTEND_BASE_URL);
+  url.searchParams.set('orderId', orderId);
+  if (typeof query === 'string') {
+    appendFixIssueQueryParam(url, 'deviceKey', query);
+  } else if (query && typeof query === 'object') {
+    Object.entries(query).forEach(([key, value]) => appendFixIssueQueryParam(url, key, value));
+  }
+  return url.toString();
+}
+
 app.get('/api/orders/:orderId/issue-resolved', (req, res) => {
   const orderId = String(req.params.orderId || '').trim();
-  const deviceKey = req.query.deviceKey ? String(req.query.deviceKey).trim() : '';
   if (!orderId) {
     return res.status(400).send('Order ID is required.');
   }
-  const redirectUrl = new URL(`https://api.secondhandcell.com/fix-issue/${encodeURIComponent(orderId)}`);
-  if (deviceKey) {
-    redirectUrl.searchParams.set('deviceKey', deviceKey);
-  }
-  return res.redirect(redirectUrl.toString());
+  return res.redirect(buildCustomerFixIssueUrl(orderId, req.query));
 });
 
 app.get('/fix-issue/:orderId', async (req, res) => {
@@ -971,6 +993,8 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     if (!orderId) {
       return res.status(400).send('Order ID is required.');
     }
+
+    return res.redirect(302, buildCustomerFixIssueUrl(orderId, req.query));
 
     const order = await getOrderByIdFromFirestore(orderId);
     if (!order) {

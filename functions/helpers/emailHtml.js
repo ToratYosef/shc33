@@ -2,6 +2,8 @@ const { escapeHtml } = require('./stringUtils');
 
 const EMAIL_LOGO_URL =
   "https://cdn.secondhandcell.com/images/assets/logo-white.webp";
+const CUSTOMER_FRONTEND_BASE_URL = "https://secondhandcell.com";
+const BACKEND_API_BASE_URL = "https://api.secondhandcell.com";
 const COUNTDOWN_NOTICE_TEXT =
   "If we don't hear back, we may finalize your order at 75% less to keep your order moving.";
 const TRUSTPILOT_REVIEW_LINK = "https://www.trustpilot.com/review/secondhandcell.com?utm_medium=trustbox&utm_source=TrustBoxReviewCollector";
@@ -34,6 +36,15 @@ function appendCountdownNotice(text = "") {
     return trimmed;
   }
   return `${trimmed}\n\n${COUNTDOWN_NOTICE_TEXT}`;
+}
+
+function buildCustomerFixIssueUrl(orderId, deviceKey = null) {
+  const url = new URL("/fix-issue.html", CUSTOMER_FRONTEND_BASE_URL);
+  url.searchParams.set("orderId", orderId);
+  if (deviceKey) {
+    url.searchParams.set("deviceKey", deviceKey);
+  }
+  return url.toString();
 }
 
 const CONDITION_EMAIL_TEMPLATES = {
@@ -132,14 +143,14 @@ function buildConditionEmail(reason, order, notes, deviceKey = null) {
     fmi_active: "#f59e0b",
   };
 
-  const deviceKeyParam = deviceKey ? `?deviceKey=${encodeURIComponent(deviceKey)}` : "";
+  const fixIssueUrl = buildCustomerFixIssueUrl(orderId, deviceKey);
   const resolvedButtonLabel = template.resolvedButtonLabel || '✓ Issue Resolved';
   const resolvedButtonHint = template.resolvedButtonHint || "Tap once you've fixed this issue";
 
   const resolvedButtonHtml = template.showResolvedButton
     ? `
       <div style="text-align:center; margin:32px 0 24px;">
-        <a href="https://api.secondhandcell.com/server/orders/${escapeHtml(orderId)}/issue-resolved${deviceKeyParam}" 
+        <a href="${escapeHtml(fixIssueUrl)}" 
            style="display:inline-block; padding:14px 32px; border-radius:9999px; background-color:#14b8a6; color:#ffffff !important; font-weight:600; text-decoration:none; font-size:17px; box-shadow:0 4px 12px rgba(20,184,166,0.3);">
           ${escapeHtml(resolvedButtonLabel)}
         </a>

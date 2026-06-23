@@ -1491,18 +1491,40 @@ function buildIssueList(order) {
   return issues;
 }
 
+const CUSTOMER_FRONTEND_BASE_URL = "https://secondhandcell.com";
+const BACKEND_API_BASE_URL = "https://api.secondhandcell.com";
+
+function appendFixIssueQueryParam(url, key, value) {
+  if (!key || key === 'orderId' || key === 'id') {
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((entry) => appendFixIssueQueryParam(url, key, entry));
+    return;
+  }
+  if (value !== undefined && value !== null) {
+    url.searchParams.append(key, String(value));
+  }
+}
+
+function buildCustomerFixIssueUrl(orderId, query = null) {
+  const url = new URL("/fix-issue.html", CUSTOMER_FRONTEND_BASE_URL);
+  url.searchParams.set("orderId", orderId);
+  if (typeof query === 'string') {
+    appendFixIssueQueryParam(url, 'deviceKey', query);
+  } else if (query && typeof query === 'object') {
+    Object.entries(query).forEach(([key, value]) => appendFixIssueQueryParam(url, key, value));
+  }
+  return url.toString();
+}
+
 app.get(['/orders/:orderId/issue-resolved', '/api/orders/:orderId/issue-resolved'], (req, res) => {
   const orderId = String(req.params.orderId || '').trim();
-  const deviceKey = req.query.deviceKey ? String(req.query.deviceKey).trim() : '';
   if (!orderId) {
     return res.status(400).send('Order ID is required.');
   }
 
-  const redirectUrl = new URL(`https://api.secondhandcell.com/fix-issue/${encodeURIComponent(orderId)}`);
-  if (deviceKey) {
-    redirectUrl.searchParams.set('deviceKey', deviceKey);
-  }
-  return res.redirect(redirectUrl.toString());
+  return res.redirect(buildCustomerFixIssueUrl(orderId, req.query));
 });
 
 app.get('/fix-issue/:orderId', async (req, res) => {
@@ -1512,11 +1534,7 @@ app.get('/fix-issue/:orderId', async (req, res) => {
       return res.status(400).send('Order ID is required.');
     }
 
-    const redirectUrl = new URL(`https://api.secondhandcell.com/server/orders/${encodeURIComponent(orderId)}/issue-resolved`);
-    const redirectDeviceKey = req.query.deviceKey ? String(req.query.deviceKey).trim() : '';
-    if (redirectDeviceKey) {
-      redirectUrl.searchParams.set('deviceKey', redirectDeviceKey);
-    }
+    const redirectUrl = buildCustomerFixIssueUrl(orderId, req.query);
     return res.redirect(302, redirectUrl.toString());
 
     const orderRef = ordersCollection.doc(orderId);
@@ -4521,13 +4539,13 @@ function buildConditionEmail(reason, order, notes, deviceKey = null) {
     fmi_active: "#f59e0b",
   };
 
-  const deviceKeyParam = deviceKey ? `?deviceKey=${encodeURIComponent(deviceKey)}` : '';
+  const fixIssueUrl = buildCustomerFixIssueUrl(orderId, deviceKey);
   const resolvedButtonLabel = template.resolvedButtonLabel || '✓ Issue Resolved';
   const resolvedButtonHint = template.resolvedButtonHint || "Tap once you've fixed this issue";
   const resolvedButtonHtml = template.showResolvedButton
     ? `
       <div style="text-align:center; margin:32px 0 24px;">
-        <a href="https://api.secondhandcell.com/server/orders/${escapeHtml(orderId)}/issue-resolved${deviceKeyParam}" 
+        <a href="${escapeHtml(fixIssueUrl)}" 
            style="display:inline-block; padding:14px 32px; border-radius:9999px; background-color:#10b981; color:#ffffff !important; font-weight:600; text-decoration:none; font-size:17px; box-shadow:0 4px 12px rgba(16,185,129,0.3);">
           ${escapeHtml(resolvedButtonLabel)}
         </a>
