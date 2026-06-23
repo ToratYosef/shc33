@@ -7,7 +7,11 @@ const BACKEND_API_BASE_URL = "https://api.secondhandcell.com";
 const COUNTDOWN_NOTICE_TEXT =
   "If we don't hear back, we may finalize your order at 75% less to keep your order moving.";
 const TRUSTPILOT_REVIEW_LINK = "https://www.trustpilot.com/review/secondhandcell.com?utm_medium=trustbox&utm_source=TrustBoxReviewCollector";
-const TRUSTPILOT_STARS_IMAGE_URL = "https://cdn.trustpilot.net/brand-assets/4.1.0/stars/stars-5.png";
+const TRUSTPILOT_WIDGET_HTML = `<!-- TrustBox widget - Review Collector -->
+<div class="trustpilot-widget" data-locale="en-US" data-template-id="56278e9abfbbba0bdcd568bc" data-businessunit-id="68c8cb56da935f8a761f99a9" data-style-height="52px" data-style-width="100%" data-token="d5091e3c-702b-4ac0-9508-ca0b305f6f21">
+  <a href="https://www.trustpilot.com/review/secondhandcell.com" target="_blank" rel="noopener">Trustpilot</a>
+</div>
+<!-- End TrustBox widget -->`;
 
 const BLACKLISTED_LEGAL_HTML = `
   <strong>Legal Notice:</strong> Devices reported as lost, stolen, or blacklisted cannot be purchased under applicable federal and state regulations.
@@ -206,11 +210,7 @@ function buildTrustpilotSection() {
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:28px; background:#f9f9fa; border:1px solid #ececec; border-radius:22px;">
       <tr>
         <td style="padding:24px; text-align:center;">
-          <div style="font-size:20px; line-height:26px; font-weight:600; letter-spacing:-0.03em; color:#111111; margin-bottom:8px;">Share your experience</div>
-          <div style="font-size:15px; line-height:24px; color:#6b7280; margin:0 0 18px;">If you have a moment, we'd appreciate your feedback.</div>
-          <a href="${TRUSTPILOT_REVIEW_LINK}" style="display:inline-block; text-decoration:none; border:none; outline:none;">
-            <img src="${TRUSTPILOT_STARS_IMAGE_URL}" alt="Rate us on Trustpilot" style="height:58px; width:auto; display:block; margin:0 auto; border:0;">
-          </a>
+          ${TRUSTPILOT_WIDGET_HTML}
         </td>
       </tr>
     </table>

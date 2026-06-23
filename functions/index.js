@@ -1761,6 +1761,9 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Issue Resolution - SecondHandCell</title>
+    <!-- TrustBox script -->
+    <script type="text/javascript" src="//widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js" async></script>
+    <!-- End TrustBox script -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       :root {
@@ -2807,14 +2810,11 @@ app.get('/fix-issue/:orderId', async (req, res) => {
               >
             </a>
 
-            <a href="https://www.trustpilot.com/review/secondhandcell.com?utm_medium=trustbox&utm_source=TrustBoxReviewCollector" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center">
-              <img
-                src="https://secondhandcell.com/assets/stars-4.svg"
-                alt="Trustpilot 5 star rating"
-                loading="lazy"
-                class="h-12 w-auto object-contain"
-              >
-            </a>
+            <!-- TrustBox widget - Review Collector -->
+            <div class="trustpilot-widget" data-locale="en-US" data-template-id="56278e9abfbbba0bdcd568bc" data-businessunit-id="68c8cb56da935f8a761f99a9" data-style-height="52px" data-style-width="100%" data-token="d5091e3c-702b-4ac0-9508-ca0b305f6f21">
+              <a href="https://www.trustpilot.com/review/secondhandcell.com" target="_blank" rel="noopener">Trustpilot</a>
+            </div>
+            <!-- End TrustBox widget -->
           </div>
         </div>
 
@@ -3734,17 +3734,118 @@ function dedupeManualShipEngineRates(rates = []) {
   });
 }
 
-function buildManualShipEngineShipment(direction, customerAddress, containsHazardousMaterials = true) {
+const MANUAL_LABEL_DEFAULT_PACKAGE = Object.freeze({
+  weightLb: 0,
+  weightOz: 8,
+  dimensions: Object.freeze({
+    length: 6,
+    width: 4,
+    height: 2,
+  }),
+});
+
+function parseManualPackageNumber(value, fallback, { allowZero = false } = {}) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  if (allowZero ? parsed < 0 : parsed <= 0) return fallback;
+  return parsed;
+}
+
+function normalizeManualPackageDetails(packageInput = {}) {
+  const source = packageInput && typeof packageInput === "object" ? packageInput : {};
+  const weightSource = source.weight && typeof source.weight === "object" ? source.weight : {};
+  const dimensionsSource = source.dimensions && typeof source.dimensions === "object"
+    ? source.dimensions
+    : {};
+
+  let totalOunces = null;
+  const weightValue = Number(weightSource.value);
+  const weightUnit = String(weightSource.unit || "").trim().toLowerCase();
+  if (Number.isFinite(weightValue) && weightValue > 0) {
+    totalOunces = weightUnit.startsWith("pound") || weightUnit === "lb" || weightUnit === "lbs"
+      ? weightValue * 16
+      : weightValue;
+  }
+
+  const rawLb = parseManualPackageNumber(
+    source.weightLb ?? source.weight_lbs ?? source.pounds ?? source.lb ?? weightSource.lb ?? weightSource.pounds,
+    MANUAL_LABEL_DEFAULT_PACKAGE.weightLb,
+    { allowZero: true }
+  );
+  const rawOz = parseManualPackageNumber(
+    source.weightOz ?? source.weight_oz ?? source.ounces ?? source.oz ?? weightSource.oz ?? weightSource.ounces,
+    MANUAL_LABEL_DEFAULT_PACKAGE.weightOz,
+    { allowZero: true }
+  );
+  if (totalOunces === null) {
+    totalOunces = (rawLb * 16) + rawOz;
+  }
+  if (!Number.isFinite(totalOunces) || totalOunces <= 0) {
+    totalOunces = (MANUAL_LABEL_DEFAULT_PACKAGE.weightLb * 16)
+      + MANUAL_LABEL_DEFAULT_PACKAGE.weightOz;
+  }
+
+  const normalizedLb = Math.floor(totalOunces / 16);
+  const normalizedOz = Number((totalOunces - (normalizedLb * 16)).toFixed(2));
+  const dimensions = {
+    length: parseManualPackageNumber(
+      dimensionsSource.length ?? source.length ?? source.packageLength ?? source.package_length,
+      MANUAL_LABEL_DEFAULT_PACKAGE.dimensions.length
+    ),
+    width: parseManualPackageNumber(
+      dimensionsSource.width ?? source.width ?? source.packageWidth ?? source.package_width,
+      MANUAL_LABEL_DEFAULT_PACKAGE.dimensions.width
+    ),
+    height: parseManualPackageNumber(
+      dimensionsSource.height ?? source.height ?? source.packageHeight ?? source.package_height,
+      MANUAL_LABEL_DEFAULT_PACKAGE.dimensions.height
+    ),
+  };
+
+  return {
+    weightLb: normalizedLb,
+    weightOz: normalizedOz,
+    totalOunces: Number(totalOunces.toFixed(2)),
+    dimensions,
+  };
+}
+
+function formatManualPackageWeight(packageDetails = MANUAL_LABEL_DEFAULT_PACKAGE) {
+  const weightLb = Number(packageDetails.weightLb || 0);
+  const weightOz = Number(packageDetails.weightOz || 0);
+  return `${weightLb} lb ${Number.isInteger(weightOz) ? weightOz : weightOz.toFixed(2)} oz`;
+}
+
+function formatManualPackageDimensions(dimensions = MANUAL_LABEL_DEFAULT_PACKAGE.dimensions) {
+  const length = Number(dimensions.length || MANUAL_LABEL_DEFAULT_PACKAGE.dimensions.length);
+  const width = Number(dimensions.width || MANUAL_LABEL_DEFAULT_PACKAGE.dimensions.width);
+  const height = Number(dimensions.height || MANUAL_LABEL_DEFAULT_PACKAGE.dimensions.height);
+  const fmt = (value) => Number.isInteger(value) ? String(value) : value.toFixed(2);
+  return `${fmt(length)} × ${fmt(width)} × ${fmt(height)} in`;
+}
+
+function buildManualShipEngineShipment(
+  direction,
+  customerAddress,
+  containsHazardousMaterials = true,
+  packageInput = {}
+) {
   const customer = buildManualLabelCustomerAddress(customerAddress);
   const customerToMe = direction !== "me_to_customer";
+  const packageDetails = normalizeManualPackageDetails(packageInput);
   return {
     ship_from: customerToMe ? customer : { ...MANUAL_LABEL_SHC_ADDRESS },
     ship_to: customerToMe ? { ...MANUAL_LABEL_SHC_ADDRESS } : customer,
     packages: [
       {
         package_code: "package",
-        weight: { value: 16, unit: "ounce" },
-        dimensions: { unit: "inch", length: 6, width: 4, height: 2 },
+        weight: { value: packageDetails.totalOunces, unit: "ounce" },
+        dimensions: {
+          unit: "inch",
+          length: packageDetails.dimensions.length,
+          width: packageDetails.dimensions.width,
+          height: packageDetails.dimensions.height,
+        },
         label_messages: {
           reference1: `MANUAL-${Date.now()}`,
         },
@@ -3771,6 +3872,9 @@ app.post("/manual-shipping-label/rates", async (req, res) => {
     const customerAddress = req.body?.customerAddress || {};
     const containsHazardousMaterials = parseManualHazardousMaterialsFlag(
       req.body?.containsHazardousMaterials ?? req.body?.containsLithiumBattery
+    );
+    const packageDetails = normalizeManualPackageDetails(
+      req.body?.package || req.body?.packageDetails || req.body?.parcel || {}
     );
     const missingFields = validateManualLabelAddress(customerAddress);
     if (missingFields.length) {
@@ -3811,7 +3915,8 @@ app.post("/manual-shipping-label/rates", async (req, res) => {
         shipment: buildManualShipEngineShipment(
           direction,
           customerAddress,
-          containsHazardousMaterials
+          containsHazardousMaterials,
+          packageDetails
         ),
         rate_options: {
           carrier_ids: carrierIds,
@@ -3843,7 +3948,7 @@ app.post("/manual-shipping-label/rates", async (req, res) => {
         excludedPackagingRates.map((rate) => ({
           ...normalizeManualShipEngineRate(rate, true),
           errors: [
-            `Excluded because this rate uses ${String(rate.package_type || rate.package_code || "carrier packaging")} instead of the 6 × 4 × 2 custom box.`,
+            `Excluded because this rate uses ${String(rate.package_type || rate.package_code || "carrier packaging")} instead of the ${formatManualPackageDimensions(packageDetails.dimensions)} custom box.`,
           ],
         })),
         excludedNonGroundRates.map((rate) => ({
@@ -3859,8 +3964,8 @@ app.post("/manual-shipping-label/rates", async (req, res) => {
       rateRequestId: rateResponse.rate_request_id || null,
       shipmentId: rateResponse.shipment_id || null,
       package: {
-        weight: "16 oz",
-        dimensions: "6 × 4 × 2 in",
+        weight: formatManualPackageWeight(packageDetails),
+        dimensions: formatManualPackageDimensions(packageDetails.dimensions),
         packageCode: "package",
         packaging: "Customer-supplied custom box",
         containsLithiumBattery: containsHazardousMaterials,
@@ -4303,7 +4408,11 @@ process.env.EMAIL_NAME = EMAIL_DISPLAY_NAME;
 const COUNTDOWN_NOTICE_TEXT =
   "If we don't hear back about this issue within 7 days, we may automatically finalize your order at 75% less to keep your order moving.";
 const TRUSTPILOT_REVIEW_LINK = "https://www.trustpilot.com/review/secondhandcell.com?utm_medium=trustbox&utm_source=TrustBoxReviewCollector";
-const TRUSTPILOT_STARS_IMAGE_URL = "https://cdn.trustpilot.net/brand-assets/4.1.0/stars/stars-5.png";
+const TRUSTPILOT_WIDGET_HTML = `<!-- TrustBox widget - Review Collector -->
+<div class="trustpilot-widget" data-locale="en-US" data-template-id="56278e9abfbbba0bdcd568bc" data-businessunit-id="68c8cb56da935f8a761f99a9" data-style-height="52px" data-style-width="100%" data-token="d5091e3c-702b-4ac0-9508-ca0b305f6f21">
+  <a href="https://www.trustpilot.com/review/secondhandcell.com" target="_blank" rel="noopener">Trustpilot</a>
+</div>
+<!-- End TrustBox widget -->`;
 function buildCountdownNoticeHtml() {
   return `
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:24px; background:#fff7ed; border:1px solid #fed7aa; border-radius:18px;">
@@ -6108,11 +6217,7 @@ function buildTrustpilotSection() {
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:28px; background:#f9f9fa; border:1px solid #ececec; border-radius:22px;">
       <tr>
         <td style="padding:24px; text-align:center;">
-          <div style="font-size:20px; line-height:26px; font-weight:600; letter-spacing:-0.03em; color:#111111; margin-bottom:8px;">Share your experience</div>
-          <div style="font-size:15px; line-height:24px; color:#6b7280; margin:0 0 18px;">If you have a moment, we'd appreciate your feedback.</div>
-          <a href="${TRUSTPILOT_REVIEW_LINK}" style="display:inline-block; text-decoration:none; border:none; outline:none;">
-            <img src="${TRUSTPILOT_STARS_IMAGE_URL}" alt="Rate us on Trustpilot" style="height:58px; width:auto; display:block; margin:0 auto; border:0;">
-          </a>
+          ${TRUSTPILOT_WIDGET_HTML}
         </td>
       </tr>
     </table>

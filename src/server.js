@@ -227,9 +227,11 @@ const ISSUE_RESOLVED_FOOTER_FALLBACK = `
       <a href="https://www.sellcell.com/" target="_blank" rel="noopener noreferrer" class="issue-footer__badge-link">
         <img src="https://cdn.secondhandcell.com/images/assets/sellcell.webp" width="150" height="107" alt="SellCell Accredited Buyer" loading="lazy" class="issue-footer__badge issue-footer__badge--sellcell">
       </a>
-      <a href="https://www.trustpilot.com/evaluate/secondhandcell.com" target="_blank" rel="noopener noreferrer" class="issue-footer__badge-link">
-        <img src="https://secondhandcell.com/assets/stars-4.5.svg" alt="Trustpilot 4.5 star rating" loading="lazy" class="issue-footer__badge issue-footer__badge--trustpilot">
-      </a>
+      <!-- TrustBox widget - Review Collector -->
+      <div class="trustpilot-widget" data-locale="en-US" data-template-id="56278e9abfbbba0bdcd568bc" data-businessunit-id="68c8cb56da935f8a761f99a9" data-style-height="52px" data-style-width="100%" data-token="d5091e3c-702b-4ac0-9508-ca0b305f6f21">
+        <a href="https://www.trustpilot.com/review/secondhandcell.com" target="_blank" rel="noopener">Trustpilot</a>
+      </div>
+      <!-- End TrustBox widget -->
     </div>
     <div class="issue-footer__bottom">
       <p>&copy; 2026 SecondHandCell. All rights reserved.</p>
@@ -1224,6 +1226,9 @@ app.get('/fix-issue/:orderId', async (req, res) => {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Issue Resolution - SecondHandCell</title>
+    <!-- TrustBox script -->
+    <script type="text/javascript" src="//widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js" async></script>
+    <!-- End TrustBox script -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       :root {
@@ -2233,10 +2238,6 @@ app.get('/fix-issue/:orderId', async (req, res) => {
 
       .issue-footer__badge--sellcell {
         height: 70px;
-      }
-
-      .issue-footer__badge--trustpilot {
-        height: 44px;
       }
 
       .issue-footer__bottom {
