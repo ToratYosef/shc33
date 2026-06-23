@@ -2617,15 +2617,6 @@ function createOrdersRouter({
 
             await reconnectUpsCarrierConnection();
 
-            const dangerousGoods = [
-              {
-                id_number: 'UN3481',
-                shipping_name: 'Lithium ion batteries contained in equipment',
-                product_class: '9',
-                transport_mean: 'ground',
-              },
-            ];
-
             const packageWeightLb = 1;
 
             const labelData = await createShipEngineLabel(
@@ -2638,15 +2629,6 @@ function createOrdersRouter({
                 carrier_code: upsCarrierCode,
                 carrier_id: UPS_CARRIER_ID,
                 weight: { value: packageWeightLb, unit: 'pound' },
-                products: [
-                  {
-                    sku,
-                    description: draftOrder?.device || draftOrder?.modelName || 'Mobile Phone',
-                    quantity: Math.max(1, deviceCount),
-                    dangerous_goods: dangerousGoods,
-                  },
-                ],
-                advanced_options: { dangerous_goods: true },
               },
               {
                 orderId,
@@ -3138,32 +3120,12 @@ function createOrdersRouter({
 
       await reconnectUpsCarrierConnection();
 
-      const dangerousGoods = [
-        {
-          id_number: 'UN3481',
-          shipping_name: 'Lithium ion batteries contained in equipment',
-          product_class: '9',
-          transport_mean: 'ground',
-        },
-      ];
-
       const result = await createSingleInboundLabelForOrder(order, {
         carrierName: 'UPS',
         carrierCode: upsCarrierCode,
         carrierId: upsCarrierId,
         serviceCode: 'ups_ground',
         weight: { value: packageWeightLb, unit: 'pound' },
-        packageProducts: [
-          {
-            sku,
-            description: order?.device || order?.modelName || 'Mobile Phone',
-            quantity: Math.max(1, deviceCount),
-            dangerous_goods: dangerousGoods,
-          },
-        ],
-        advancedOptions: {
-          dangerous_goods: true,
-        },
         labelKey: 'ups',
         labelReferenceSuffix: 'UPS-INBOUND-DEVICE',
         displayName: 'UPS Shipping Label',

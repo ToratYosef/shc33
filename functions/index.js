@@ -3835,17 +3835,6 @@ function formatManualPackageDimensions(dimensions = MANUAL_LABEL_DEFAULT_PACKAGE
   return `${fmt(length)} × ${fmt(width)} × ${fmt(height)} in`;
 }
 
-function buildManualLithiumDangerousGoods() {
-  return [
-    {
-      id_number: "UN3481",
-      shipping_name: "Lithium ion batteries contained in equipment",
-      product_class: "9",
-      transport_mean: "ground",
-    },
-  ];
-}
-
 function buildManualShipEngineShipment(
   direction,
   customerAddress,
@@ -6953,6 +6942,20 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
   const resolvedCarrierId = carrierId ||
     (resolvedCarrierCode === "ups" ? SHIPENGINE_UPS_CARRIER_ID : null) ||
     (resolvedCarrierCode === "usps" ? SHIPENGINE_STAMPS_CARRIER_ID : null);
+  const normalizedCondition = String(
+    context?.condition ||
+      context?.orderData?.condition ||
+      packageData?.condition ||
+      ""
+  )
+    .trim()
+    .toLowerCase();
+  const isLithiumBattery =
+    normalizedCondition === "no_power" ||
+    normalizedCondition === "no power" ||
+    normalizedCondition === "lithium" ||
+    normalizedCondition.includes("battery");
+  const shouldSendDangerousGoods = isLithiumBattery && resolvedCarrierCode !== "ups";
   const advancedOptions =
     packageData?.advanced_options && typeof packageData.advanced_options === "object"
       ? { ...packageData.advanced_options }
@@ -6967,7 +6970,7 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
 
           return {
             ...entry,
-            ...(normalizedDangerousGoods
+            ...(shouldSendDangerousGoods && normalizedDangerousGoods
               ? { dangerous_goods: normalizedDangerousGoods }
               : {}),
           };
@@ -7014,7 +7017,7 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
   if (resolvedCarrierId) {
     payload.shipment.carrier_id = resolvedCarrierId;
   }
-  if (isHazmat) {
+  if (shouldSendDangerousGoods) {
     payload.shipment.advanced_options = {
       ...(advancedOptions || {}),
       dangerous_goods: true,
@@ -7050,7 +7053,11 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
 
   console.log(
     "ShipEngine DG payload:",
-    JSON.stringify(payload.shipment.packages?.[0]?.products?.[0]?.dangerous_goods, null, 2)
+    JSON.stringify(
+      shouldSendDangerousGoods ? payload.shipment.packages?.[0]?.products?.[0]?.dangerous_goods : null,
+      null,
+      2
+    )
   );
 
   const shipEngineApiKey = getShipEngineApiKey();
