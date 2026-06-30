@@ -9931,64 +9931,80 @@ async function runAutomaticInboundTrackingRefresh(options = {}) {
   };
 
   try {
-    const snapshot = await ordersCollection
-      .where('status', 'in', ['label_generated', 'phone_on_the_way'])
-      .limit(AUTO_TRACKING_REFRESH_QUERY_LIMIT)
-      .get();
+    let lastDoc = null;
+    let hasMore = true;
 
-    summary.scannedCount = snapshot.docs.length;
+    while (hasMore) {
+      let query = ordersCollection
+        .where('status', 'in', ['label_generated', 'phone_on_the_way'])
+        .orderBy(admin.firestore.FieldPath.documentId())
+        .limit(AUTO_TRACKING_REFRESH_QUERY_LIMIT);
 
-    for (const doc of snapshot.docs) {
-      const order = { id: doc.id, ...doc.data() };
-      const beforeStatus = normalizeTransitStatus(order.status) || order.status || 'unknown';
-      countStatus(summary.beforeStatusCounts, beforeStatus);
-
-      if (!shouldTrackInbound(order)) {
-        summary.skippedCount += 1;
-        countStatus(summary.afterStatusCounts, beforeStatus);
-        if (onProgress) {
-          onProgress({ orderId: order.id, beforeStatus, afterStatus: beforeStatus, skipped: 'not_trackable' });
-        }
-        continue;
+      if (lastDoc) {
+        query = query.startAfter(lastDoc);
       }
 
-      try {
-        const result = await syncInboundTrackingForOrder(order, {
-          source: 'system_automatic',
-          shipengineKey,
-          shipstationCredentials,
-        });
-        const updatedStatus = normalizeTransitStatus(result?.order?.status) || beforeStatus;
-        countStatus(summary.afterStatusCounts, updatedStatus);
-        if (updatedStatus !== beforeStatus) {
-          summary.changedCount += 1;
-        }
-        if (result?.skipped) {
+      const snapshot = await query.get();
+      if (snapshot.empty) {
+        break;
+      }
+
+      summary.scannedCount += snapshot.docs.length;
+      lastDoc = snapshot.docs[snapshot.docs.length - 1];
+      hasMore = snapshot.docs.length === AUTO_TRACKING_REFRESH_QUERY_LIMIT;
+
+      for (const doc of snapshot.docs) {
+        const order = { id: doc.id, ...doc.data() };
+        const beforeStatus = normalizeTransitStatus(order.status) || order.status || 'unknown';
+        countStatus(summary.beforeStatusCounts, beforeStatus);
+
+        if (!shouldTrackInbound(order)) {
           summary.skippedCount += 1;
-        } else {
-          summary.refreshedCount += 1;
+          countStatus(summary.afterStatusCounts, beforeStatus);
+          if (onProgress) {
+            onProgress({ orderId: order.id, beforeStatus, afterStatus: beforeStatus, skipped: 'not_trackable' });
+          }
+          continue;
         }
-        if (onProgress) {
-          onProgress({
-            orderId: order.id,
-            beforeStatus,
-            afterStatus: updatedStatus,
-            changed: updatedStatus !== beforeStatus,
-            skipped: result?.skipped || null,
-            normalizedTrackingStatus: result?.normalizedStatus || null,
+
+        try {
+          const result = await syncInboundTrackingForOrder(order, {
+            source: 'system_automatic',
+            shipengineKey,
+            shipstationCredentials,
           });
+          const updatedStatus = normalizeTransitStatus(result?.order?.status) || beforeStatus;
+          countStatus(summary.afterStatusCounts, updatedStatus);
+          if (updatedStatus !== beforeStatus) {
+            summary.changedCount += 1;
+          }
+          if (result?.skipped) {
+            summary.skippedCount += 1;
+          } else {
+            summary.refreshedCount += 1;
+          }
+          if (onProgress) {
+            onProgress({
+              orderId: order.id,
+              beforeStatus,
+              afterStatus: updatedStatus,
+              changed: updatedStatus !== beforeStatus,
+              skipped: result?.skipped || null,
+              normalizedTrackingStatus: result?.normalizedStatus || null,
+            });
+          }
+        } catch (error) {
+          summary.failedCount += 1;
+          countStatus(summary.afterStatusCounts, beforeStatus);
+          summary.failedOrders.push({
+            orderId: order.id,
+            error: error?.message || 'Failed to refresh tracking',
+          });
+          if (onProgress) {
+            onProgress({ orderId: order.id, beforeStatus, afterStatus: beforeStatus, failed: true, error: error?.message || 'Failed to refresh tracking' });
+          }
+          console.error(`Automatic inbound tracking refresh failed for order ${order.id}:`, error.response?.data || error);
         }
-      } catch (error) {
-        summary.failedCount += 1;
-        countStatus(summary.afterStatusCounts, beforeStatus);
-        summary.failedOrders.push({
-          orderId: order.id,
-          error: error?.message || 'Failed to refresh tracking',
-        });
-        if (onProgress) {
-          onProgress({ orderId: order.id, beforeStatus, afterStatus: beforeStatus, failed: true, error: error?.message || 'Failed to refresh tracking' });
-        }
-        console.error(`Automatic inbound tracking refresh failed for order ${order.id}:`, error.response?.data || error);
       }
     }
 
