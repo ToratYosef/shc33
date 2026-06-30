@@ -4,6 +4,7 @@ process.env.SHIPENGINE_API_KEY ||= 'test-shipengine-key';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const axios = require('axios');
 
 const {
   isManualGroundOnlyService,
@@ -12,6 +13,7 @@ const {
   shouldIncludeManualShipEngineRate,
   dedupeManualShipEngineRates,
   buildManualShipEngineShipment,
+  createShipEngineLabel,
 } = require('../../../index');
 
 test('manual hazardous label rates allow ground-only services', () => {
@@ -153,4 +155,101 @@ test('manual hazardous ShipEngine shipment sets shipment-level dangerous goods w
 
   assert.equal(shipment.advanced_options.dangerous_goods, true);
   assert.equal(shipment.packages[0].products, undefined);
+});
+
+test('USPS ShipEngine labels are always hazardous and forced to ground advantage', async () => {
+  const originalPost = axios.post;
+  let capturedPayload = null;
+
+  axios.post = async (_url, payload) => {
+    capturedPayload = payload;
+    return { data: { label_id: 'label-usps' } };
+  };
+
+  try {
+    await createShipEngineLabel(
+      {
+        name: 'SecondHandCell',
+        address_line1: '1 Warehouse Way',
+        city_locality: 'Brooklyn',
+        state_province: 'NY',
+        postal_code: '11223',
+        country_code: 'US',
+      },
+      {
+        name: 'Jane Customer',
+        address_line1: '123 Main St',
+        city_locality: 'Brooklyn',
+        state_province: 'NY',
+        postal_code: '11223',
+        country_code: 'US',
+      },
+      'TEST-USPS',
+      {
+        dimensions: { length: 6, width: 4, height: 2 },
+        service_code: 'usps_priority_mail',
+        carrier_code: 'stamps_com',
+        weight: { value: 8, unit: 'ounce' },
+      },
+      { carrierCode: 'stamps_com', carrierName: 'USPS' }
+    );
+  } finally {
+    axios.post = originalPost;
+  }
+
+  assert.equal(capturedPayload.shipment.service_code, 'usps_ground_advantage');
+  assert.equal(capturedPayload.shipment.advanced_options.dangerous_goods, true);
+});
+
+test('UPS ShipEngine labels never send hazardous options or product dangerous goods', async () => {
+  const originalPost = axios.post;
+  let capturedPayload = null;
+
+  axios.post = async (_url, payload) => {
+    capturedPayload = payload;
+    return { data: { label_id: 'label-ups' } };
+  };
+
+  try {
+    await createShipEngineLabel(
+      {
+        name: 'SecondHandCell',
+        address_line1: '1 Warehouse Way',
+        city_locality: 'Brooklyn',
+        state_province: 'NY',
+        postal_code: '11223',
+        country_code: 'US',
+      },
+      {
+        name: 'Jane Customer',
+        address_line1: '123 Main St',
+        city_locality: 'Brooklyn',
+        state_province: 'NY',
+        postal_code: '11223',
+        country_code: 'US',
+      },
+      'TEST-UPS',
+      {
+        dimensions: { length: 6, width: 4, height: 2 },
+        service_code: 'ups_ground',
+        carrier_code: 'ups',
+        weight: { value: 1, unit: 'pound' },
+        advanced_options: { dangerous_goods: true },
+        products: [
+          {
+            description: 'Phone',
+            quantity: 1,
+            dangerous_goods: [{ id_number: 3481 }],
+          },
+        ],
+      },
+      { carrierCode: 'ups', carrierName: 'UPS' }
+    );
+  } finally {
+    axios.post = originalPost;
+  }
+
+  assert.equal(capturedPayload.shipment.service_code, 'ups_ground');
+  assert.equal(capturedPayload.shipment.advanced_options, undefined);
+  assert.equal(capturedPayload.shipment.packages[0].products[0].dangerous_goods, undefined);
 });

@@ -6942,24 +6942,17 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
   const resolvedCarrierId = carrierId ||
     (resolvedCarrierCode === "ups" ? SHIPENGINE_UPS_CARRIER_ID : null) ||
     (resolvedCarrierCode === "usps" ? SHIPENGINE_STAMPS_CARRIER_ID : null);
-  const normalizedCondition = String(
-    context?.condition ||
-      context?.orderData?.condition ||
-      packageData?.condition ||
-      ""
-  )
-    .trim()
-    .toLowerCase();
-  const isLithiumBattery =
-    normalizedCondition === "no_power" ||
-    normalizedCondition === "no power" ||
-    normalizedCondition === "lithium" ||
-    normalizedCondition.includes("battery");
-  const shouldSendDangerousGoods = isLithiumBattery && resolvedCarrierCode !== "ups";
-  const advancedOptions =
+  const shouldSendDangerousGoods = resolvedCarrierCode === "usps";
+  let advancedOptions =
     packageData?.advanced_options && typeof packageData.advanced_options === "object"
       ? { ...packageData.advanced_options }
       : null;
+  if (resolvedCarrierCode === "ups" && advancedOptions) {
+    delete advancedOptions.dangerous_goods;
+    if (Object.keys(advancedOptions).length === 0) {
+      advancedOptions = null;
+    }
+  }
   const products = Array.isArray(packageData?.products)
     ? packageData.products
         .filter((entry) => entry && typeof entry === "object")
@@ -6967,9 +6960,10 @@ async function createShipEngineLabel(fromAddress, toAddress, labelReference, pac
           const normalizedDangerousGoods = normalizeDangerousGoods(entry.dangerous_goods)?.map(
             normalizeDangerousGoodItem
           );
+          const { dangerous_goods: _dangerousGoods, ...product } = entry;
 
           return {
-            ...entry,
+            ...product,
             ...(shouldSendDangerousGoods && normalizedDangerousGoods
               ? { dangerous_goods: normalizedDangerousGoods }
               : {}),
@@ -12250,3 +12244,4 @@ exports.parseManualHazardousMaterialsFlag = parseManualHazardousMaterialsFlag;
 exports.shouldIncludeManualShipEngineRate = shouldIncludeManualShipEngineRate;
 exports.dedupeManualShipEngineRates = dedupeManualShipEngineRates;
 exports.buildManualShipEngineShipment = buildManualShipEngineShipment;
+exports.createShipEngineLabel = createShipEngineLabel;

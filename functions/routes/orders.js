@@ -3144,7 +3144,7 @@ function createOrdersRouter({
         carrierCode: result.carrierCode,
         serviceCode: result.serviceCode,
         labelId: result.labelId,
-        dangerousGoods,
+        dangerousGoods: [],
         warnings: result.warnings || [],
       });
     } catch (error) {
