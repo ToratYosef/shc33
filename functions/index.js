@@ -830,6 +830,93 @@ function deriveOrderStatusFromDevices(order = {}, nextDeviceStatusByKey = null) 
   return null;
 }
 
+const REOFFER_FIELDS_TO_DELETE = [
+  'reOffer',
+  'reoffer',
+  'reOfferByDevice',
+  'reofferByDevice',
+  'deviceReofferByKey',
+  'deviceReOfferByKey',
+  'reOfferHistory',
+  'reofferHistory',
+  'reOfferEvents',
+  'reofferEvents',
+  'reOfferUpdatedAt',
+  'reofferUpdatedAt',
+  'requote',
+  'requoteAmount',
+  'updatedQuote',
+  'acceptedAt',
+  'declinedAt',
+  'requoteAcceptedAt',
+  'reofferAcceptedAt',
+  'reOfferAcceptedAt',
+  'reofferDeclinedAt',
+  'reOfferDeclinedAt',
+  'reofferAutoAcceptedAt',
+  'reOfferAutoAcceptedAt',
+  'reofferCanceledAt',
+  'reofferCanceledDeviceKey',
+  'reOfferDecision',
+  'reofferDecision',
+  'reOfferDecisionByDevice',
+  'reofferDecisionByDevice',
+  'reOfferToken',
+  'reofferToken',
+  'reOfferTokenByDevice',
+  'reofferTokenByDevice',
+  'reOfferExpiresAt',
+  'reofferExpiresAt',
+  'reOfferExpiration',
+  'reofferExpiration',
+  'reOfferAutoAcceptDate',
+  'reofferAutoAcceptDate',
+];
+
+function isReofferStatus(value) {
+  return [
+    're_offered_pending',
+    're_offered_declined',
+    're_offered_accepted',
+    're_offered_auto_accepted',
+    'requote_accepted',
+  ].includes(normalizeStatusValue(value));
+}
+
+function resolvePreReofferStatus() {
+  return 'received';
+}
+
+function buildCancelReofferUpdatePayload(order = {}) {
+  const updatePayload = {};
+  REOFFER_FIELDS_TO_DELETE.forEach((field) => {
+    updatePayload[field] = admin.firestore.FieldValue.delete();
+  });
+
+  const deviceStatusByKey = order.deviceStatusByKey && typeof order.deviceStatusByKey === 'object' && !Array.isArray(order.deviceStatusByKey)
+    ? order.deviceStatusByKey
+    : null;
+
+  if (deviceStatusByKey) {
+    const nextDeviceStatusByKey = { ...deviceStatusByKey };
+    let changed = false;
+    for (const [deviceKey, status] of Object.entries(deviceStatusByKey)) {
+      if (!isReofferStatus(status)) continue;
+      nextDeviceStatusByKey[deviceKey] = resolvePreReofferStatus();
+      changed = true;
+    }
+    if (changed) {
+      updatePayload.deviceStatusByKey = nextDeviceStatusByKey;
+    }
+  }
+
+  if (isReofferStatus(order.status)) {
+    updatePayload.status = resolvePreReofferStatus();
+  }
+
+  return updatePayload;
+}
+
 function isStatusEligibleForImeiCheck(status) {
   if (!status) {
     return true;
@@ -8751,52 +8838,22 @@ app.post("/orders/:id/cancel-reoffer", async (req, res) => {
     const order = { id: orderDoc.id, ...orderDoc.data() };
     const resolvedDeviceKey = requestedDeviceKey;
     const currentStatus = normalizeStatusValue(order.deviceStatusByKey?.[resolvedDeviceKey] || order.status);
-    const activeOffers = {
-      ...(order.reOfferByDevice || {}),
-      ...(order.reofferByDevice || {}),
-    };
 
-    if (currentStatus !== 're_offered_pending') {
+    if (!isReofferStatus(currentStatus)) {
       return res.status(409).json({ error: "No pending re-offer found for this device." });
     }
 
-    const nextDeviceStatusByKey = {
-      ...(order.deviceStatusByKey || {}),
-      [resolvedDeviceKey]: "received",
-    };
-    const remainingPendingKeys = collectOrderDeviceKeys(order).filter((deviceKey) => {
-      if (deviceKey === resolvedDeviceKey) return false;
-      const status = normalizeStatusValue(nextDeviceStatusByKey[deviceKey] || order.status);
-      return status === 're_offered_pending';
-    });
-    const nextLegacyOfferKey = remainingPendingKeys.find((deviceKey) => activeOffers[deviceKey]);
-
-    const updatePayload = {
-      [`deviceStatusByKey.${resolvedDeviceKey}`]: "received",
-      [`reOfferByDevice.${resolvedDeviceKey}`]: admin.firestore.FieldValue.delete(),
-      [`reofferByDevice.${resolvedDeviceKey}`]: admin.firestore.FieldValue.delete(),
-      reofferCanceledAt: admin.firestore.FieldValue.serverTimestamp(),
-      reofferCanceledDeviceKey: resolvedDeviceKey,
-    };
-
-    if (remainingPendingKeys.length > 0) {
-      updatePayload.status = "re-offered-pending";
-      if (nextLegacyOfferKey) {
-        updatePayload.reOffer = activeOffers[nextLegacyOfferKey];
-      }
-    } else {
-      updatePayload.status = "received";
-      updatePayload.reOffer = admin.firestore.FieldValue.delete();
-    }
+    const updatePayload = buildCancelReofferUpdatePayload(order);
 
     await updateOrderBoth(orderId, updatePayload, {
       logEntries: [{
         type: "admin",
-        message: "Pending re-offer canceled by admin. Device moved back to Received for review.",
+        message: "Pending re-offer canceled by admin. All re-offer data cleared.",
         metadata: {
           actorUid: req.user?.uid || authResult.uid || null,
           actorEmail: req.user?.email || null,
           deviceKey: resolvedDeviceKey,
+          clearedAllReofferData: true,
         },
       }],
     });
@@ -8827,7 +8884,7 @@ app.post("/orders/:id/cancel-reoffer", async (req, res) => {
       orderId,
       deviceKey: resolvedDeviceKey,
       deviceLabel: modelName,
-      status: updatePayload.status,
+      status: updatePayload.status || null,
     });
   } catch (err) {
     console.error("Error cancelling re-offer:", err);
