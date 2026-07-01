@@ -99,6 +99,7 @@ const DEFAULT_REPRICER_RULES = {
   ],
 };
 const MIN_GOOD_VS_FLAWLESS_GAP = 15;
+const MAX_NO_POWER_SEVERE_DAMAGE_PRICE_RATIO = 0.25;
 
 let cachedRepricerRules = null;
 let cachedRepricerRulesAt = 0;
@@ -190,6 +191,13 @@ function buildRepricerRowPriceKey(row) {
   return `${normalizeName(row.name)}|${storage}|${carrier}`;
 }
 
+function updateRepricerRowProfit(row) {
+  if (row.total_walkaway != null && Number.isFinite(Number(row.total_walkaway))) {
+    row.new_profit = Number(row.total_walkaway) - row.new_price;
+    row.new_profit_pct = row.new_price ? row.new_profit / row.new_price : null;
+  }
+}
+
 function enforceGoodPriceGapOnRepricerRows(rows) {
   const flawlessPrices = new Map();
 
@@ -213,10 +221,35 @@ function enforceGoodPriceGapOnRepricerRows(rows) {
 
     row.new_price = roundRepricerPrice(maxGoodPrice);
     row.good_flawless_gap_adjusted = true;
-    if (row.total_walkaway != null && Number.isFinite(Number(row.total_walkaway))) {
-      row.new_profit = Number(row.total_walkaway) - row.new_price;
-      row.new_profit_pct = row.new_price ? row.new_profit / row.new_price : null;
-    }
+    updateRepricerRowProfit(row);
+  }
+}
+
+function enforceNoPowerSevereDamageDiscountOnRepricerRows(rows) {
+  const goodPrices = new Map();
+
+  for (const row of rows) {
+    if (String(row.condition || "").toLowerCase() !== "good") continue;
+    const key = buildRepricerRowPriceKey(row);
+    const price = Number(row.new_price);
+    if (!key || !Number.isFinite(price)) continue;
+    goodPrices.set(key, price);
+  }
+
+  for (const row of rows) {
+    const condition = String(row.condition || "").toLowerCase();
+    if (condition !== "damaged" && condition !== "broken") continue;
+    const key = buildRepricerRowPriceKey(row);
+    if (!key || !goodPrices.has(key)) continue;
+
+    const currentPrice = Number(row.new_price);
+    const maxDamagedPrice = Number((goodPrices.get(key) * MAX_NO_POWER_SEVERE_DAMAGE_PRICE_RATIO).toFixed(2));
+    if (!Number.isFinite(currentPrice) || !Number.isFinite(maxDamagedPrice)) continue;
+    if (currentPrice <= maxDamagedPrice) continue;
+
+    row.new_price = maxDamagedPrice;
+    row.no_power_severe_damage_adjusted = true;
+    updateRepricerRowProfit(row);
   }
 }
 
@@ -513,6 +546,7 @@ exports.repriceFeed = functions.https.onRequest(async (req, res) => {
     }
 
     enforceGoodPriceGapOnRepricerRows(resultRows);
+    enforceNoPowerSevereDamageDiscountOnRepricerRows(resultRows);
 
     res.json({ rows: resultRows, rules: repricerRules });
   } catch (err) {

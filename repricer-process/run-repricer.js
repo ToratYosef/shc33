@@ -39,6 +39,7 @@ const DEFAULT_REPRICER_RULES = {
   ],
 };
 const MIN_GOOD_VS_FLAWLESS_GAP = 15;
+const MAX_NO_POWER_SEVERE_DAMAGE_PRICE_RATIO = 0.25;
 
 // optional outputs
 const WRITE_OUTPUT_CSV = !!getArg("write-csv", false);
@@ -596,6 +597,13 @@ function buildRowPriceKey(row) {
   return normalizeModelNameFromCsv(row.name, storage) + "|" + storage + "|" + carrier;
 }
 
+function updateRowProfit(row) {
+  if (row.total_walkaway != null && Number.isFinite(Number(row.total_walkaway))) {
+    row.new_profit = Number(row.total_walkaway) - row.new_price;
+    row.new_profit_pct = row.new_price ? row.new_profit / row.new_price : null;
+  }
+}
+
 function enforceGoodPriceGapOnRows(rows) {
   const flawlessPrices = new Map();
 
@@ -619,11 +627,40 @@ function enforceGoodPriceGapOnRows(rows) {
     if (goodPrice <= maxGoodPrice) continue;
 
     row.new_price = roundRepricerPrice(maxGoodPrice);
-    if (row.total_walkaway != null && Number.isFinite(Number(row.total_walkaway))) {
-      row.new_profit = Number(row.total_walkaway) - row.new_price;
-      row.new_profit_pct = row.new_price ? row.new_profit / row.new_price : null;
-    }
+    updateRowProfit(row);
     row._status = `${row._status || "Repriced"}; capped good to stay $${MIN_GOOD_VS_FLAWLESS_GAP.toFixed(2)} below flawless`;
+    adjusted++;
+  }
+
+  return adjusted;
+}
+
+function enforceNoPowerSevereDamageDiscountOnRows(rows) {
+  const goodPrices = new Map();
+
+  for (const row of rows) {
+    if (normalizeTemplateCondition(row.condition) !== "good") continue;
+    const key = buildRowPriceKey(row);
+    const price = Number(row.new_price);
+    if (!key || !Number.isFinite(price)) continue;
+    goodPrices.set(key, price);
+  }
+
+  let adjusted = 0;
+  for (const row of rows) {
+    const condition = normalizeTemplateCondition(row.condition);
+    if (condition !== "broken") continue;
+    const key = buildRowPriceKey(row);
+    if (!key || !goodPrices.has(key)) continue;
+
+    const currentPrice = Number(row.new_price);
+    const maxDamagedPrice = Number((goodPrices.get(key) * MAX_NO_POWER_SEVERE_DAMAGE_PRICE_RATIO).toFixed(2));
+    if (!Number.isFinite(currentPrice) || !Number.isFinite(maxDamagedPrice)) continue;
+    if (currentPrice <= maxDamagedPrice) continue;
+
+    row.new_price = maxDamagedPrice;
+    updateRowProfit(row);
+    row._status = `${row._status || "Repriced"}; capped no power/severe damage to 75% less than good`;
     adjusted++;
   }
 
@@ -729,6 +766,7 @@ function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
   }
 
   const goodGapAdjustments = enforceGoodPriceGapOnXml(doc, changedModels);
+  const noPowerSevereDamageAdjustments = enforceNoPowerSevereDamageDiscountOnXml(doc, changedModels);
 
   const serializer = new XMLSerializer();
   let xmlOut = serializer.serializeToString(doc);
@@ -738,12 +776,13 @@ function buildUpdatedXmlFromTemplateWithDiff(templateXmlText, rows) {
 
   return {
     updatedXml: prettyPrintXml(xmlOut),
-    changedNodes: changedNodes + goodGapAdjustments,
+    changedNodes: changedNodes + goodGapAdjustments + noPowerSevereDamageAdjustments,
     changedModelsCount: changedModels.size,
     matchedKeys,
     priceMapSize: priceMap.size,
     normalizedDeeplinks,
     goodGapAdjustments,
+    noPowerSevereDamageAdjustments,
   };
 }
 
@@ -775,6 +814,43 @@ function enforceGoodPriceGapOnXml(doc, changedModels) {
         if (goodPrice <= maxGoodPrice) return;
 
         goodEl.textContent = String(roundRepricerPrice(maxGoodPrice));
+        adjusted++;
+        changedModels.add(modelSellcellName);
+      });
+    }
+  }
+
+  return adjusted;
+}
+
+function enforceNoPowerSevereDamageDiscountOnXml(doc, changedModels) {
+  let adjusted = 0;
+  const models = doc.getElementsByTagName("model");
+
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    const modelSellcellName = templateModelToSellcellName(model);
+    const pricesBlocks = model.getElementsByTagName("prices");
+
+    for (let j = 0; j < pricesBlocks.length; j++) {
+      const priceValueEl = pricesBlocks[j].getElementsByTagName("priceValue")[0];
+      if (!priceValueEl) continue;
+
+      ["att", "verizon", "tmobile", "unlocked"].forEach((carrierTag) => {
+        const carrierEl = priceValueEl.getElementsByTagName(carrierTag)[0];
+        if (!carrierEl) return;
+
+        const goodEl = carrierEl.getElementsByTagName("good")[0];
+        const brokenEl = carrierEl.getElementsByTagName("broken")[0];
+        if (!goodEl || !brokenEl) return;
+
+        const goodPrice = parseMoney(goodEl.textContent);
+        const brokenPrice = parseMoney(brokenEl.textContent);
+        const maxBrokenPrice = Number((goodPrice * MAX_NO_POWER_SEVERE_DAMAGE_PRICE_RATIO).toFixed(2));
+        if (!Number.isFinite(goodPrice) || !Number.isFinite(brokenPrice) || !Number.isFinite(maxBrokenPrice)) return;
+        if (brokenPrice <= maxBrokenPrice) return;
+
+        brokenEl.textContent = String(maxBrokenPrice);
         adjusted++;
         changedModels.add(modelSellcellName);
       });
@@ -1134,8 +1210,18 @@ async function main() {
 
   const resultRows = rawRecords.map((r) => repriceRowFromFeed(r, feedIndex, repricerRules));
   const rowGoodGapAdjustments = enforceGoodPriceGapOnRows(resultRows);
+  const rowNoPowerSevereDamageAdjustments = enforceNoPowerSevereDamageDiscountOnRows(resultRows);
 
-  const { updatedXml, changedNodes, changedModelsCount, matchedKeys, priceMapSize, normalizedDeeplinks, goodGapAdjustments } =
+  const {
+    updatedXml,
+    changedNodes,
+    changedModelsCount,
+    matchedKeys,
+    priceMapSize,
+    normalizedDeeplinks,
+    goodGapAdjustments,
+    noPowerSevereDamageAdjustments,
+  } =
     buildUpdatedXmlFromTemplateWithDiff(templateXmlBefore, resultRows);
 
   fs.writeFileSync(TEMPLATE_XML_PATH, updatedXml, "utf8");
@@ -1143,6 +1229,7 @@ async function main() {
   console.log(`[repricer] priceMap=${priceMapSize.toLocaleString()}  matchedKeys=${matchedKeys.toLocaleString()}`);
   console.log(`[repricer] xml price nodes changed=${changedNodes.toLocaleString()}  models touched=${changedModelsCount.toLocaleString()}`);
   console.log(`[repricer] good/flawless gap rowAdjustments=${rowGoodGapAdjustments.toLocaleString()}  xmlAdjustments=${goodGapAdjustments.toLocaleString()}`);
+  console.log(`[repricer] no-power/severe-damage cap rowAdjustments=${rowNoPowerSevereDamageAdjustments.toLocaleString()}  xmlAdjustments=${noPowerSevereDamageAdjustments.toLocaleString()}`);
   console.log(`[repricer] deeplinks normalized=${normalizedDeeplinks.toLocaleString()}`);
 
   if (WRITE_OUTPUT_CSV) {

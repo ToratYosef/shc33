@@ -120,6 +120,12 @@ Final good-condition guard:
 - If calculated `good` is too close to `flawless`, it is capped to `flawless - 15`.
 - If calculated `good` is already more than `$15` lower, it is left unchanged.
 
+Final no-power/severe-damage guard:
+
+- The `damaged` CSV condition maps to the XML `broken` condition, used for no-power/severe-damage pricing.
+- For the same model, storage, and carrier, `damaged` / `broken` must be at most `25%` of `good` (`75%` less).
+- If calculated `damaged` / `broken` is already lower than that, it is left unchanged.
+
 Output metrics include `new_profit` and `new_profit_pct`.
 
 ## 7) How XML gets updated
