@@ -39,7 +39,7 @@ const DEFAULT_REPRICER_RULES = {
   ],
 };
 const MIN_GOOD_VS_FLAWLESS_GAP = 15;
-const MAX_NO_POWER_SEVERE_DAMAGE_PRICE_RATIO = 0.25;
+const NO_POWER_SEVERE_DAMAGE_VS_BROKEN_RATIO = 0.25;
 
 // optional outputs
 const WRITE_OUTPUT_CSV = !!getArg("write-csv", false);
@@ -636,35 +636,45 @@ function enforceGoodPriceGapOnRows(rows) {
 }
 
 function enforceNoPowerSevereDamageDiscountOnRows(rows) {
-  const goodPrices = new Map();
+  const brokenPrices = new Map();
 
   for (const row of rows) {
-    if (normalizeTemplateCondition(row.condition) !== "good") continue;
+    const condition = normalizeTemplateCondition(row.condition);
+    if (condition !== "broken") continue;
     const key = buildRowPriceKey(row);
     const price = Number(row.new_price);
     if (!key || !Number.isFinite(price)) continue;
-    goodPrices.set(key, price);
+    brokenPrices.set(key, price);
   }
 
   let adjusted = 0;
   for (const row of rows) {
     const condition = normalizeTemplateCondition(row.condition);
-    if (condition !== "broken") continue;
+    if (!isNoPowerSevereDamageCondition(condition)) continue;
     const key = buildRowPriceKey(row);
-    if (!key || !goodPrices.has(key)) continue;
+    if (!key || !brokenPrices.has(key)) continue;
 
     const currentPrice = Number(row.new_price);
-    const maxDamagedPrice = Number((goodPrices.get(key) * MAX_NO_POWER_SEVERE_DAMAGE_PRICE_RATIO).toFixed(2));
-    if (!Number.isFinite(currentPrice) || !Number.isFinite(maxDamagedPrice)) continue;
-    if (currentPrice <= maxDamagedPrice) continue;
+    const maxNoPowerPrice = Number((brokenPrices.get(key) * NO_POWER_SEVERE_DAMAGE_VS_BROKEN_RATIO).toFixed(2));
+    if (!Number.isFinite(currentPrice) || !Number.isFinite(maxNoPowerPrice)) continue;
+    if (currentPrice <= maxNoPowerPrice) continue;
 
-    row.new_price = maxDamagedPrice;
+    row.new_price = maxNoPowerPrice;
     updateRowProfit(row);
-    row._status = `${row._status || "Repriced"}; capped no power/severe damage to 75% less than good`;
+    row._status = `${row._status || "Repriced"}; capped no power/severe damage to 75% less than broken`;
     adjusted++;
   }
 
   return adjusted;
+}
+
+function isNoPowerSevereDamageCondition(condition) {
+  const value = String(condition || "").trim().toLowerCase();
+  return value === "no_power" ||
+    value === "no power" ||
+    value === "severely_damaged" ||
+    value === "severely damaged" ||
+    value === "no power / severely damaged";
 }
 
 // ===================== XML PRETTY PRINT =====================
@@ -840,17 +850,22 @@ function enforceNoPowerSevereDamageDiscountOnXml(doc, changedModels) {
         const carrierEl = priceValueEl.getElementsByTagName(carrierTag)[0];
         if (!carrierEl) return;
 
-        const goodEl = carrierEl.getElementsByTagName("good")[0];
         const brokenEl = carrierEl.getElementsByTagName("broken")[0];
-        if (!goodEl || !brokenEl) return;
+        if (!brokenEl) return;
 
-        const goodPrice = parseMoney(goodEl.textContent);
         const brokenPrice = parseMoney(brokenEl.textContent);
-        const maxBrokenPrice = Number((goodPrice * MAX_NO_POWER_SEVERE_DAMAGE_PRICE_RATIO).toFixed(2));
-        if (!Number.isFinite(goodPrice) || !Number.isFinite(brokenPrice) || !Number.isFinite(maxBrokenPrice)) return;
-        if (brokenPrice <= maxBrokenPrice) return;
+        const noPowerPrice = Number((brokenPrice * NO_POWER_SEVERE_DAMAGE_VS_BROKEN_RATIO).toFixed(2));
+        if (!Number.isFinite(brokenPrice) || !Number.isFinite(noPowerPrice)) return;
 
-        brokenEl.textContent = String(maxBrokenPrice);
+        let noPowerEl = carrierEl.getElementsByTagName("no_power")[0];
+        if (!noPowerEl) {
+          noPowerEl = doc.createElement("no_power");
+          carrierEl.appendChild(noPowerEl);
+        } else if (parseMoney(noPowerEl.textContent) === noPowerPrice) {
+          return;
+        }
+
+        noPowerEl.textContent = String(noPowerPrice);
         adjusted++;
         changedModels.add(modelSellcellName);
       });

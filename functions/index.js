@@ -99,7 +99,7 @@ const DEFAULT_REPRICER_RULES = {
   ],
 };
 const MIN_GOOD_VS_FLAWLESS_GAP = 15;
-const MAX_NO_POWER_SEVERE_DAMAGE_PRICE_RATIO = 0.25;
+const NO_POWER_SEVERE_DAMAGE_VS_BROKEN_RATIO = 0.25;
 
 let cachedRepricerRules = null;
 let cachedRepricerRulesAt = 0;
@@ -225,29 +225,38 @@ function enforceGoodPriceGapOnRepricerRows(rows) {
   }
 }
 
-function enforceNoPowerSevereDamageDiscountOnRepricerRows(rows) {
-  const goodPrices = new Map();
+function normalizeNoPowerSevereDamageCondition(condition) {
+  const value = String(condition || "").trim().toLowerCase();
+  return value === "no_power" ||
+    value === "no power" ||
+    value === "severely_damaged" ||
+    value === "severely damaged" ||
+    value === "no power / severely damaged";
+}
 
-  for (const row of rows) {
-    if (String(row.condition || "").toLowerCase() !== "good") continue;
-    const key = buildRepricerRowPriceKey(row);
-    const price = Number(row.new_price);
-    if (!key || !Number.isFinite(price)) continue;
-    goodPrices.set(key, price);
-  }
+function enforceNoPowerSevereDamageDiscountOnRepricerRows(rows) {
+  const brokenPrices = new Map();
 
   for (const row of rows) {
     const condition = String(row.condition || "").toLowerCase();
     if (condition !== "damaged" && condition !== "broken") continue;
     const key = buildRepricerRowPriceKey(row);
-    if (!key || !goodPrices.has(key)) continue;
+    const price = Number(row.new_price);
+    if (!key || !Number.isFinite(price)) continue;
+    brokenPrices.set(key, price);
+  }
+
+  for (const row of rows) {
+    if (!normalizeNoPowerSevereDamageCondition(row.condition)) continue;
+    const key = buildRepricerRowPriceKey(row);
+    if (!key || !brokenPrices.has(key)) continue;
 
     const currentPrice = Number(row.new_price);
-    const maxDamagedPrice = Number((goodPrices.get(key) * MAX_NO_POWER_SEVERE_DAMAGE_PRICE_RATIO).toFixed(2));
-    if (!Number.isFinite(currentPrice) || !Number.isFinite(maxDamagedPrice)) continue;
-    if (currentPrice <= maxDamagedPrice) continue;
+    const maxNoPowerPrice = Number((brokenPrices.get(key) * NO_POWER_SEVERE_DAMAGE_VS_BROKEN_RATIO).toFixed(2));
+    if (!Number.isFinite(currentPrice) || !Number.isFinite(maxNoPowerPrice)) continue;
+    if (currentPrice <= maxNoPowerPrice) continue;
 
-    row.new_price = maxDamagedPrice;
+    row.new_price = maxNoPowerPrice;
     row.no_power_severe_damage_adjusted = true;
     updateRepricerRowProfit(row);
   }
