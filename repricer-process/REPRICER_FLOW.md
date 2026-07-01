@@ -114,6 +114,12 @@ Final rounding:
 - cents `= .50` → keep `.5`
 - cents `> .50` → round up to whole dollar
 
+Final good-condition guard:
+
+- For the same model, storage, and carrier, `good` must be at least `$15` lower than `flawless`.
+- If calculated `good` is too close to `flawless`, it is capped to `flawless - 15`.
+- If calculated `good` is already more than `$15` lower, it is left unchanged.
+
 Output metrics include `new_profit` and `new_profit_pct`.
 
 ## 7) How XML gets updated

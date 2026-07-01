@@ -98,6 +98,7 @@ const DEFAULT_REPRICER_RULES = {
     { minProfitPct: 0.15, bumpAmount: 1 },
   ],
 };
+const MIN_GOOD_VS_FLAWLESS_GAP = 15;
 
 let cachedRepricerRules = null;
 let cachedRepricerRulesAt = 0;
@@ -173,6 +174,50 @@ function roundRepricerPrice(value) {
   if (cents < 50) return dollars;
   if (cents === 50) return dollars + 0.5;
   return dollars + 1;
+}
+
+function normalizeRepricerCarrier(lockStatus) {
+  const value = String(lockStatus || "").trim().toLowerCase();
+  if (value === "at&t") return "att";
+  if (value === "t-mobile" || value === "t mobile") return "tmobile";
+  return value;
+}
+
+function buildRepricerRowPriceKey(row) {
+  const storage = String(row.storage || "").trim();
+  const carrier = normalizeRepricerCarrier(row.lock_status);
+  if (!storage || !carrier) return null;
+  return `${normalizeName(row.name)}|${storage}|${carrier}`;
+}
+
+function enforceGoodPriceGapOnRepricerRows(rows) {
+  const flawlessPrices = new Map();
+
+  for (const row of rows) {
+    if (String(row.condition || "").toLowerCase() !== "flawless") continue;
+    const key = buildRepricerRowPriceKey(row);
+    const price = Number(row.new_price);
+    if (!key || !Number.isFinite(price)) continue;
+    flawlessPrices.set(key, price);
+  }
+
+  for (const row of rows) {
+    if (String(row.condition || "").toLowerCase() !== "good") continue;
+    const key = buildRepricerRowPriceKey(row);
+    if (!key || !flawlessPrices.has(key)) continue;
+
+    const goodPrice = Number(row.new_price);
+    const maxGoodPrice = flawlessPrices.get(key) - MIN_GOOD_VS_FLAWLESS_GAP;
+    if (!Number.isFinite(goodPrice) || !Number.isFinite(maxGoodPrice)) continue;
+    if (goodPrice <= maxGoodPrice) continue;
+
+    row.new_price = roundRepricerPrice(maxGoodPrice);
+    row.good_flawless_gap_adjusted = true;
+    if (row.total_walkaway != null && Number.isFinite(Number(row.total_walkaway))) {
+      row.new_profit = Number(row.total_walkaway) - row.new_price;
+      row.new_profit_pct = row.new_price ? row.new_profit / row.new_price : null;
+    }
+  }
 }
 
 async function getRepricerRules({ forceRefresh = false } = {}) {
@@ -466,6 +511,8 @@ exports.repriceFeed = functions.https.onRequest(async (req, res) => {
         repricer_target_profit_pct: repricerRules.targetProfitPct,
       });
     }
+
+    enforceGoodPriceGapOnRepricerRows(resultRows);
 
     res.json({ rows: resultRows, rules: repricerRules });
   } catch (err) {
