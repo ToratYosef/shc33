@@ -42,7 +42,7 @@
         <att>
           <flawless>176</flawless>
           <good>161</good>
-          <fair>134</fair>
+          <fair>136</fair>
           <broken>115</broken>
           <no_power>28.75</no_power>
         </att>
@@ -150,7 +150,7 @@
         <att>
           <flawless>202</flawless>
           <good>187</good>
-          <fair>150</fair>
+          <fair>152</fair>
           <broken>138</broken>
           <no_power>34.5</no_power>
         </att>
@@ -183,7 +183,7 @@
         <att>
           <flawless>231</flawless>
           <good>216</good>
-          <fair>178</fair>
+          <fair>180</fair>
           <broken>150</broken>
           <no_power>37.5</no_power>
         </att>
@@ -291,7 +291,7 @@
         <att>
           <flawless>252</flawless>
           <good>237</good>
-          <fair>212</fair>
+          <fair>214</fair>
           <broken>165</broken>
           <no_power>41.25</no_power>
         </att>
@@ -646,8 +646,8 @@
       <storageSize>128GB</storageSize>
       <priceValue>
         <att>
-          <flawless>231</flawless>
-          <good>216</good>
+          <flawless>233</flawless>
+          <good>218</good>
           <fair>189</fair>
           <broken>168</broken>
           <no_power>42</no_power>
@@ -669,7 +669,7 @@
         <unlocked>
           <flawless>252</flawless>
           <good>237</good>
-          <fair>229</fair>
+          <fair>231</fair>
           <broken>178</broken>
           <no_power>44.5</no_power>
         </unlocked>
@@ -820,7 +820,7 @@
       <storageSize>256GB</storageSize>
       <priceValue>
         <att>
-          <flawless>327</flawless>
+          <flawless>329</flawless>
           <good>286</good>
           <fair>264</fair>
           <broken>210</broken>
@@ -853,7 +853,7 @@
       <storageSize>512GB</storageSize>
       <priceValue>
         <att>
-          <flawless>357</flawless>
+          <flawless>359</flawless>
           <good>311</good>
           <fair>309</fair>
           <broken>219</broken>
@@ -1003,7 +1003,7 @@
       <storageSize>128GB</storageSize>
       <priceValue>
         <att>
-          <flawless>258</flawless>
+          <flawless>260</flawless>
           <good>236</good>
           <fair>203</fair>
           <broken>170</broken>
@@ -1393,7 +1393,7 @@
       <storageSize>256GB</storageSize>
       <priceValue>
         <att>
-          <flawless>390</flawless>
+          <flawless>392</flawless>
           <good>347</good>
           <fair>300</fair>
           <broken>237</broken>
@@ -1426,7 +1426,7 @@
       <storageSize>512GB</storageSize>
       <priceValue>
         <att>
-          <flawless>420</flawless>
+          <flawless>422</flawless>
           <good>366</good>
           <fair>346</fair>
           <broken>231</broken>
@@ -1501,7 +1501,7 @@
       <storageSize>256GB</storageSize>
       <priceValue>
         <att>
-          <flawless>411</flawless>
+          <flawless>413</flawless>
           <good>367.5</good>
           <fair>351</fair>
           <broken>248</broken>
@@ -1534,7 +1534,7 @@
       <storageSize>512GB</storageSize>
       <priceValue>
         <att>
-          <flawless>456</flawless>
+          <flawless>458</flawless>
           <good>408</good>
           <fair>401</fair>
           <broken>277</broken>
@@ -1555,7 +1555,7 @@
           <no_power>74.25</no_power>
         </tmobile>
         <unlocked>
-          <flawless>549</flawless>
+          <flawless>551</flawless>
           <good>514</good>
           <fair>483</fair>
           <broken>327</broken>
