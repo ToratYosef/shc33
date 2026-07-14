@@ -4,8 +4,9 @@ const EMAIL_LOGO_URL =
   "https://cdn.secondhandcell.com/images/assets/logo-white.webp";
 const CUSTOMER_FRONTEND_BASE_URL = "https://secondhandcell.com";
 const BACKEND_API_BASE_URL = "https://api.secondhandcell.com";
+const UNRESOLVED_ISSUE_FINAL_PAYOUT = 10;
 const COUNTDOWN_NOTICE_TEXT =
-  "If we don't hear back, we may finalize your order at 75% less to keep your order moving.";
+  `If we don't hear back, we may finalize your order at $${UNRESOLVED_ISSUE_FINAL_PAYOUT} to keep your order moving.`;
 const TRUSTPILOT_REVIEW_LINK = "https://www.trustpilot.com/review/secondhandcell.com?utm_medium=trustbox&utm_source=TrustBoxReviewCollector";
 const TRUSTPILOT_WIDGET_HTML = `<!-- TrustBox widget - Review Collector -->
 <div class="trustpilot-widget" data-locale="en-US" data-template-id="56278e9abfbbba0bdcd568bc" data-businessunit-id="68c8cb56da935f8a761f99a9" data-style-height="52px" data-style-width="100%" data-token="d5091e3c-702b-4ac0-9508-ca0b305f6f21">
@@ -24,7 +25,7 @@ function buildCountdownNoticeHtml() {
       <tr>
         <td style="padding:18px 20px; color:#9a3412; font-size:15px; line-height:24px;">
           <strong style="display:block; color:#7c2d12; font-size:15px; margin-bottom:6px;">Reminder</strong>
-          If we don't hear back, we may finalize your device at <strong>75% less</strong> to keep your order moving.
+          If we don't hear back, we may finalize your device at <strong>$${UNRESOLVED_ISSUE_FINAL_PAYOUT}</strong> to keep your order moving.
         </td>
       </tr>
     </table>
@@ -482,7 +483,7 @@ const DOWNGRADE_EMAIL_HTML = buildEmailLayout({
   bodyHtml: `
       <p>Hi **CUSTOMER_NAME**,</p>
       <p>We reached out about the issue with your device for order <strong>#**ORDER_ID**</strong> but haven't received an update.</p>
-      <p>To keep things moving, we've finalized the device at 75% less than the original offer. If you resolve the issue, reply to this email and we'll happily re-evaluate.</p>
+      <p>To keep things moving, we've finalized the device at $${UNRESOLVED_ISSUE_FINAL_PAYOUT}. If you resolve the issue, reply to this email and we'll happily re-evaluate.</p>
       <p>We're here to help—just let us know how you'd like to proceed.</p>
   `,
 });

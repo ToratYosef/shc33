@@ -4578,8 +4578,9 @@ const EMAIL_LOGO_URL =
   "https://cdn.secondhandcell.com/images/assets/logo-white.webp";
 const EMAIL_DISPLAY_NAME = "SecondHandCell Orders";
 process.env.EMAIL_NAME = EMAIL_DISPLAY_NAME;
+const UNRESOLVED_ISSUE_FINAL_PAYOUT = 10;
 const COUNTDOWN_NOTICE_TEXT =
-  "If we don't hear back about this issue within 7 days, we may automatically finalize your order at 75% less to keep your order moving.";
+  `If we don't hear back about this issue within 7 days, we may automatically finalize your order at $${UNRESOLVED_ISSUE_FINAL_PAYOUT} to keep your order moving.`;
 const TRUSTPILOT_REVIEW_LINK = "https://www.trustpilot.com/review/secondhandcell.com?utm_medium=trustbox&utm_source=TrustBoxReviewCollector";
 const TRUSTPILOT_WIDGET_HTML = `<!-- TrustBox widget - Review Collector -->
 <div class="trustpilot-widget" data-locale="en-US" data-template-id="56278e9abfbbba0bdcd568bc" data-businessunit-id="68c8cb56da935f8a761f99a9" data-style-height="52px" data-style-width="100%" data-token="d5091e3c-702b-4ac0-9508-ca0b305f6f21">
@@ -4592,7 +4593,7 @@ function buildCountdownNoticeHtml() {
       <tr>
         <td style="padding:18px 20px; color:#9a3412; font-size:15px; line-height:24px;">
           <strong style="display:block; color:#7c2d12; font-size:15px; margin-bottom:6px;">Reminder</strong>
-          If we don't hear back about this issue within <strong>7 days</strong>, we may finalize your device at <strong>75% less</strong> to keep your order moving.
+          If we don't hear back about this issue within <strong>7 days</strong>, we may finalize your device at <strong>$${UNRESOLVED_ISSUE_FINAL_PAYOUT}</strong> to keep your order moving.
         </td>
       </tr>
     </table>
@@ -5990,7 +5991,7 @@ const DOWNGRADE_EMAIL_HTML = buildEmailLayout({
   bodyHtml: `
       <p>Hi **CUSTOMER_NAME**,</p>
       <p>We reached out about the issue with your device for order <strong>#**ORDER_ID**</strong> but haven't received an update.</p>
-      <p>To keep things moving, we've finalized the device at 75% less than the original offer. If you resolve the issue, reply to this email and we'll happily re-evaluate.</p>
+      <p>To keep things moving, we've finalized the device at $${UNRESOLVED_ISSUE_FINAL_PAYOUT}. If you resolve the issue, reply to this email and we'll happily re-evaluate.</p>
       <p>We're here to help—just let us know how you'd like to proceed.</p>
   `,
 });
@@ -7328,10 +7329,19 @@ function buildReofferEmailHtml({
   reasonString,
   reviewUrl,
   condition,
+  conditionDefects = [],
 }) {
   const safeReason = escapeHtml(reasonString || '').replace(/\n/g, "<br>");
   const originalQuoteValue = Number(originalQuote || 0).toFixed(2);
   const newOfferValue = Number(newPrice || 0).toFixed(2);
+  const conditionLabel = formatConditionLabel(condition || '');
+  const defectLabels = normalizeConditionDefects(conditionDefects).map(formatConditionDefectLabel).filter(Boolean);
+  const conditionBlock = conditionLabel ? `
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:14px 18px; margin:0 0 24px;">
+          <p style="margin:0 0 8px; color:#334155;"><strong>Updated condition:</strong> ${escapeHtml(conditionLabel)}</p>
+          ${defectLabels.length ? `<ul style="margin:0; padding-left:20px; color:#475569;">${defectLabels.map((label) => `<li>${escapeHtml(label)}</li>`).join('')}</ul>` : ''}
+        </div>
+  ` : '';
   const normalizedCondition = String(condition || '').trim().toLowerCase();
   const isSeverelyDamagedRequote =
     normalizedCondition === 'no_power' ||
@@ -7353,6 +7363,7 @@ function buildReofferEmailHtml({
         </div>
         <p style="margin-bottom:12px;">Reason for the change:</p>
         <p style="background:#fef3c7; border-radius:14px; border:1px solid #fde68a; color:#92400e; padding:14px 18px; margin:0 0 28px;">${safeReason}</p>
+        ${conditionBlock}
         ${isSeverelyDamagedRequote ? '<p style="margin:0 0 14px;">As per our guidelines, broken condition can only have a maximum of 3 defects. Otherwise it is considered severely damaged, and at that point we can only offer a price for parts because the device will not be able to be resold.</p>' : ''}
         <p style="margin:0 0 14px;">If you are not happy with the re-quote, you can decline and choose to have the device returned to you free of charge.</p>
         <p style="margin:0 0 20px;">If we do not hear back within 7 regular days, the updated offer will be auto-accepted per our guidelines.</p>
@@ -7365,12 +7376,56 @@ function buildReofferEmailHtml({
   });
 }
 
+function normalizeConditionDefects(value) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map((entry) => String(entry || '').trim()).filter(Boolean))];
+}
+
+function formatConditionDefectLabel(value) {
+  const labels = {
+    scratches_screen: 'Scratches on screen',
+    scratches_frame: 'Scratches on frame',
+    scratches_bezel: 'Scratches on bezel',
+    spots_back: 'Spots on back',
+    scratches_back: 'Scratches on back',
+    heavy_scratches_screen: 'Heavy scratches on screen',
+    heavy_scratches_frame: 'Heavy scratches on frame',
+    heavy_scratches_bezel: 'Heavy scratches on bezel',
+    heavy_scratches_back: 'Heavy scratches on back',
+    heavy_wear: 'Heavy wear',
+    deep_gouges: 'Deep gouges',
+    paint_chassis_wear: 'Paint/chassis wear',
+    dents: 'Dents',
+    scuffs: 'Scuffs',
+    mic: 'Microphone not working',
+    camera: 'Camera not working',
+    crackedFront: 'Cracked front screen',
+    crackedBack: 'Cracked back glass',
+    lcdDeadSpots: 'LCD dead spots',
+    volumeButtons: 'Volume buttons not working',
+    powerButton: 'Power button not working',
+    touchNotWorking: 'Touch screen not working',
+    speaker: 'Speaker not working',
+    batteryIssue: 'Battery issue',
+    wifiIssue: 'WiFi/Bluetooth not working',
+  };
+  return labels[value] || String(value || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatConditionLabel(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!normalized) return '';
+  if (normalized === 'no_power' || normalized === 'no power') return 'No Power / Severely Damaged';
+  return normalized.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 async function submitReofferForDevice(order, {
   deviceKey,
   newPrice,
   reasons,
   comments = '',
   condition = '',
+  conditionDefects = [],
   originalQuoteOverride = null,
   emailLogMessage = 'Re-offer email sent to customer.',
 }) {
@@ -7385,12 +7440,25 @@ async function submitReofferForDevice(order, {
     throw new Error('New price and at least one reason are required');
   }
 
+  const priorOffer =
+    order?.reOfferByDevice?.[resolvedDeviceKey]
+    || order?.reofferByDevice?.[resolvedDeviceKey]
+    || order?.reOffer
+    || order?.reoffer
+    || null;
+  const reofferToken = randomUUID();
+  const normalizedConditionDefects = normalizeConditionDefects(conditionDefects);
   const nextOffer = {
     newPrice,
     reasons,
     comments,
     condition,
+    conditionDefects: normalizedConditionDefects,
+    token: reofferToken,
+    version: Number(priorOffer?.version || 0) + 1,
+    status: 're-offered-pending',
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     autoAcceptDate: admin.firestore.Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000),
   };
 
@@ -7401,8 +7469,12 @@ async function submitReofferForDevice(order, {
   const derivedStatus = deriveOrderStatusFromDevices(order, nextDeviceStatusByKey);
   const updatePayload = {
     reOffer: nextOffer,
+    reoffer: nextOffer,
+    reofferToken,
     [`deviceStatusByKey.${resolvedDeviceKey}`]: "re-offered-pending",
     [`reOfferByDevice.${resolvedDeviceKey}`]: nextOffer,
+    [`reofferByDevice.${resolvedDeviceKey}`]: nextOffer,
+    [`reofferTokenByDevice.${resolvedDeviceKey}`]: reofferToken,
   };
 
   if (derivedStatus) {
@@ -7420,14 +7492,33 @@ async function submitReofferForDevice(order, {
   });
   updatePayload.qcAwaitingResponse = hasAnyAwaitingResponse;
 
-  await updateOrderBoth(orderId, updatePayload);
+  const logEntries = [{
+    type: 'reoffer',
+    message: priorOffer ? 'Re-offer replaced and resent to customer.' : 'Re-offer email sent to customer.',
+    metadata: {
+      deviceKey: resolvedDeviceKey,
+      reofferToken,
+      replacedPrevious: Boolean(priorOffer),
+    },
+  }];
+  if (priorOffer) {
+    updatePayload.reofferHistory = admin.firestore.FieldValue.arrayUnion({
+      ...priorOffer,
+      status: 'replaced',
+      replacedByToken: reofferToken,
+      replacedAt: admin.firestore.Timestamp.now(),
+      deviceKey: resolvedDeviceKey,
+    });
+  }
+
+  await updateOrderBoth(orderId, updatePayload, { logEntries });
 
   let reasonString = reasons.join(", ");
   if (comments) reasonString += `; ${comments}`;
 
   const customerName = order.shippingInfo?.fullName || "there";
   const encodedDeviceKey = encodeURIComponent(resolvedDeviceKey);
-  const reviewUrl = `https://secondhandcell.com/reoffer-action.html?orderId=${orderId}&deviceKey=${encodedDeviceKey}&fromEmailLink=1&fromReofferLink=1`;
+  const reviewUrl = `https://secondhandcell.com/reoffer-action.html?orderId=${orderId}&deviceKey=${encodedDeviceKey}&token=${encodeURIComponent(reofferToken)}&fromEmailLink=1&fromReofferLink=1`;
 
   const customerEmailHtml = buildReofferEmailHtml({
     orderId: order.id,
@@ -7437,6 +7528,7 @@ async function submitReofferForDevice(order, {
     reasonString,
     reviewUrl,
     condition,
+    conditionDefects: normalizedConditionDefects,
   });
 
   await transporter.sendMail({
@@ -7453,6 +7545,9 @@ async function submitReofferForDevice(order, {
       newPrice: Number(newPrice).toFixed(2),
       originalQuote: Number(originalQuoteOverride ?? order.estimatedQuote ?? order.originalQuote ?? 0).toFixed(2),
       deviceKey: resolvedDeviceKey,
+      condition,
+      conditionDefects: normalizedConditionDefects.join(','),
+      reofferToken,
     }
   );
 
@@ -7482,6 +7577,36 @@ function buildOfferAcceptedEmailHtml({ orderId }) {
       <p style="margin:0;">If you have any questions, reply to this email and we’ll help.</p>
     `,
   });
+}
+
+function getActiveReofferForDevice(order = {}, deviceKey = '') {
+  return (deviceKey && (
+    order?.reOfferByDevice?.[deviceKey]
+    || order?.reofferByDevice?.[deviceKey]
+    || order?.deviceReofferByKey?.[deviceKey]
+    || order?.deviceReOfferByKey?.[deviceKey]
+  )) || order?.reOffer || order?.reoffer || null;
+}
+
+function verifyReofferDecisionToken(order = {}, deviceKey = '', providedToken = '', options = {}) {
+  const token = String(providedToken || '').trim();
+  const offer = getActiveReofferForDevice(order, deviceKey);
+  const activeToken = String(
+    offer?.token
+    || offer?.reofferToken
+    || order?.reofferTokenByDevice?.[deviceKey]
+    || order?.reofferToken
+    || ''
+  ).trim();
+  if (!token && !options.requireToken) return { ok: true };
+  if (activeToken && token !== activeToken) {
+    return {
+      ok: false,
+      status: 409,
+      error: 'This offer has been replaced by a newer offer. Please use the latest re-offer email.',
+    };
+  }
+  return { ok: true };
 }
 
 function buildReturnLabelEmailHtml({ customerName, orderId, returnTrackingNumber }) {
@@ -8786,7 +8911,10 @@ app.post('/orders/:id/sync-label-tracking', async (req, res) => {
 
 app.post("/orders/:id/re-offer", async (req, res) => {
   try {
-    const { newPrice, reasons, comments, deviceKey } = req.body;
+    const authResult = await requireAdminHttp(req, res);
+    if (!authResult) return;
+
+    const { newPrice, reasons, comments, deviceKey, condition, conditionDefects } = req.body;
     const orderId = req.params.id;
 
     if (!newPrice || !reasons || !Array.isArray(reasons) || reasons.length === 0) {
@@ -8805,6 +8933,8 @@ app.post("/orders/:id/re-offer", async (req, res) => {
       newPrice,
       reasons,
       comments,
+      condition,
+      conditionDefects,
       emailLogMessage: 'Re-offer email sent to customer.',
     });
 
@@ -9106,7 +9236,7 @@ app.post("/orders/:id/auto-requote", async (req, res) => {
       : allDeviceKeys.filter((deviceKey) => normalizeStatusValue(order.deviceStatusByKey?.[deviceKey] || order.status) === 'emailed');
 
     if (!targetDeviceKeys.length) {
-      return res.status(400).json({ error: 'No eligible devices selected for automatic 75% deduction.' });
+      return res.status(400).json({ error: 'No eligible devices selected for $10 unresolved-issue payout.' });
     }
 
     const reducedSummaries = [];
@@ -9120,19 +9250,19 @@ app.post("/orders/:id/auto-requote", async (req, res) => {
       const reducedFrom = Number(getPerDeviceOffer(entry.item || {}, order));
       if (!Number.isFinite(reducedFrom) || reducedFrom <= 0) continue;
 
-      const reducedTo = Number((reducedFrom * 0.25).toFixed(2));
+      const reducedTo = UNRESOLVED_ISSUE_FINAL_PAYOUT;
       if (!Number.isFinite(reducedTo) || reducedTo <= 0) continue;
 
       reducedSummaries.push({ deviceKey, reducedFrom, reducedTo });
     }
 
     if (!reducedSummaries.length) {
-      return res.status(400).json({ error: 'Unable to calculate a valid 75%-less payout for the selected device(s).' });
+      return res.status(400).json({ error: 'Unable to calculate a valid $10 payout for the selected device(s).' });
     }
 
     const reducedFromTotal = Number(reducedSummaries.reduce((sum, item) => sum + item.reducedFrom, 0).toFixed(2));
     const reducedToTotal = Number(reducedSummaries.reduce((sum, item) => sum + item.reducedTo, 0).toFixed(2));
-    const reasonText = 'We retried the device after testing, and the reported issue is still present. Because the problem remains unresolved, this revised offer is set at 75% less than the quoted amount.';
+    const reasonText = `We retried the device after testing, and the reported issue is still present. Because the problem remains unresolved, this revised offer is set at $${UNRESOLVED_ISSUE_FINAL_PAYOUT}.`;
     let latestOrder = order;
     for (const summary of reducedSummaries) {
       const refreshedSnap = await ordersCollection.doc(order.id).get();
@@ -9143,7 +9273,7 @@ app.post("/orders/:id/auto-requote", async (req, res) => {
         reasons: [reasonText],
         comments: `We retried the device after testing and it still has the same unresolved problem. Original quote: $${summary.reducedFrom.toFixed(2)}. Revised offer: $${summary.reducedTo.toFixed(2)}.`,
         originalQuoteOverride: summary.reducedFrom,
-        emailLogMessage: 'Admin-triggered 75%-less re-offer email sent to customer.',
+        emailLogMessage: 'Admin-triggered $10 unresolved-issue re-offer email sent to customer.',
       });
     }
 
@@ -9157,7 +9287,7 @@ app.post("/orders/:id/auto-requote", async (req, res) => {
     });
   } catch (error) {
     console.error('Error applying manual auto-requote:', error);
-    return res.status(500).json({ error: 'Failed to apply 75%-less deduction.' });
+    return res.status(500).json({ error: 'Failed to apply $10 unresolved-issue payout.' });
   }
 });
 
@@ -9216,7 +9346,7 @@ app.post("/orders/:id/cancel", async (req, res) => {
 
 app.post("/accept-offer-action", async (req, res) => {
   try {
-    const { orderId, deviceKey } = req.body;
+    const { orderId, deviceKey, reofferToken, fromEmailLink } = req.body;
     if (!orderId) {
       return res.status(400).json({ error: "Order ID is required" });
     }
@@ -9233,6 +9363,12 @@ app.post("/accept-offer-action", async (req, res) => {
     const currentStatus = normalizeStatusValue(
       orderData.deviceStatusByKey?.[resolvedDeviceKey] || orderData.status
     );
+    const tokenResult = verifyReofferDecisionToken(orderData, resolvedDeviceKey, reofferToken, {
+      requireToken: fromEmailLink === true || fromEmailLink === '1',
+    });
+    if (!tokenResult.ok) {
+      return res.status(tokenResult.status || 409).json({ error: tokenResult.error });
+    }
 
     if (currentStatus !== 're_offered_pending') {
       return res
@@ -9279,7 +9415,7 @@ app.post("/accept-offer-action", async (req, res) => {
 
 app.post("/return-phone-action", async (req, res) => {
   try {
-    const { orderId, deviceKey } = req.body;
+    const { orderId, deviceKey, reofferToken, fromEmailLink } = req.body;
     if (!orderId) {
       return res.status(400).json({ error: "Order ID is required" });
     }
@@ -9296,6 +9432,12 @@ app.post("/return-phone-action", async (req, res) => {
     const currentStatus = normalizeStatusValue(
       orderData.deviceStatusByKey?.[resolvedDeviceKey] || orderData.status
     );
+    const tokenResult = verifyReofferDecisionToken(orderData, resolvedDeviceKey, reofferToken, {
+      requireToken: fromEmailLink === true || fromEmailLink === '1',
+    });
+    if (!tokenResult.ok) {
+      return res.status(tokenResult.status || 409).json({ error: tokenResult.error });
+    }
 
     if (currentStatus !== 're_offered_pending') {
       return res
@@ -9916,8 +10058,8 @@ app.post('/orders/admin/bulk-auto-75-less', async (req, res) => {
     });
     res.json(payload);
   } catch (error) {
-    console.error('Admin bulk auto 75%-less run failed:', error);
-    res.status(500).json({ error: error?.message || 'Failed to run bulk auto 75%-less payout.' });
+    console.error('Admin bulk auto $10 unresolved-issue run failed:', error);
+    res.status(500).json({ error: error?.message || 'Failed to run bulk auto $10 unresolved-issue payout.' });
   }
 });
 
@@ -9956,7 +10098,7 @@ async function runAutomaticReducedPayoutSweep(options = {}) {
       continue;
     }
     if (order.autoRequote?.automatic === true || order.autoRequote?.manual === true) {
-      skippedEntries.push({ orderId: order.id, reason: 'Automatic/manual 75%-less flow already applied.' });
+      skippedEntries.push({ orderId: order.id, reason: 'Automatic/manual $10 unresolved-issue flow already applied.' });
       continue;
     }
 
@@ -9990,20 +10132,20 @@ async function runAutomaticReducedPayoutSweep(options = {}) {
       const baseAmount = Number(getPerDeviceOffer(entry.item || {}, order));
       if (!Number.isFinite(baseAmount) || baseAmount <= 0) continue;
 
-      const reducedAmount = Number((baseAmount * 0.25).toFixed(2));
+      const reducedAmount = UNRESOLVED_ISSUE_FINAL_PAYOUT;
       if (!Number.isFinite(reducedAmount) || reducedAmount <= 0) continue;
 
       eligibleDeviceSummaries.push({ deviceKey, reducedAmount, baseAmount });
     }
 
     if (!eligibleDeviceSummaries.length) {
-      skippedEntries.push({ orderId: order.id, reason: 'No emailed devices eligible for automatic 75%-less payout.' });
+      skippedEntries.push({ orderId: order.id, reason: 'No emailed devices eligible for automatic $10 unresolved-issue payout.' });
       continue;
     }
 
     const reducedAmount = Number(eligibleDeviceSummaries.reduce((sum, item) => sum + item.reducedAmount, 0).toFixed(2));
     const baseAmount = Number(eligibleDeviceSummaries.reduce((sum, item) => sum + item.baseAmount, 0).toFixed(2));
-    const reasonText = 'Per our terms, since we did not receive a response within 7 days, this revised offer is set at 75% less than the quoted amount.';
+    const reasonText = `Per our terms, since we did not receive a response within 7 days, this revised offer is set at $${UNRESOLVED_ISSUE_FINAL_PAYOUT}.`;
 
     try {
       let latestOrder = order;
@@ -10014,9 +10156,9 @@ async function runAutomaticReducedPayoutSweep(options = {}) {
           deviceKey: summary.deviceKey,
           newPrice: summary.reducedAmount,
           reasons: [reasonText],
-          comments: `75%-less re-offer sent automatically after 7-day unresolved issue timeout. Original quote: $${summary.baseAmount.toFixed(2)}. Revised offer: $${summary.reducedAmount.toFixed(2)}.`,
+          comments: `$${UNRESOLVED_ISSUE_FINAL_PAYOUT} re-offer sent automatically after 7-day unresolved issue timeout. Original quote: $${summary.baseAmount.toFixed(2)}. Revised offer: $${summary.reducedAmount.toFixed(2)}.`,
           originalQuoteOverride: summary.baseAmount,
-          emailLogMessage: 'Automatic 7-day unresolved issue 75%-less re-offer email sent to customer.',
+          emailLogMessage: 'Automatic 7-day unresolved issue $10 re-offer email sent to customer.',
         });
       }
       processedEntries.push({
@@ -10027,7 +10169,7 @@ async function runAutomaticReducedPayoutSweep(options = {}) {
       });
     } catch (error) {
       console.error(`Failed automatic reduced payout stage update for order ${order.id}:`, error);
-      failedEntries.push({ orderId: order.id, reason: error?.message || 'Automatic 75%-less update failed.' });
+      failedEntries.push({ orderId: order.id, reason: error?.message || 'Automatic $10 unresolved-issue update failed.' });
     }
   }
 
