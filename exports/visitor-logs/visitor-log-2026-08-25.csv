@@ -1,0 +1,2 @@
+timestamp,session_id,ip_address,country,region,city,location,source,landing_path,browser,os,device_type,device_name,language,timezone,screen,viewport,user_agent,notes
+2026-08-25T04:14:50.783Z,64789d4567c8f84465cf5c8634bcca4e,170.64.110.216,US,Nebraska,Papillion,"Papillion, Nebraska, US",Google,/,Safari,iOS,mobile,iPhone,en-US,America/Chicago,402x874,402x678,"Mozilla/5.0 (iPhone; CPU iPhone OS 26_6_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) GSA/434.2.961627397 Mobile/15E148 Safari/604.1",Left page after 52s (tab/window hidden)
