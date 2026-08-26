@@ -1135,8 +1135,8 @@
           <flawless>419</flawless>
           <good>404</good>
           <fair>402</fair>
-          <broken>299</broken>
-          <no_power>74.75</no_power>
+          <broken>311</broken>
+          <no_power>77.75</no_power>
         </unlocked>
       </priceValue>
     </prices>
@@ -1168,8 +1168,8 @@
           <flawless>319</flawless>
           <good>304</good>
           <fair>302</fair>
-          <broken>206</broken>
-          <no_power>51.5</no_power>
+          <broken>208</broken>
+          <no_power>52</no_power>
         </unlocked>
       </priceValue>
     </prices>
@@ -1201,8 +1201,8 @@
           <flawless>355</flawless>
           <good>340</good>
           <fair>338</fair>
-          <broken>231</broken>
-          <no_power>57.75</no_power>
+          <broken>243</broken>
+          <no_power>60.75</no_power>
         </unlocked>
       </priceValue>
     </prices>
@@ -1234,8 +1234,8 @@
           <flawless>383</flawless>
           <good>368</good>
           <fair>366</fair>
-          <broken>269</broken>
-          <no_power>67.25</no_power>
+          <broken>281</broken>
+          <no_power>70.25</no_power>
         </unlocked>
       </priceValue>
     </prices>
@@ -1276,8 +1276,8 @@
           <flawless>475</flawless>
           <good>460</good>
           <fair>458</fair>
-          <broken>313</broken>
-          <no_power>78.25</no_power>
+          <broken>328</broken>
+          <no_power>82</no_power>
         </unlocked>
       </priceValue>
     </prices>
@@ -1309,8 +1309,8 @@
           <flawless>423</flawless>
           <good>408</good>
           <fair>398</fair>
-          <broken>255</broken>
-          <no_power>63.75</no_power>
+          <broken>268</broken>
+          <no_power>67</no_power>
         </unlocked>
       </priceValue>
     </prices>
@@ -1342,8 +1342,8 @@
           <flawless>438</flawless>
           <good>423</good>
           <fair>420</fair>
-          <broken>293</broken>
-          <no_power>73.25</no_power>
+          <broken>308</broken>
+          <no_power>77</no_power>
         </unlocked>
       </priceValue>
     </prices>
@@ -1633,8 +1633,8 @@
           <flawless>463</flawless>
           <good>448</good>
           <fair>384</fair>
-          <broken>286</broken>
-          <no_power>71.5</no_power>
+          <broken>288</broken>
+          <no_power>72</no_power>
         </unlocked>
       </priceValue>
     </prices>
@@ -2893,22 +2893,22 @@
           <flawless>387</flawless>
           <good>369</good>
           <fair>243</fair>
-          <broken>165</broken>
-          <no_power>41.25</no_power>
+          <broken>135</broken>
+          <no_power>33.75</no_power>
         </att>
         <verizon>
           <flawless>337</flawless>
           <good>308</good>
           <fair>169</fair>
-          <broken>165</broken>
-          <no_power>41.25</no_power>
+          <broken>135</broken>
+          <no_power>33.75</no_power>
         </verizon>
         <tmobile>
           <flawless>360</flawless>
           <good>324</good>
           <fair>203</fair>
-          <broken>165</broken>
-          <no_power>41.25</no_power>
+          <broken>135</broken>
+          <no_power>33.75</no_power>
         </tmobile>
         <unlocked>
           <flawless>439</flawless>
@@ -2940,8 +2940,8 @@
           <flawless>357</flawless>
           <good>303</good>
           <fair>223</fair>
-          <broken>165</broken>
-          <no_power>41.25</no_power>
+          <broken>135</broken>
+          <no_power>33.75</no_power>
         </tmobile>
         <unlocked>
           <flawless>485</flawless>
@@ -3197,11 +3197,11 @@
           <no_power>49</no_power>
         </att>
         <verizon>
-          <flawless>579</flawless>
+          <flawless>580</flawless>
           <good>513</good>
           <fair>347</fair>
-          <broken>196</broken>
-          <no_power>49</no_power>
+          <broken>250</broken>
+          <no_power>62.5</no_power>
         </verizon>
         <tmobile>
           <flawless>549</flawless>
@@ -3211,11 +3211,11 @@
           <no_power>49</no_power>
         </tmobile>
         <unlocked>
-          <flawless>669</flawless>
+          <flawless>670</flawless>
           <good>623</good>
           <fair>537</fair>
-          <broken>196</broken>
-          <no_power>49</no_power>
+          <broken>250</broken>
+          <no_power>62.5</no_power>
         </unlocked>
       </priceValue>
     </prices>
@@ -3263,11 +3263,11 @@
           <no_power>39</no_power>
         </att>
         <verizon>
-          <flawless>457</flawless>
+          <flawless>458</flawless>
           <good>393</good>
           <fair>262</fair>
-          <broken>156</broken>
-          <no_power>39</no_power>
+          <broken>210</broken>
+          <no_power>52.5</no_power>
         </verizon>
         <tmobile>
           <flawless>452</flawless>
@@ -3277,11 +3277,11 @@
           <no_power>39</no_power>
         </tmobile>
         <unlocked>
-          <flawless>585</flawless>
+          <flawless>586</flawless>
           <good>544</good>
           <fair>450</fair>
-          <broken>161</broken>
-          <no_power>40.25</no_power>
+          <broken>210</broken>
+          <no_power>52.5</no_power>
         </unlocked>
       </priceValue>
     </prices>
@@ -3296,11 +3296,11 @@
           <no_power>44</no_power>
         </att>
         <verizon>
-          <flawless>477</flawless>
+          <flawless>478</flawless>
           <good>413</good>
           <fair>297</fair>
-          <broken>176</broken>
-          <no_power>44</no_power>
+          <broken>230</broken>
+          <no_power>57.5</no_power>
         </verizon>
         <tmobile>
           <flawless>472</flawless>
@@ -3310,11 +3310,11 @@
           <no_power>44</no_power>
         </tmobile>
         <unlocked>
-          <flawless>601</flawless>
+          <flawless>602</flawless>
           <good>569</good>
           <fair>485</fair>
-          <broken>176</broken>
-          <no_power>44</no_power>
+          <broken>230</broken>
+          <no_power>57.5</no_power>
         </unlocked>
       </priceValue>
     </prices>
