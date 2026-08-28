@@ -1,0 +1,2 @@
+timestamp,session_id,ip_address,country,region,city,location,source,landing_path,browser,os,device_type,device_name,language,timezone,screen,viewport,user_agent,notes
+2026-08-28T11:01:08.021Z,2e13d6f7a5e67f6c28a3f03a232a49c0,65.55.210.235,US,Washington,,"Washington, US",direct,/track-order.html,Chrome,Windows,desktop,Windows PC,en-US,America/Los_Angeles,800x600,1024x569,"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/146.0.7680.165 Safari/537.36",Left page after 6s (tab/window close)
