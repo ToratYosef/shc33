@@ -303,7 +303,7 @@
           <no_power>28.5</no_power>
         </verizon>
         <tmobile>
-          <flawless>240</flawless>
+          <flawless>241</flawless>
           <good>208</good>
           <fair>144</fair>
           <broken>99</broken>
@@ -369,7 +369,7 @@
           <no_power>37.25</no_power>
         </verizon>
         <tmobile>
-          <flawless>295</flawless>
+          <flawless>296</flawless>
           <good>271</good>
           <fair>196</fair>
           <broken>128</broken>
@@ -585,7 +585,7 @@
           <no_power>27.75</no_power>
         </verizon>
         <tmobile>
-          <flawless>251</flawless>
+          <flawless>252</flawless>
           <good>227</good>
           <fair>169</fair>
           <broken>96</broken>
@@ -761,7 +761,7 @@
           <no_power>49</no_power>
         </att>
         <verizon>
-          <flawless>360</flawless>
+          <flawless>361</flawless>
           <good>311</good>
           <fair>219</fair>
           <broken>186</broken>
@@ -794,7 +794,7 @@
           <no_power>32.25</no_power>
         </att>
         <verizon>
-          <flawless>280</flawless>
+          <flawless>281</flawless>
           <good>230</good>
           <fair>147</fair>
           <broken>126</broken>
@@ -827,7 +827,7 @@
           <no_power>36.5</no_power>
         </att>
         <verizon>
-          <flawless>300</flawless>
+          <flawless>301</flawless>
           <good>251</good>
           <fair>164</fair>
           <broken>151</broken>
@@ -860,7 +860,7 @@
           <no_power>41.5</no_power>
         </att>
         <verizon>
-          <flawless>330</flawless>
+          <flawless>331</flawless>
           <good>291</good>
           <fair>189</fair>
           <broken>166</broken>
@@ -1839,7 +1839,7 @@
           <no_power>4.25</no_power>
         </verizon>
         <tmobile>
-          <flawless>63</flawless>
+          <flawless>64</flawless>
           <good>47</good>
           <fair>29</fair>
           <broken>16</broken>
@@ -1872,8 +1872,8 @@
           <no_power>5</no_power>
         </verizon>
         <tmobile>
-          <flawless>73</flawless>
-          <good>53</good>
+          <flawless>74</flawless>
+          <good>54</good>
           <fair>34</fair>
           <broken>20</broken>
           <no_power>5</no_power>
@@ -1982,7 +1982,7 @@
           <no_power>5.5</no_power>
         </att>
         <verizon>
-          <flawless>71</flawless>
+          <flawless>72</flawless>
           <good>56</good>
           <fair>32</fair>
           <broken>17</broken>
