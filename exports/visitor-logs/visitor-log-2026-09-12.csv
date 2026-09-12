@@ -1,0 +1,3 @@
+timestamp,session_id,ip_address,country,region,city,location,source,landing_path,browser,os,device_type,device_name,language,timezone,screen,viewport,user_agent,notes
+2026-09-12T08:16:13.491Z,e69492c3fe2ab98ee98a531a5391d3fd,207.182.28.34,US,,,US,Direct,/terms.html,Chrome,Linux,desktop,Desktop,en-US,America/Los_Angeles,1920x1080,1920x945,"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",Left page after 8s (tab/window close)
+2026-09-12T09:51:27.463Z,794b7ecda32f40b7adbbe6034b726437,205.169.39.45,US,,,US,Direct,/,Chrome,Linux,desktop,Desktop,en-US,UTC,800x600,1585x1200,"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",Left page after 12s (tab/window hidden)
