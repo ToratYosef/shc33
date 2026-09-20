@@ -1,0 +1,3 @@
+timestamp,session_id,ip_address,country,region,city,location,source,landing_path,browser,os,device_type,device_name,language,timezone,screen,viewport,user_agent,notes
+2026-09-20T09:14:50.153Z,2d804182982a3c782c2392264393a0b2,64.71.131.248,US,Utah,Logan,"Logan, Utah, US",Direct,/,,,desktop,Desktop,en-US,UTC,800x600,1000x900,Mozilla/5.0 (compatible; ev-crawler/1.0; +https://headline.com/web-crawler),
+2026-09-20T09:40:12.009Z,c6bff7c15c4daa09f309e56ce683f13a,40.77.189.67,US,Washington,,"Washington, US",direct,/sell/index.html,Chrome,Windows,desktop,Windows PC,en-US,America/Los_Angeles,800x600,1024x569,"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/146.0.7680.165 Safari/537.36",
