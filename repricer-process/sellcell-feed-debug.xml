@@ -52166,10 +52166,6 @@
         <merchant_price>261.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>260.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>235.00</merchant_price>
       </price>
@@ -52177,15 +52173,19 @@
         <merchant_name>itsworthmore</merchant_name>
         <merchant_price>225.00</merchant_price>
       </price>
+      <price>
+        <merchant_name>thewhizcells</merchant_name>
+        <merchant_price>225.00</merchant_price>
+      </price>
     </prices_likenew>
     <prices_good>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>240.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>buybackboss</merchant_name>
         <merchant_price>206.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>thewhizcells</merchant_name>
+        <merchant_price>205.00</merchant_price>
       </price>
       <price>
         <merchant_name>tronicspay</merchant_name>
@@ -52262,7 +52262,7 @@
       </price>
       <price>
         <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>305.00</merchant_price>
+        <merchant_price>270.00</merchant_price>
       </price>
       <price>
         <merchant_name>gadgetpickup</merchant_name>
@@ -52280,7 +52280,7 @@
     <prices_good>
       <price>
         <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>290.00</merchant_price>
+        <merchant_price>255.00</merchant_price>
       </price>
       <price>
         <merchant_name>buybackboss</merchant_name>
@@ -52364,10 +52364,6 @@
         <merchant_price>316.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>315.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>295.00</merchant_price>
       </price>
@@ -52375,11 +52371,15 @@
         <merchant_name>itsworthmore</merchant_name>
         <merchant_price>285.00</merchant_price>
       </price>
+      <price>
+        <merchant_name>thewhizcells</merchant_name>
+        <merchant_price>280.00</merchant_price>
+      </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>300.00</merchant_price>
+        <merchant_price>265.00</merchant_price>
       </price>
       <price>
         <merchant_name>buybackboss</merchant_name>
@@ -52460,7 +52460,7 @@
       </price>
       <price>
         <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>368.00</merchant_price>
+        <merchant_price>333.00</merchant_price>
       </price>
       <price>
         <merchant_name>gadgetpickup</merchant_name>
@@ -52478,7 +52478,7 @@
     <prices_good>
       <price>
         <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>338.00</merchant_price>
+        <merchant_price>303.00</merchant_price>
       </price>
       <price>
         <merchant_name>buybackboss</merchant_name>
@@ -52859,10 +52859,6 @@
         <merchant_price>345.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>344.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>335.00</merchant_price>
       </price>
@@ -52870,15 +52866,19 @@
         <merchant_name>buybackboss</merchant_name>
         <merchant_price>328.00</merchant_price>
       </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>325.00</merchant_price>
+      </price>
     </prices_likenew>
     <prices_good>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>333.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>buybackboss</merchant_name>
         <merchant_price>315.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>thewhizcells</merchant_name>
+        <merchant_price>313.00</merchant_price>
       </price>
       <price>
         <merchant_name>cell4pets</merchant_name>
@@ -53263,14 +53263,14 @@
         <merchant_price>255.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>254.00</merchant_price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>241.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>234.00</merchant_price>
+        <merchant_price>219.00</merchant_price>
       </price>
       <price>
         <merchant_name>buybacktronics</merchant_name>
@@ -55745,7 +55745,7 @@
     <prices_good>
       <price>
         <merchant_name>celljp</merchant_name>
-        <merchant_price>204.40</merchant_price>
+        <merchant_price>210.24</merchant_price>
       </price>
       <price>
         <merchant_name>smartphonesplus</merchant_name>
@@ -56042,7 +56042,7 @@
     <prices_good>
       <price>
         <merchant_name>celljp</merchant_name>
-        <merchant_price>204.40</merchant_price>
+        <merchant_price>210.24</merchant_price>
       </price>
       <price>
         <merchant_name>buybackworld</merchant_name>
@@ -56339,7 +56339,7 @@
     <prices_good>
       <price>
         <merchant_name>celljp</merchant_name>
-        <merchant_price>204.40</merchant_price>
+        <merchant_price>210.24</merchant_price>
       </price>
       <price>
         <merchant_name>smartphonesplus</merchant_name>
@@ -56933,7 +56933,7 @@
     <prices_good>
       <price>
         <merchant_name>celljp</merchant_name>
-        <merchant_price>280.00</merchant_price>
+        <merchant_price>288.00</merchant_price>
       </price>
       <price>
         <merchant_name>thewhizcells</merchant_name>
@@ -72986,8 +72986,8 @@
         <merchant_price>640.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>620.00</merchant_price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>616.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor>
@@ -73059,12 +73059,12 @@
         <merchant_price>811.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>810.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>805.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>thewhizcells</merchant_name>
+        <merchant_price>800.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
@@ -73082,7 +73082,7 @@
       </price>
       <price>
         <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>730.00</merchant_price>
+        <merchant_price>720.00</merchant_price>
       </price>
       <price>
         <merchant_name>smartphonesplus</merchant_name>
@@ -73162,8 +73162,8 @@
         <merchant_price>870.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>865.00</merchant_price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>855.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
@@ -73181,7 +73181,7 @@
       </price>
       <price>
         <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>790.00</merchant_price>
+        <merchant_price>780.00</merchant_price>
       </price>
       <price>
         <merchant_name>smartphonesplus</merchant_name>
@@ -73258,7 +73258,7 @@
       </price>
       <price>
         <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>921.00</merchant_price>
+        <merchant_price>911.00</merchant_price>
       </price>
       <price>
         <merchant_name>buybacktronics</merchant_name>
@@ -73279,12 +73279,12 @@
         <merchant_price>840.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>826.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>smartphonesplus</merchant_name>
         <merchant_price>817.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>thewhizcells</merchant_name>
+        <merchant_price>816.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor>
@@ -73383,7 +73383,7 @@
       </price>
       <price>
         <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>640.00</merchant_price>
+        <merchant_price>630.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor>
@@ -73455,12 +73455,12 @@
         <merchant_price>821.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
+        <merchant_name>buybacktronics</merchant_name>
         <merchant_price>820.00</merchant_price>
       </price>
       <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>820.00</merchant_price>
+        <merchant_name>thewhizcells</merchant_name>
+        <merchant_price>810.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
@@ -73473,12 +73473,12 @@
         <merchant_price>765.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>760.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>itsworthmore</merchant_name>
         <merchant_price>755.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>thewhizcells</merchant_name>
+        <merchant_price>750.00</merchant_price>
       </price>
       <price>
         <merchant_name>savegadget</merchant_name>
@@ -73558,8 +73558,8 @@
         <merchant_price>885.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>875.00</merchant_price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>870.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
@@ -73577,7 +73577,7 @@
       </price>
       <price>
         <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>805.00</merchant_price>
+        <merchant_price>795.00</merchant_price>
       </price>
       <price>
         <merchant_name>smartphonesplus</merchant_name>
@@ -73658,7 +73658,7 @@
       </price>
       <price>
         <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>921.00</merchant_price>
+        <merchant_price>911.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
@@ -73676,7 +73676,7 @@
       </price>
       <price>
         <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>830.00</merchant_price>
+        <merchant_price>820.00</merchant_price>
       </price>
       <price>
         <merchant_name>smartphonesplus</merchant_name>
@@ -74140,10 +74140,6 @@
         <merchant_price>835.00</merchant_price>
       </price>
       <price>
-        <merchant_name>webtradein</merchant_name>
-        <merchant_price>830.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>savegadget</merchant_name>
         <merchant_price>827.00</merchant_price>
       </price>
@@ -74152,8 +74148,12 @@
         <merchant_price>826.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
+        <merchant_name>buybacktronics</merchant_name>
         <merchant_price>825.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>thewhizcells</merchant_name>
+        <merchant_price>815.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
@@ -74162,30 +74162,26 @@
         <merchant_price>785.00</merchant_price>
       </price>
       <price>
-        <merchant_name>webtradein</merchant_name>
-        <merchant_price>777.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>775.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>770.00</merchant_price>
       </price>
       <price>
+        <merchant_name>thewhizcells</merchant_name>
+        <merchant_price>765.00</merchant_price>
+      </price>
+      <price>
         <merchant_name>buybackboss</merchant_name>
         <merchant_price>765.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>760.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor>
       <price>
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>695.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>webtradein</merchant_name>
-        <merchant_price>694.99</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
@@ -74199,12 +74195,12 @@
         <merchant_name>gadgetpickup</merchant_name>
         <merchant_price>627.00</merchant_price>
       </price>
+      <price>
+        <merchant_name>celljp</merchant_name>
+        <merchant_price>595.00</merchant_price>
+      </price>
     </prices_poor>
     <prices_faulty>
-      <price>
-        <merchant_name>webtradein</merchant_name>
-        <merchant_price>577.78</merchant_price>
-      </price>
       <price>
         <merchant_name>gadgetpickup</merchant_name>
         <merchant_price>341.00</merchant_price>
@@ -74220,6 +74216,10 @@
       <price>
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>275.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>265.00</merchant_price>
       </price>
     </prices_faulty>
   </device>
@@ -74239,10 +74239,6 @@
         <merchant_price>930.00</merchant_price>
       </price>
       <price>
-        <merchant_name>webtradein</merchant_name>
-        <merchant_price>929.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>gadgetpickup</merchant_name>
         <merchant_price>926.00</merchant_price>
       </price>
@@ -74251,15 +74247,15 @@
         <merchant_price>926.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
+        <merchant_name>buybacktronics</merchant_name>
         <merchant_price>925.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>thewhizcells</merchant_name>
+        <merchant_price>915.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
-      <price>
-        <merchant_name>webtradein</merchant_name>
-        <merchant_price>872.00</merchant_price>
-      </price>
       <price>
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>870.00</merchant_price>
@@ -74269,22 +74265,22 @@
         <merchant_price>869.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
+        <merchant_name>buybackboss</merchant_name>
         <merchant_price>865.00</merchant_price>
       </price>
       <price>
-        <merchant_name>buybackboss</merchant_name>
-        <merchant_price>865.00</merchant_price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>860.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>thewhizcells</merchant_name>
+        <merchant_price>855.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor>
       <price>
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>795.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>webtradein</merchant_name>
-        <merchant_price>794.99</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
@@ -74298,12 +74294,12 @@
         <merchant_name>savegadget</merchant_name>
         <merchant_price>708.00</merchant_price>
       </price>
+      <price>
+        <merchant_name>celljp</merchant_name>
+        <merchant_price>630.00</merchant_price>
+      </price>
     </prices_poor>
     <prices_faulty>
-      <price>
-        <merchant_name>webtradein</merchant_name>
-        <merchant_price>743.67</merchant_price>
-      </price>
       <price>
         <merchant_name>gadgetpickup</merchant_name>
         <merchant_price>373.00</merchant_price>
@@ -74320,6 +74316,10 @@
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>320.00</merchant_price>
       </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>310.00</merchant_price>
+      </price>
     </prices_faulty>
   </device>
   <device>
@@ -74334,10 +74334,6 @@
     <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/iphone-17-pro-max.jpg</image_url>
     <prices_likenew>
       <price>
-        <merchant_name>webtradein</merchant_name>
-        <merchant_price>994.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>gadgetpickup</merchant_name>
         <merchant_price>991.00</merchant_price>
       </price>
@@ -74346,26 +74342,22 @@
         <merchant_price>991.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
+        <merchant_name>buybacktronics</merchant_name>
         <merchant_price>990.00</merchant_price>
       </price>
       <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>990.00</merchant_price>
+        <merchant_name>thewhizcells</merchant_name>
+        <merchant_price>980.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybackboss</merchant_name>
+        <merchant_price>980.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
-        <merchant_name>webtradein</merchant_name>
-        <merchant_price>937.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>935.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>930.00</merchant_price>
       </price>
       <price>
         <merchant_name>buybackboss</merchant_name>
@@ -74375,12 +74367,16 @@
         <merchant_name>itsworthmore</merchant_name>
         <merchant_price>925.00</merchant_price>
       </price>
+      <price>
+        <merchant_name>thewhizcells</merchant_name>
+        <merchant_price>920.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>cell4pets</merchant_name>
+        <merchant_price>910.00</merchant_price>
+      </price>
     </prices_good>
     <prices_poor>
-      <price>
-        <merchant_name>webtradein</merchant_name>
-        <merchant_price>870.00</merchant_price>
-      </price>
       <price>
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>860.00</merchant_price>
@@ -74397,12 +74393,12 @@
         <merchant_name>savegadget</merchant_name>
         <merchant_price>758.00</merchant_price>
       </price>
+      <price>
+        <merchant_name>celljp</merchant_name>
+        <merchant_price>680.00</merchant_price>
+      </price>
     </prices_poor>
     <prices_faulty>
-      <price>
-        <merchant_name>webtradein</merchant_name>
-        <merchant_price>851.95</merchant_price>
-      </price>
       <price>
         <merchant_name>gadgetpickup</merchant_name>
         <merchant_price>434.00</merchant_price>
@@ -74419,6 +74415,10 @@
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>360.00</merchant_price>
       </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>345.00</merchant_price>
+      </price>
     </prices_faulty>
   </device>
   <device>
@@ -74433,10 +74433,6 @@
     <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/iphone-17-pro-max.jpg</image_url>
     <prices_likenew>
       <price>
-        <merchant_name>webtradein</merchant_name>
-        <merchant_price>1034.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>gadgetpickup</merchant_name>
         <merchant_price>1031.00</merchant_price>
       </price>
@@ -74445,19 +74441,19 @@
         <merchant_price>1031.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>1030.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>1030.00</merchant_price>
       </price>
+      <price>
+        <merchant_name>thewhizcells</merchant_name>
+        <merchant_price>1020.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybackboss</merchant_name>
+        <merchant_price>1015.00</merchant_price>
+      </price>
     </prices_likenew>
     <prices_good>
-      <price>
-        <merchant_name>webtradein</merchant_name>
-        <merchant_price>977.00</merchant_price>
-      </price>
       <price>
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>975.00</merchant_price>
@@ -74471,15 +74467,15 @@
         <merchant_price>960.00</merchant_price>
       </price>
       <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>949.00</merchant_price>
+      </price>
+      <price>
         <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>955.00</merchant_price>
+        <merchant_price>945.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor>
-      <price>
-        <merchant_name>webtradein</merchant_name>
-        <merchant_price>910.00</merchant_price>
-      </price>
       <price>
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>900.00</merchant_price>
@@ -74496,12 +74492,12 @@
         <merchant_name>gadgetpickup</merchant_name>
         <merchant_price>781.00</merchant_price>
       </price>
+      <price>
+        <merchant_name>celljp</merchant_name>
+        <merchant_price>720.00</merchant_price>
+      </price>
     </prices_poor>
     <prices_faulty>
-      <price>
-        <merchant_name>webtradein</merchant_name>
-        <merchant_price>910.00</merchant_price>
-      </price>
       <price>
         <merchant_name>gadgetpickup</merchant_name>
         <merchant_price>496.00</merchant_price>
@@ -74517,6 +74513,10 @@
       <price>
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>385.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>370.00</merchant_price>
       </price>
     </prices_faulty>
   </device>
@@ -74738,10 +74738,6 @@
         <merchant_price>291.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>290.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>buybackworld</merchant_name>
         <merchant_price>285.00</merchant_price>
       </price>
@@ -74749,12 +74745,12 @@
         <merchant_name>celljp</merchant_name>
         <merchant_price>281.05</merchant_price>
       </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>280.00</merchant_price>
+      </price>
     </prices_likenew>
     <prices_good>
-      <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>270.00</merchant_price>
-      </price>
       <price>
         <merchant_name>celljp</merchant_name>
         <merchant_price>261.34</merchant_price>
@@ -74762,6 +74758,10 @@
       <price>
         <merchant_name>gadgetpickup</merchant_name>
         <merchant_price>247.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>thewhizcells</merchant_name>
+        <merchant_price>240.00</merchant_price>
       </price>
       <price>
         <merchant_name>buybacktronics</merchant_name>
@@ -74833,10 +74833,6 @@
         <merchant_price>366.00</merchant_price>
       </price>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>365.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>buybackworld</merchant_name>
         <merchant_price>360.00</merchant_price>
       </price>
@@ -74848,15 +74844,19 @@
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>320.00</merchant_price>
       </price>
+      <price>
+        <merchant_name>celljp</merchant_name>
+        <merchant_price>313.90</merchant_price>
+      </price>
     </prices_likenew>
     <prices_good>
       <price>
-        <merchant_name>thewhizcells</merchant_name>
-        <merchant_price>345.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>buybackworld</merchant_name>
         <merchant_price>310.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>thewhizcells</merchant_name>
+        <merchant_price>280.00</merchant_price>
       </price>
       <price>
         <merchant_name>buybacktronics</merchant_name>
@@ -111951,85 +111951,6 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Air 13" (2020)</device_name>
-    <processor>M1 3.2GHz 8-Core GPU</processor>
-    <capacity>8GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Air 13" (2020) M1 3.2GHz 8-Core GPU 8GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-air-13-2020/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/008/macbook-air-13-2020.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>361.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>350.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetgone</merchant_name>
-        <merchant_price>260.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>252.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>300.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>270.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetgone</merchant_name>
-        <merchant_price>237.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>220.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>255.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>216.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>171.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetgone</merchant_name>
-        <merchant_price>142.00</merchant_price>
-      </price>
-    </prices_poor>
-    <prices_faulty>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>60.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>47.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetgone</merchant_name>
-        <merchant_price>47.00</merchant_price>
-      </price>
-    </prices_faulty>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Air 13" (2020)</device_name>
     <processor>M1 3.2GHz 7-Core GPU</processor>
     <capacity>8GB</capacity>
     <network></network>
@@ -112107,6 +112028,85 @@
       <price>
         <merchant_name>gadgetgone</merchant_name>
         <merchant_price>41.00</merchant_price>
+      </price>
+    </prices_faulty>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Air 13" (2020)</device_name>
+    <processor>M1 3.2GHz 8-Core GPU</processor>
+    <capacity>8GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Air 13" (2020) M1 3.2GHz 8-Core GPU 8GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-air-13-2020/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/008/macbook-air-13-2020.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>361.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>350.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetgone</merchant_name>
+        <merchant_price>260.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>252.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>300.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>270.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetgone</merchant_name>
+        <merchant_price>237.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>220.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>255.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>216.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>171.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetgone</merchant_name>
+        <merchant_price>142.00</merchant_price>
+      </price>
+    </prices_poor>
+    <prices_faulty>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>60.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>47.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetgone</merchant_name>
+        <merchant_price>47.00</merchant_price>
       </price>
     </prices_faulty>
   </device>
@@ -112326,85 +112326,6 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Air 13" (2020)</device_name>
-    <processor>M1 3.2GHz 8-Core GPU</processor>
-    <capacity>16GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Air 13" (2020) M1 3.2GHz 8-Core GPU 16GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-air-13-2020/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/008/macbook-air-13-2020.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>416.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>400.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>297.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetgone</merchant_name>
-        <merchant_price>292.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>350.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>312.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetgone</merchant_name>
-        <merchant_price>269.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>260.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>305.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>249.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>215.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetgone</merchant_name>
-        <merchant_price>174.00</merchant_price>
-      </price>
-    </prices_poor>
-    <prices_faulty>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>60.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>55.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetgone</merchant_name>
-        <merchant_price>47.00</merchant_price>
-      </price>
-    </prices_faulty>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Air 13" (2020)</device_name>
     <processor>M1 3.2GHz 7-Core GPU</processor>
     <capacity>16GB</capacity>
     <network></network>
@@ -112482,6 +112403,85 @@
       <price>
         <merchant_name>gadgetgone</merchant_name>
         <merchant_price>41.00</merchant_price>
+      </price>
+    </prices_faulty>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Air 13" (2020)</device_name>
+    <processor>M1 3.2GHz 8-Core GPU</processor>
+    <capacity>16GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Air 13" (2020) M1 3.2GHz 8-Core GPU 16GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-air-13-2020/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/008/macbook-air-13-2020.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>416.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>400.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>297.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetgone</merchant_name>
+        <merchant_price>292.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>350.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>312.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetgone</merchant_name>
+        <merchant_price>269.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>260.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>305.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>249.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>215.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetgone</merchant_name>
+        <merchant_price>174.00</merchant_price>
+      </price>
+    </prices_poor>
+    <prices_faulty>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>60.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>55.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetgone</merchant_name>
+        <merchant_price>47.00</merchant_price>
       </price>
     </prices_faulty>
   </device>
@@ -121765,6 +121765,56 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
+    <capacity>8GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M3 Max 14-Core CPU 30-Core GPU 8GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1300.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1105.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M3 Max 16-Core CPU 40-Core GPU</processor>
+    <capacity>8GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M3 Max 16-Core CPU 40-Core GPU 8GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1600.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1360.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
     <processor>M3 8-Core CPU 10-Core GPU</processor>
     <capacity>8GB</capacity>
     <network></network>
@@ -121852,56 +121902,6 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Max 16-Core CPU 40-Core GPU</processor>
-    <capacity>8GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Max 16-Core CPU 40-Core GPU 8GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1600.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1360.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
-    <capacity>8GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Max 14-Core CPU 30-Core GPU 8GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1300.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1105.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
     <processor>M3 Pro 11-Core CPU 14-Core GPU</processor>
     <capacity>8GB</capacity>
     <network></network>
@@ -121944,6 +121944,56 @@
       <price>
         <merchant_name>macmeanoffer</merchant_name>
         <merchant_price>837.25</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
+    <capacity>16GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M3 Max 14-Core CPU 30-Core GPU 16GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1300.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1105.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M3 Max 16-Core CPU 40-Core GPU</processor>
+    <capacity>16GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M3 Max 16-Core CPU 40-Core GPU 16GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1600.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1360.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -122039,56 +122089,6 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Max 16-Core CPU 40-Core GPU</processor>
-    <capacity>16GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Max 16-Core CPU 40-Core GPU 16GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1600.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1360.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
-    <capacity>16GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Max 14-Core CPU 30-Core GPU 16GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1300.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1105.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
     <processor>M3 Pro 11-Core CPU 14-Core GPU</processor>
     <capacity>16GB</capacity>
     <network></network>
@@ -122106,6 +122106,31 @@
       <price>
         <merchant_name>macmeanoffer</merchant_name>
         <merchant_price>748.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M3 Pro 12-Core CPU 18-Core GPU</processor>
+    <capacity>16GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M3 Pro 12-Core CPU 18-Core GPU 16GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>985.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>837.25</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -122213,31 +122238,6 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Pro 12-Core CPU 18-Core GPU</processor>
-    <capacity>16GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Pro 12-Core CPU 18-Core GPU 16GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>985.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>837.25</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
     <processor>M2 Pro 10-Core CPU 16-Core GPU</processor>
     <capacity>16GB</capacity>
     <network></network>
@@ -122337,23 +122337,23 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 8-Core CPU 10-Core GPU</processor>
+    <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
     <capacity>18GB</capacity>
     <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 8-Core CPU 10-Core GPU 18GB</combined>
+    <combined>Apple MacBook Pro 14" (2023) M3 Max 14-Core CPU 30-Core GPU 18GB</combined>
     <device_type>Mac</device_type>
     <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
     <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
     <prices_likenew>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>625.00</merchant_price>
+        <merchant_price>1300.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>531.25</merchant_price>
+        <merchant_price>1105.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -122387,23 +122387,23 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
+    <processor>M3 8-Core CPU 10-Core GPU</processor>
     <capacity>18GB</capacity>
     <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Max 14-Core CPU 30-Core GPU 18GB</combined>
+    <combined>Apple MacBook Pro 14" (2023) M3 8-Core CPU 10-Core GPU 18GB</combined>
     <device_type>Mac</device_type>
     <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
     <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
     <prices_likenew>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1300.00</merchant_price>
+        <merchant_price>625.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1105.00</merchant_price>
+        <merchant_price>531.25</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -122586,6 +122586,56 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
+    <capacity>24GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M3 Max 14-Core CPU 30-Core GPU 24GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1300.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1105.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M3 Max 16-Core CPU 40-Core GPU</processor>
+    <capacity>24GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M3 Max 16-Core CPU 40-Core GPU 24GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1600.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1360.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
     <processor>M3 8-Core CPU 10-Core GPU</processor>
     <capacity>24GB</capacity>
     <network></network>
@@ -122673,56 +122723,6 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Max 16-Core CPU 40-Core GPU</processor>
-    <capacity>24GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Max 16-Core CPU 40-Core GPU 24GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1600.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1360.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
-    <capacity>24GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Max 14-Core CPU 30-Core GPU 24GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1300.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1105.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
     <processor>M3 Pro 11-Core CPU 14-Core GPU</processor>
     <capacity>24GB</capacity>
     <network></network>
@@ -122765,6 +122765,56 @@
       <price>
         <merchant_name>macmeanoffer</merchant_name>
         <merchant_price>837.25</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
+    <capacity>32GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M3 Max 14-Core CPU 30-Core GPU 32GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1300.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1105.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M3 Max 16-Core CPU 40-Core GPU</processor>
+    <capacity>32GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M3 Max 16-Core CPU 40-Core GPU 32GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1600.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1360.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -122897,56 +122947,6 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Max 16-Core CPU 40-Core GPU</processor>
-    <capacity>32GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Max 16-Core CPU 40-Core GPU 32GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1600.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1360.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
-    <capacity>32GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Max 14-Core CPU 30-Core GPU 32GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1300.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1105.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
     <processor>M3 Pro 11-Core CPU 14-Core GPU</processor>
     <capacity>32GB</capacity>
     <network></network>
@@ -122968,105 +122968,6 @@
     </prices_good>
     <prices_poor/>
     <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M2 Pro 12-Core CPU 19-Core GPU</processor>
-    <capacity>32GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M2 Pro 12-Core CPU 19-Core GPU 32GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>1046.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1045.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1025.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>cell4pets</merchant_name>
-        <merchant_price>975.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>876.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>cell4pets</merchant_name>
-        <merchant_price>975.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>945.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>925.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>836.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>761.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>820.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>800.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>679.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>619.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetgone</merchant_name>
-        <merchant_price>473.00</merchant_price>
-      </price>
-    </prices_poor>
-    <prices_faulty>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>210.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>200.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>136.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>120.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetgone</merchant_name>
-        <merchant_price>120.00</merchant_price>
-      </price>
-    </prices_faulty>
   </device>
   <device>
     <brand_name>Apple</brand_name>
@@ -123195,6 +123096,105 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M2 Pro 12-Core CPU 19-Core GPU</processor>
+    <capacity>32GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M2 Pro 12-Core CPU 19-Core GPU 32GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>1046.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1045.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1025.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>cell4pets</merchant_name>
+        <merchant_price>975.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>876.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>cell4pets</merchant_name>
+        <merchant_price>975.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>945.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>925.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>836.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>761.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>820.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>800.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>679.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>619.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetgone</merchant_name>
+        <merchant_price>473.00</merchant_price>
+      </price>
+    </prices_poor>
+    <prices_faulty>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>210.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>200.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>136.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>120.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetgone</merchant_name>
+        <merchant_price>120.00</merchant_price>
+      </price>
+    </prices_faulty>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
     <processor>M2 Pro 10-Core CPU 16-Core GPU</processor>
     <capacity>32GB</capacity>
     <network></network>
@@ -123294,56 +123294,6 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 8-Core CPU 10-Core GPU</processor>
-    <capacity>36GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 8-Core CPU 10-Core GPU 36GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>625.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>531.25</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Max 16-Core CPU 40-Core GPU</processor>
-    <capacity>36GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Max 16-Core CPU 40-Core GPU 36GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1600.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1360.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
     <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
     <capacity>36GB</capacity>
     <network></network>
@@ -123427,6 +123377,56 @@
         <merchant_price>148.00</merchant_price>
       </price>
     </prices_faulty>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M3 Max 16-Core CPU 40-Core GPU</processor>
+    <capacity>36GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M3 Max 16-Core CPU 40-Core GPU 36GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1600.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1360.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M3 8-Core CPU 10-Core GPU</processor>
+    <capacity>36GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M3 8-Core CPU 10-Core GPU 36GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>625.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>531.25</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
   </device>
   <device>
     <brand_name>Apple</brand_name>
@@ -123605,23 +123605,23 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 8-Core CPU 10-Core GPU</processor>
+    <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
     <capacity>48GB</capacity>
     <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 8-Core CPU 10-Core GPU 48GB</combined>
+    <combined>Apple MacBook Pro 14" (2023) M3 Max 14-Core CPU 30-Core GPU 48GB</combined>
     <device_type>Mac</device_type>
     <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
     <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
     <prices_likenew>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>625.00</merchant_price>
+        <merchant_price>1300.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>531.25</merchant_price>
+        <merchant_price>1105.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -123717,23 +123717,23 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
+    <processor>M3 8-Core CPU 10-Core GPU</processor>
     <capacity>48GB</capacity>
     <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Max 14-Core CPU 30-Core GPU 48GB</combined>
+    <combined>Apple MacBook Pro 14" (2023) M3 8-Core CPU 10-Core GPU 48GB</combined>
     <device_type>Mac</device_type>
     <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
     <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
     <prices_likenew>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1300.00</merchant_price>
+        <merchant_price>625.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1105.00</merchant_price>
+        <merchant_price>531.25</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -123788,6 +123788,118 @@
     </prices_good>
     <prices_poor/>
     <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
+    <capacity>64GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M3 Max 14-Core CPU 30-Core GPU 64GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1300.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1105.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M3 Max 16-Core CPU 40-Core GPU</processor>
+    <capacity>64GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M3 Max 16-Core CPU 40-Core GPU 64GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1890.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1850.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>cell4pets</merchant_name>
+        <merchant_price>1750.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>1746.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>1701.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>cell4pets</merchant_name>
+        <merchant_price>1750.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1690.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1650.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>1501.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>1396.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1390.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1350.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>1200.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>1134.00</merchant_price>
+      </price>
+    </prices_poor>
+    <prices_faulty>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>415.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>400.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>227.00</merchant_price>
+      </price>
+    </prices_faulty>
   </device>
   <device>
     <brand_name>Apple</brand_name>
@@ -123912,118 +124024,6 @@
         <merchant_price>135.00</merchant_price>
       </price>
     </prices_faulty>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Max 16-Core CPU 40-Core GPU</processor>
-    <capacity>64GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Max 16-Core CPU 40-Core GPU 64GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1890.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1850.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>cell4pets</merchant_name>
-        <merchant_price>1750.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>1746.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>1701.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>cell4pets</merchant_name>
-        <merchant_price>1750.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1690.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1650.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>1501.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>1396.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1390.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1350.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>1200.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>1134.00</merchant_price>
-      </price>
-    </prices_poor>
-    <prices_faulty>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>415.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>400.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>227.00</merchant_price>
-      </price>
-    </prices_faulty>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
-    <capacity>64GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Max 14-Core CPU 30-Core GPU 64GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1300.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1105.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
   </device>
   <device>
     <brand_name>Apple</brand_name>
@@ -124177,56 +124177,6 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 8-Core CPU 10-Core GPU</processor>
-    <capacity>96GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 8-Core CPU 10-Core GPU 96GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>625.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>531.25</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Max 16-Core CPU 40-Core GPU</processor>
-    <capacity>96GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Max 16-Core CPU 40-Core GPU 96GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1600.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1360.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
     <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
     <capacity>96GB</capacity>
     <network></network>
@@ -124310,6 +124260,56 @@
         <merchant_price>213.00</merchant_price>
       </price>
     </prices_faulty>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M3 Max 16-Core CPU 40-Core GPU</processor>
+    <capacity>96GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M3 Max 16-Core CPU 40-Core GPU 96GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1600.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1360.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M3 8-Core CPU 10-Core GPU</processor>
+    <capacity>96GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M3 8-Core CPU 10-Core GPU 96GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>625.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>531.25</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
   </device>
   <device>
     <brand_name>Apple</brand_name>
@@ -124463,23 +124463,23 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 8-Core CPU 10-Core GPU</processor>
+    <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
     <capacity>128GB</capacity>
     <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 8-Core CPU 10-Core GPU 128GB</combined>
+    <combined>Apple MacBook Pro 14" (2023) M3 Max 14-Core CPU 30-Core GPU 128GB</combined>
     <device_type>Mac</device_type>
     <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
     <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
     <prices_likenew>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>625.00</merchant_price>
+        <merchant_price>1300.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>531.25</merchant_price>
+        <merchant_price>1105.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -124575,23 +124575,23 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Max 14-Core CPU 30-Core GPU</processor>
+    <processor>M3 8-Core CPU 10-Core GPU</processor>
     <capacity>128GB</capacity>
     <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Max 14-Core CPU 30-Core GPU 128GB</combined>
+    <combined>Apple MacBook Pro 14" (2023) M3 8-Core CPU 10-Core GPU 128GB</combined>
     <device_type>Mac</device_type>
     <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
     <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
     <prices_likenew>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1300.00</merchant_price>
+        <merchant_price>625.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1105.00</merchant_price>
+        <merchant_price>531.25</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -124642,31 +124642,6 @@
       <price>
         <merchant_name>macmeanoffer</merchant_name>
         <merchant_price>837.25</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
-    <capacity>16GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 16GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>2235.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1899.75</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -124791,6 +124766,31 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
+    <capacity>16GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 16GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>2235.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1899.75</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
     <processor>M4 Pro 14-Core CPU 20-Core GPU</processor>
     <capacity>16GB</capacity>
     <network></network>
@@ -124833,31 +124833,6 @@
       <price>
         <merchant_name>macmeanoffer</merchant_name>
         <merchant_price>1657.50</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
-    <capacity>24GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 24GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>2235.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1899.75</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -125048,6 +125023,31 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
+    <capacity>24GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 24GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>2235.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1899.75</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
     <processor>M4 Pro 14-Core CPU 20-Core GPU</processor>
     <capacity>24GB</capacity>
     <network></network>
@@ -125156,31 +125156,6 @@
       <price>
         <merchant_name>macmeanoffer</merchant_name>
         <merchant_price>1657.50</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
-    <capacity>32GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 32GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>2235.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1899.75</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -125305,6 +125280,31 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
+    <capacity>32GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 32GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>2235.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1899.75</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
     <processor>M4 Pro 14-Core CPU 20-Core GPU</processor>
     <capacity>32GB</capacity>
     <network></network>
@@ -125355,31 +125355,6 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
-    <capacity>36GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 36GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>2235.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1899.75</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
     <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
     <capacity>36GB</capacity>
     <network></network>
@@ -125422,6 +125397,31 @@
       <price>
         <merchant_name>macmeanoffer</merchant_name>
         <merchant_price>871.25</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
+    <capacity>36GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 36GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>2235.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1899.75</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -125546,97 +125546,6 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
-    <capacity>48GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 48GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>2235.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>2151.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>2125.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>2075.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>cell4pets</merchant_name>
-        <merchant_price>2075.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>cell4pets</merchant_name>
-        <merchant_price>1900.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1899.75</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>1886.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1835.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1785.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>1626.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1575.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1525.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>1333.00</merchant_price>
-      </price>
-    </prices_poor>
-    <prices_faulty>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>520.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>500.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>267.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>166.00</merchant_price>
-      </price>
-    </prices_faulty>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
     <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
     <capacity>48GB</capacity>
     <network></network>
@@ -125749,6 +125658,97 @@
     </prices_good>
     <prices_poor/>
     <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
+    <capacity>48GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 48GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>2235.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>2151.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>2125.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>2075.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>cell4pets</merchant_name>
+        <merchant_price>2075.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>cell4pets</merchant_name>
+        <merchant_price>1900.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1899.75</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>1886.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1835.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1785.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>1626.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1575.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1525.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>1333.00</merchant_price>
+      </price>
+    </prices_poor>
+    <prices_faulty>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>520.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>500.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>267.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>166.00</merchant_price>
+      </price>
+    </prices_faulty>
   </device>
   <device>
     <brand_name>Apple</brand_name>
@@ -125869,6 +125869,56 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
+    <capacity>64GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 64GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1320.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1122.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 10-Core CPU 10-Core GPU</processor>
+    <capacity>64GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 10-Core CPU 10-Core GPU 64GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1025.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>871.25</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
     <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
     <capacity>64GB</capacity>
     <network></network>
@@ -125960,56 +126010,6 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
-    <capacity>64GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 64GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1320.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1122.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 10-Core CPU 10-Core GPU</processor>
-    <capacity>64GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 10-Core CPU 10-Core GPU 64GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1025.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>871.25</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
     <processor>M4 Pro 14-Core CPU 20-Core GPU</processor>
     <capacity>64GB</capacity>
     <network></network>
@@ -126052,6 +126052,56 @@
       <price>
         <merchant_name>macmeanoffer</merchant_name>
         <merchant_price>1657.50</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
+    <capacity>128GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 128GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1320.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1122.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 10-Core CPU 10-Core GPU</processor>
+    <capacity>128GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 10-Core CPU 10-Core GPU 128GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1025.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>871.25</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -126147,56 +126197,6 @@
         <merchant_price>221.00</merchant_price>
       </price>
     </prices_faulty>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
-    <capacity>128GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 128GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1320.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1122.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 10-Core CPU 10-Core GPU</processor>
-    <capacity>128GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 10-Core CPU 10-Core GPU 128GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1025.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>871.25</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
   </device>
   <device>
     <brand_name>Apple</brand_name>
@@ -131730,97 +131730,6 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 16" (2023)</device_name>
-    <processor>M2 Max 12-Core CPU 38-Core GPU</processor>
-    <capacity>32GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 16" (2023) M2 Max 12-Core CPU 38-Core GPU 32GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-16-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-16-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>1336.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>1301.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetgone</merchant_name>
-        <merchant_price>1182.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1130.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1100.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>gadgetgone</merchant_name>
-        <merchant_price>1124.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>1068.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>1066.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>895.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>865.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>868.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>850.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetgone</merchant_name>
-        <merchant_price>758.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>680.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>650.00</merchant_price>
-      </price>
-    </prices_poor>
-    <prices_faulty>
-      <price>
-        <merchant_name>gadgetgone</merchant_name>
-        <merchant_price>183.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>174.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>101.00</merchant_price>
-      </price>
-    </prices_faulty>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 16" (2023)</device_name>
     <processor>M2 Pro 12-Core CPU 19-Core GPU</processor>
     <capacity>32GB</capacity>
     <network></network>
@@ -131997,6 +131906,97 @@
       <price>
         <merchant_name>smartphonesplus</merchant_name>
         <merchant_price>85.00</merchant_price>
+      </price>
+    </prices_faulty>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 16" (2023)</device_name>
+    <processor>M2 Max 12-Core CPU 38-Core GPU</processor>
+    <capacity>32GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 16" (2023) M2 Max 12-Core CPU 38-Core GPU 32GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-16-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-16-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>1336.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>1301.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetgone</merchant_name>
+        <merchant_price>1182.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1130.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1100.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>gadgetgone</merchant_name>
+        <merchant_price>1124.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>1068.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>1066.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>895.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>865.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>868.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>850.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetgone</merchant_name>
+        <merchant_price>758.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>680.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>650.00</merchant_price>
+      </price>
+    </prices_poor>
+    <prices_faulty>
+      <price>
+        <merchant_name>gadgetgone</merchant_name>
+        <merchant_price>183.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>174.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>101.00</merchant_price>
       </price>
     </prices_faulty>
   </device>
@@ -132390,97 +132390,6 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 16" (2023)</device_name>
-    <processor>M2 Max 12-Core CPU 38-Core GPU</processor>
-    <capacity>64GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 16" (2023) M2 Max 12-Core CPU 38-Core GPU 64GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-16-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-16-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>1591.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>1501.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1435.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1400.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>cell4pets</merchant_name>
-        <merchant_price>1400.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>1272.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>1266.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1200.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetgone</merchant_name>
-        <merchant_price>1173.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1165.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>1034.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>999.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>985.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>950.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetgone</merchant_name>
-        <merchant_price>807.00</merchant_price>
-      </price>
-    </prices_poor>
-    <prices_faulty>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>207.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetgone</merchant_name>
-        <merchant_price>183.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>137.00</merchant_price>
-      </price>
-    </prices_faulty>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 16" (2023)</device_name>
     <processor>M2 Max 12-Core CPU 30-Core GPU</processor>
     <capacity>64GB</capacity>
     <network></network>
@@ -132566,6 +132475,97 @@
       <price>
         <merchant_name>smartphonesplus</merchant_name>
         <merchant_price>133.00</merchant_price>
+      </price>
+    </prices_faulty>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 16" (2023)</device_name>
+    <processor>M2 Max 12-Core CPU 38-Core GPU</processor>
+    <capacity>64GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 16" (2023) M2 Max 12-Core CPU 38-Core GPU 64GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-16-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-16-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>1591.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>1501.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1435.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1400.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>cell4pets</merchant_name>
+        <merchant_price>1400.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>1272.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>1266.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1200.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetgone</merchant_name>
+        <merchant_price>1173.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1165.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>1034.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>999.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>985.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>950.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetgone</merchant_name>
+        <merchant_price>807.00</merchant_price>
+      </price>
+    </prices_poor>
+    <prices_faulty>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>207.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetgone</merchant_name>
+        <merchant_price>183.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>137.00</merchant_price>
       </price>
     </prices_faulty>
   </device>
@@ -144242,6 +144242,10 @@
     <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/watch-ultra-4-49mm-titanium.jpg</image_url>
     <prices_likenew>
       <price>
+        <merchant_name>buybackworld</merchant_name>
+        <merchant_price>490.00</merchant_price>
+      </price>
+      <price>
         <merchant_name>techtree</merchant_name>
         <merchant_price>477.00</merchant_price>
       </price>
@@ -144275,6 +144279,10 @@
         <merchant_name>buybacktronics</merchant_name>
         <merchant_price>410.00</merchant_price>
       </price>
+      <price>
+        <merchant_name>buybackworld</merchant_name>
+        <merchant_price>390.00</merchant_price>
+      </price>
     </prices_good>
     <prices_poor>
       <price>
@@ -144293,11 +144301,19 @@
         <merchant_name>smartphonesplus</merchant_name>
         <merchant_price>325.00</merchant_price>
       </price>
+      <price>
+        <merchant_name>buybackworld</merchant_name>
+        <merchant_price>115.00</merchant_price>
+      </price>
     </prices_poor>
     <prices_faulty>
       <price>
         <merchant_name>techtree</merchant_name>
-        <merchant_price>101.00</merchant_price>
+        <merchant_price>116.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybackworld</merchant_name>
+        <merchant_price>115.00</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
@@ -223279,31 +223295,31 @@
     <prices_likenew>
       <price>
         <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>124.00</merchant_price>
+        <merchant_price>149.00</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>120.00</merchant_price>
+        <merchant_price>145.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>72.00</merchant_price>
+        <merchant_price>98.00</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>70.00</merchant_price>
+        <merchant_price>95.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor>
       <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>10.00</merchant_price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>36.00</merchant_price>
       </price>
       <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>10.00</merchant_price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>35.00</merchant_price>
       </price>
     </prices_poor>
     <prices_faulty/>
@@ -223321,31 +223337,31 @@
     <prices_likenew>
       <price>
         <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>175.00</merchant_price>
+        <merchant_price>216.00</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>170.00</merchant_price>
+        <merchant_price>210.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>124.00</merchant_price>
+        <merchant_price>165.00</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>120.00</merchant_price>
+        <merchant_price>160.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor>
       <price>
         <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>62.00</merchant_price>
+        <merchant_price>103.00</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>60.00</merchant_price>
+        <merchant_price>100.00</merchant_price>
       </price>
     </prices_poor>
     <prices_faulty/>
@@ -223363,31 +223379,31 @@
     <prices_likenew>
       <price>
         <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>206.00</merchant_price>
+        <merchant_price>252.00</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>200.00</merchant_price>
+        <merchant_price>245.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>139.00</merchant_price>
+        <merchant_price>185.00</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>135.00</merchant_price>
+        <merchant_price>180.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor>
       <price>
         <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>52.00</merchant_price>
+        <merchant_price>98.00</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>50.00</merchant_price>
+        <merchant_price>95.00</merchant_price>
       </price>
     </prices_poor>
     <prices_faulty/>
@@ -223405,31 +223421,31 @@
     <prices_likenew>
       <price>
         <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>361.00</merchant_price>
+        <merchant_price>381.00</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>350.00</merchant_price>
+        <merchant_price>370.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>294.00</merchant_price>
+        <merchant_price>314.00</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>285.00</merchant_price>
+        <merchant_price>305.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor>
       <price>
         <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>206.00</merchant_price>
+        <merchant_price>227.00</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>200.00</merchant_price>
+        <merchant_price>220.00</merchant_price>
       </price>
     </prices_poor>
     <prices_faulty/>
@@ -223447,31 +223463,31 @@
     <prices_likenew>
       <price>
         <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>155.00</merchant_price>
+        <merchant_price>175.00</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>150.00</merchant_price>
+        <merchant_price>170.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>98.00</merchant_price>
+        <merchant_price>118.00</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>95.00</merchant_price>
+        <merchant_price>115.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor>
       <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>15.00</merchant_price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>36.00</merchant_price>
       </price>
       <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>15.00</merchant_price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>35.00</merchant_price>
       </price>
     </prices_poor>
     <prices_faulty/>
@@ -223489,31 +223505,31 @@
     <prices_likenew>
       <price>
         <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>278.00</merchant_price>
+        <merchant_price>288.00</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>270.00</merchant_price>
+        <merchant_price>280.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>211.00</merchant_price>
+        <merchant_price>221.00</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>205.00</merchant_price>
+        <merchant_price>215.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor>
       <price>
         <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>124.00</merchant_price>
+        <merchant_price>134.00</merchant_price>
       </price>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>120.00</merchant_price>
+        <merchant_price>130.00</merchant_price>
       </price>
     </prices_poor>
     <prices_faulty/>
@@ -224959,19 +224975,19 @@
     <prices_likenew>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>265.00</merchant_price>
+        <merchant_price>275.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>220.00</merchant_price>
+        <merchant_price>230.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>155.00</merchant_price>
+        <merchant_price>165.00</merchant_price>
       </price>
     </prices_poor>
     <prices_faulty/>
@@ -224989,19 +225005,19 @@
     <prices_likenew>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>285.00</merchant_price>
+        <merchant_price>325.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>215.00</merchant_price>
+        <merchant_price>255.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>110.00</merchant_price>
+        <merchant_price>150.00</merchant_price>
       </price>
     </prices_poor>
     <prices_faulty/>
@@ -225019,19 +225035,19 @@
     <prices_likenew>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>335.00</merchant_price>
+        <merchant_price>375.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>265.00</merchant_price>
+        <merchant_price>305.00</merchant_price>
       </price>
     </prices_good>
     <prices_poor>
       <price>
         <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>160.00</merchant_price>
+        <merchant_price>200.00</merchant_price>
       </price>
     </prices_poor>
     <prices_faulty/>
@@ -284386,6 +284402,111 @@
     </prices_good>
     <prices_poor/>
     <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Oppo</brand_name>
+    <device_name>Find X9 Pro</device_name>
+    <processor></processor>
+    <capacity>256GB</capacity>
+    <network>Unlocked</network>
+    <combined>Oppo Find X9 Pro 256GB Unlocked</combined>
+    <device_type>Cell Phone</device_type>
+    <url>https://www.sellcell.com/phones/oppo-find-x9-pro/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/find-x9-pro.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>buybackworld</merchant_name>
+        <merchant_price>450.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>buybackworld</merchant_name>
+        <merchant_price>350.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor>
+      <price>
+        <merchant_name>buybackworld</merchant_name>
+        <merchant_price>100.00</merchant_price>
+      </price>
+    </prices_poor>
+    <prices_faulty>
+      <price>
+        <merchant_name>buybackworld</merchant_name>
+        <merchant_price>100.00</merchant_price>
+      </price>
+    </prices_faulty>
+  </device>
+  <device>
+    <brand_name>Oppo</brand_name>
+    <device_name>Find X9 Pro</device_name>
+    <processor></processor>
+    <capacity>512GB</capacity>
+    <network>Unlocked</network>
+    <combined>Oppo Find X9 Pro 512GB Unlocked</combined>
+    <device_type>Cell Phone</device_type>
+    <url>https://www.sellcell.com/phones/oppo-find-x9-pro/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/find-x9-pro.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>buybackworld</merchant_name>
+        <merchant_price>500.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>buybackworld</merchant_name>
+        <merchant_price>400.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor>
+      <price>
+        <merchant_name>buybackworld</merchant_name>
+        <merchant_price>110.00</merchant_price>
+      </price>
+    </prices_poor>
+    <prices_faulty>
+      <price>
+        <merchant_name>buybackworld</merchant_name>
+        <merchant_price>110.00</merchant_price>
+      </price>
+    </prices_faulty>
+  </device>
+  <device>
+    <brand_name>Oppo</brand_name>
+    <device_name>Find X9 Pro</device_name>
+    <processor></processor>
+    <capacity>1TB</capacity>
+    <network>Unlocked</network>
+    <combined>Oppo Find X9 Pro 1TB Unlocked</combined>
+    <device_type>Cell Phone</device_type>
+    <url>https://www.sellcell.com/phones/oppo-find-x9-pro/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/find-x9-pro.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>buybackworld</merchant_name>
+        <merchant_price>575.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>buybackworld</merchant_name>
+        <merchant_price>475.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor>
+      <price>
+        <merchant_name>buybackworld</merchant_name>
+        <merchant_price>125.00</merchant_price>
+      </price>
+    </prices_poor>
+    <prices_faulty>
+      <price>
+        <merchant_name>buybackworld</merchant_name>
+        <merchant_price>125.00</merchant_price>
+      </price>
+    </prices_faulty>
   </device>
   <device>
     <brand_name>Oppo</brand_name>
