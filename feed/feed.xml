@@ -31,8 +31,8 @@
           <flawless>165</flawless>
           <good>150</good>
           <fair>119</fair>
-          <broken>95</broken>
-          <no_power>23.75</no_power>
+          <broken>98</broken>
+          <no_power>24.5</no_power>
         </unlocked>
       </priceValue>
     </prices>
@@ -64,8 +64,8 @@
           <flawless>195</flawless>
           <good>180</good>
           <fair>152</fair>
-          <broken>114</broken>
-          <no_power>28.5</no_power>
+          <broken>117</broken>
+          <no_power>29.25</no_power>
         </unlocked>
       </priceValue>
     </prices>
@@ -97,8 +97,8 @@
           <flawless>213</flawless>
           <good>198</good>
           <fair>162</fair>
-          <broken>122</broken>
-          <no_power>30.5</no_power>
+          <broken>123</broken>
+          <no_power>30.75</no_power>
         </unlocked>
       </priceValue>
     </prices>
@@ -419,7 +419,7 @@
         </tmobile>
         <unlocked>
           <flawless>190</flawless>
-          <good>171</good>
+          <good>175</good>
           <fair>125</fair>
           <broken>86</broken>
           <no_power>21.5</no_power>
@@ -452,7 +452,7 @@
         </tmobile>
         <unlocked>
           <flawless>227</flawless>
-          <good>208</good>
+          <good>212</good>
           <fair>160</fair>
           <broken>116</broken>
           <no_power>29</no_power>
@@ -487,8 +487,8 @@
           <flawless>249</flawless>
           <good>234</good>
           <fair>231</fair>
-          <broken>130</broken>
-          <no_power>32.5</no_power>
+          <broken>132</broken>
+          <no_power>33</no_power>
         </unlocked>
       </priceValue>
     </prices>
@@ -1135,8 +1135,8 @@
           <flawless>419</flawless>
           <good>404</good>
           <fair>377</fair>
-          <broken>299</broken>
-          <no_power>74.75</no_power>
+          <broken>300</broken>
+          <no_power>75</no_power>
         </unlocked>
       </priceValue>
     </prices>
@@ -1168,8 +1168,8 @@
           <flawless>319</flawless>
           <good>304</good>
           <fair>283</fair>
-          <broken>205</broken>
-          <no_power>51.25</no_power>
+          <broken>192</broken>
+          <no_power>48</no_power>
         </unlocked>
       </priceValue>
     </prices>
@@ -1234,8 +1234,8 @@
           <flawless>383</flawless>
           <good>368</good>
           <fair>343</fair>
-          <broken>269</broken>
-          <no_power>67.25</no_power>
+          <broken>270</broken>
+          <no_power>67.5</no_power>
         </unlocked>
       </priceValue>
     </prices>
