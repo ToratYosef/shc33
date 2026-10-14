@@ -123342,56 +123342,6 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Max 16-Core CPU 40-Core GPU</processor>
-    <capacity>32GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Max 16-Core CPU 40-Core GPU 32GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1600.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1360.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M3 Pro 11-Core CPU 14-Core GPU</processor>
-    <capacity>32GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M3 Pro 11-Core CPU 14-Core GPU 32GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>880.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>748.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
     <processor>M2 Max 12-Core CPU 30-Core GPU</processor>
     <capacity>32GB</capacity>
     <network></network>
@@ -123487,6 +123437,56 @@
         <merchant_price>135.00</merchant_price>
       </price>
     </prices_faulty>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M3 Max 16-Core CPU 40-Core GPU</processor>
+    <capacity>32GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M3 Max 16-Core CPU 40-Core GPU 32GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1600.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1360.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M3 Pro 11-Core CPU 14-Core GPU</processor>
+    <capacity>32GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M3 Pro 11-Core CPU 14-Core GPU 32GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>880.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>748.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
   </device>
   <device>
     <brand_name>Apple</brand_name>
@@ -124393,6 +124393,105 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2023)</device_name>
+    <processor>M2 Max 12-Core CPU 30-Core GPU</processor>
+    <capacity>64GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2023) M2 Max 12-Core CPU 30-Core GPU 64GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>1386.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1385.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacksurgeon</merchant_name>
+        <merchant_price>1351.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1350.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>cell4pets</merchant_name>
+        <merchant_price>1275.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>cell4pets</merchant_name>
+        <merchant_price>1275.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1260.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacksurgeon</merchant_name>
+        <merchant_price>1226.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1225.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>1108.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1135.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacksurgeon</merchant_name>
+        <merchant_price>1101.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1100.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>900.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>784.00</merchant_price>
+      </price>
+    </prices_poor>
+    <prices_faulty>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>210.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacksurgeon</merchant_name>
+        <merchant_price>201.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>200.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>181.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>145.00</merchant_price>
+      </price>
+    </prices_faulty>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2023)</device_name>
     <processor>M3 Max 16-Core CPU 40-Core GPU</processor>
     <capacity>64GB</capacity>
     <network></network>
@@ -124509,105 +124608,6 @@
     </prices_good>
     <prices_poor/>
     <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2023)</device_name>
-    <processor>M2 Max 12-Core CPU 30-Core GPU</processor>
-    <capacity>64GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2023) M2 Max 12-Core CPU 30-Core GPU 64GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>1386.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1385.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacksurgeon</merchant_name>
-        <merchant_price>1351.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1350.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>cell4pets</merchant_name>
-        <merchant_price>1275.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>cell4pets</merchant_name>
-        <merchant_price>1275.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1260.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacksurgeon</merchant_name>
-        <merchant_price>1226.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1225.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>1108.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1135.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacksurgeon</merchant_name>
-        <merchant_price>1101.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1100.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>900.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>784.00</merchant_price>
-      </price>
-    </prices_poor>
-    <prices_faulty>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>210.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacksurgeon</merchant_name>
-        <merchant_price>201.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>200.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>181.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>145.00</merchant_price>
-      </price>
-    </prices_faulty>
   </device>
   <device>
     <brand_name>Apple</brand_name>
@@ -125151,23 +125151,23 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
+    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
     <capacity>16GB</capacity>
     <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 16GB</combined>
+    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 16GB</combined>
     <device_type>Mac</device_type>
     <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
     <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
     <prices_likenew>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1320.00</merchant_price>
+        <merchant_price>2235.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1122.00</merchant_price>
+        <merchant_price>1899.75</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -125275,6 +125275,31 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
+    <capacity>16GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 16GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1320.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1122.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
     <processor>M4 Pro 14-Core CPU 20-Core GPU</processor>
     <capacity>16GB</capacity>
     <network></network>
@@ -125292,31 +125317,6 @@
       <price>
         <merchant_name>macmeanoffer</merchant_name>
         <merchant_price>1164.50</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
-    <capacity>16GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 16GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>2235.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1899.75</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -125350,101 +125350,27 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
+    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
     <capacity>24GB</capacity>
     <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 24GB</combined>
+    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 24GB</combined>
     <device_type>Mac</device_type>
     <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
     <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
     <prices_likenew>
       <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1335.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1320.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1300.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>cell4pets</merchant_name>
-        <merchant_price>1300.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>1286.00</merchant_price>
+        <merchant_price>2235.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
-        <merchant_name>cell4pets</merchant_name>
-        <merchant_price>1175.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1165.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1130.00</merchant_price>
-      </price>
-      <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1122.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>1105.00</merchant_price>
+        <merchant_price>1899.75</merchant_price>
       </price>
     </prices_good>
-    <prices_poor>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>985.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>950.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacksurgeon</merchant_name>
-        <merchant_price>901.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>852.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>835.00</merchant_price>
-      </price>
-    </prices_poor>
-    <prices_faulty>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>315.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacksurgeon</merchant_name>
-        <merchant_price>301.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>300.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>168.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>147.00</merchant_price>
-      </price>
-    </prices_faulty>
+    <prices_poor/>
+    <prices_faulty/>
   </device>
   <device>
     <brand_name>Apple</brand_name>
@@ -125538,6 +125464,105 @@
       <price>
         <merchant_name>gadgetpickup</merchant_name>
         <merchant_price>157.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>147.00</merchant_price>
+      </price>
+    </prices_faulty>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
+    <capacity>24GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 24GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1335.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1320.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1300.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>cell4pets</merchant_name>
+        <merchant_price>1300.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>1286.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>cell4pets</merchant_name>
+        <merchant_price>1175.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1165.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1130.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1122.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>1105.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>985.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>950.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacksurgeon</merchant_name>
+        <merchant_price>901.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>852.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>835.00</merchant_price>
+      </price>
+    </prices_poor>
+    <prices_faulty>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>315.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacksurgeon</merchant_name>
+        <merchant_price>301.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>300.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>168.00</merchant_price>
       </price>
       <price>
         <merchant_name>smartphonesplus</merchant_name>
@@ -125647,31 +125672,6 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
-    <capacity>24GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 24GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>2235.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1899.75</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
     <processor>M4 Max 14-Core CPU 32-Core GPU</processor>
     <capacity>24GB</capacity>
     <network></network>
@@ -125697,23 +125697,23 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
+    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
     <capacity>32GB</capacity>
     <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 32GB</combined>
+    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 32GB</combined>
     <device_type>Mac</device_type>
     <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
     <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
     <prices_likenew>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1320.00</merchant_price>
+        <merchant_price>2235.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1122.00</merchant_price>
+        <merchant_price>1899.75</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -125821,6 +125821,31 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
+    <capacity>32GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 32GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1320.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1122.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
     <processor>M4 Pro 14-Core CPU 20-Core GPU</processor>
     <capacity>32GB</capacity>
     <network></network>
@@ -125838,31 +125863,6 @@
       <price>
         <merchant_name>macmeanoffer</merchant_name>
         <merchant_price>1164.50</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
-    <capacity>32GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 32GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>2235.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1899.75</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -125896,23 +125896,23 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
+    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
     <capacity>36GB</capacity>
     <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 36GB</combined>
+    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 36GB</combined>
     <device_type>Mac</device_type>
     <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
     <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
     <prices_likenew>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1320.00</merchant_price>
+        <merchant_price>2235.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1122.00</merchant_price>
+        <merchant_price>1899.75</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -125946,6 +125946,31 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
+    <capacity>36GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 36GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1320.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1122.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
     <processor>M4 Pro 14-Core CPU 20-Core GPU</processor>
     <capacity>36GB</capacity>
     <network></network>
@@ -125963,31 +125988,6 @@
       <price>
         <merchant_name>macmeanoffer</merchant_name>
         <merchant_price>1164.50</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Max 16-Core CPU 40-Core GPU</processor>
-    <capacity>36GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Max 16-Core CPU 40-Core GPU 36GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>2235.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1899.75</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -126069,229 +126069,6 @@
       <price>
         <merchant_name>itsworthmore</merchant_name>
         <merchant_price>500.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>147.00</merchant_price>
-      </price>
-    </prices_faulty>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
-    <capacity>48GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 48GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1640.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1600.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>cell4pets</merchant_name>
-        <merchant_price>1600.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>1591.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacksurgeon</merchant_name>
-        <merchant_price>1551.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>cell4pets</merchant_name>
-        <merchant_price>1475.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1470.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1430.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>1406.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacksurgeon</merchant_name>
-        <merchant_price>1381.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1290.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1250.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacksurgeon</merchant_name>
-        <merchant_price>1201.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>1034.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>1018.00</merchant_price>
-      </price>
-    </prices_poor>
-    <prices_faulty>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>315.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacksurgeon</merchant_name>
-        <merchant_price>301.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>300.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>207.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>147.00</merchant_price>
-      </price>
-    </prices_faulty>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 10-Core CPU 10-Core GPU</processor>
-    <capacity>48GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 10-Core CPU 10-Core GPU 48GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1025.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>871.25</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Pro 14-Core CPU 20-Core GPU</processor>
-    <capacity>48GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Pro 14-Core CPU 20-Core GPU 48GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1740.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1700.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>cell4pets</merchant_name>
-        <merchant_price>1700.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>1691.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacksurgeon</merchant_name>
-        <merchant_price>1651.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>cell4pets</merchant_name>
-        <merchant_price>1575.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1565.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1525.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacksurgeon</merchant_name>
-        <merchant_price>1476.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>1376.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>1390.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>1350.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacksurgeon</merchant_name>
-        <merchant_price>1301.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>smartphonesplus</merchant_name>
-        <merchant_price>1201.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>1099.00</merchant_price>
-      </price>
-    </prices_poor>
-    <prices_faulty>
-      <price>
-        <merchant_name>buybacktronics</merchant_name>
-        <merchant_price>315.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>buybacksurgeon</merchant_name>
-        <merchant_price>301.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>itsworthmore</merchant_name>
-        <merchant_price>300.00</merchant_price>
-      </price>
-      <price>
-        <merchant_name>gadgetpickup</merchant_name>
-        <merchant_price>220.00</merchant_price>
       </price>
       <price>
         <merchant_name>smartphonesplus</merchant_name>
@@ -126401,60 +126178,10 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Max 14-Core CPU 32-Core GPU</processor>
+    <processor>M4 10-Core CPU 10-Core GPU</processor>
     <capacity>48GB</capacity>
     <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Max 14-Core CPU 32-Core GPU 48GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1950.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1657.50</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
-    <capacity>64GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 64GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1320.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1122.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 10-Core CPU 10-Core GPU</processor>
-    <capacity>64GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 10-Core CPU 10-Core GPU 64GB</combined>
+    <combined>Apple MacBook Pro 14" (2024) M4 10-Core CPU 10-Core GPU 48GB</combined>
     <device_type>Mac</device_type>
     <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
     <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
@@ -126476,23 +126203,221 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Pro 14-Core CPU 20-Core GPU</processor>
-    <capacity>64GB</capacity>
+    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
+    <capacity>48GB</capacity>
     <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Pro 14-Core CPU 20-Core GPU 64GB</combined>
+    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 48GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1640.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1600.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>cell4pets</merchant_name>
+        <merchant_price>1600.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>1591.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacksurgeon</merchant_name>
+        <merchant_price>1551.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>cell4pets</merchant_name>
+        <merchant_price>1475.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1470.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1430.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>1406.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacksurgeon</merchant_name>
+        <merchant_price>1381.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1290.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1250.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacksurgeon</merchant_name>
+        <merchant_price>1201.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>1034.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>1018.00</merchant_price>
+      </price>
+    </prices_poor>
+    <prices_faulty>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>315.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacksurgeon</merchant_name>
+        <merchant_price>301.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>300.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>207.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>147.00</merchant_price>
+      </price>
+    </prices_faulty>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 Pro 14-Core CPU 20-Core GPU</processor>
+    <capacity>48GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 Pro 14-Core CPU 20-Core GPU 48GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1740.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1700.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>cell4pets</merchant_name>
+        <merchant_price>1700.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>1691.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacksurgeon</merchant_name>
+        <merchant_price>1651.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>cell4pets</merchant_name>
+        <merchant_price>1575.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1565.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1525.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacksurgeon</merchant_name>
+        <merchant_price>1476.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>1376.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>1390.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>1350.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacksurgeon</merchant_name>
+        <merchant_price>1301.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>1201.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>1099.00</merchant_price>
+      </price>
+    </prices_poor>
+    <prices_faulty>
+      <price>
+        <merchant_name>buybacktronics</merchant_name>
+        <merchant_price>315.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>buybacksurgeon</merchant_name>
+        <merchant_price>301.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>itsworthmore</merchant_name>
+        <merchant_price>300.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>gadgetpickup</merchant_name>
+        <merchant_price>220.00</merchant_price>
+      </price>
+      <price>
+        <merchant_name>smartphonesplus</merchant_name>
+        <merchant_price>147.00</merchant_price>
+      </price>
+    </prices_faulty>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 Max 14-Core CPU 32-Core GPU</processor>
+    <capacity>48GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 Max 14-Core CPU 32-Core GPU 48GB</combined>
     <device_type>Mac</device_type>
     <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
     <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
     <prices_likenew>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1370.00</merchant_price>
+        <merchant_price>1950.00</merchant_price>
       </price>
     </prices_likenew>
     <prices_good>
       <price>
         <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1164.50</merchant_price>
+        <merchant_price>1657.50</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -126600,60 +126525,10 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Max 14-Core CPU 32-Core GPU</processor>
+    <processor>M4 10-Core CPU 10-Core GPU</processor>
     <capacity>64GB</capacity>
     <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Max 14-Core CPU 32-Core GPU 64GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1950.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1657.50</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
-    <capacity>128GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 128GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1320.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1122.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 10-Core CPU 10-Core GPU</processor>
-    <capacity>128GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 10-Core CPU 10-Core GPU 128GB</combined>
+    <combined>Apple MacBook Pro 14" (2024) M4 10-Core CPU 10-Core GPU 64GB</combined>
     <device_type>Mac</device_type>
     <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
     <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
@@ -126675,10 +126550,35 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 14" (2024)</device_name>
-    <processor>M4 Pro 14-Core CPU 20-Core GPU</processor>
-    <capacity>128GB</capacity>
+    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
+    <capacity>64GB</capacity>
     <network></network>
-    <combined>Apple MacBook Pro 14" (2024) M4 Pro 14-Core CPU 20-Core GPU 128GB</combined>
+    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 64GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1320.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1122.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 Pro 14-Core CPU 20-Core GPU</processor>
+    <capacity>64GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 Pro 14-Core CPU 20-Core GPU 64GB</combined>
     <device_type>Mac</device_type>
     <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
     <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
@@ -126692,6 +126592,31 @@
       <price>
         <merchant_name>macmeanoffer</merchant_name>
         <merchant_price>1164.50</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 Max 14-Core CPU 32-Core GPU</processor>
+    <capacity>64GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 Max 14-Core CPU 32-Core GPU 64GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1950.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1657.50</merchant_price>
       </price>
     </prices_good>
     <prices_poor/>
@@ -126795,6 +126720,81 @@
         <merchant_price>221.00</merchant_price>
       </price>
     </prices_faulty>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 10-Core CPU 10-Core GPU</processor>
+    <capacity>128GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 10-Core CPU 10-Core GPU 128GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1025.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>871.25</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 Pro 12-Core CPU 16-Core GPU</processor>
+    <capacity>128GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 Pro 12-Core CPU 16-Core GPU 128GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1320.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1122.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 14" (2024)</device_name>
+    <processor>M4 Pro 14-Core CPU 20-Core GPU</processor>
+    <capacity>128GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 14" (2024) M4 Pro 14-Core CPU 20-Core GPU 128GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-14-2024/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-14-2024.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1370.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1164.50</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
   </device>
   <device>
     <brand_name>Apple</brand_name>
@@ -132495,6 +132495,31 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 16" (2023)</device_name>
+    <processor>M3 Pro 12-Core CPU 18-Core GPU</processor>
+    <capacity>32GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 16" (2023) M3 Pro 12-Core CPU 18-Core GPU 32GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-16-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-16-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1100.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>935.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 16" (2023)</device_name>
     <processor>M2 Max 12-Core CPU 30-Core GPU</processor>
     <capacity>32GB</capacity>
     <network></network>
@@ -132586,31 +132611,6 @@
         <merchant_price>85.00</merchant_price>
       </price>
     </prices_faulty>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 16" (2023)</device_name>
-    <processor>M3 Pro 12-Core CPU 18-Core GPU</processor>
-    <capacity>32GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 16" (2023) M3 Pro 12-Core CPU 18-Core GPU 32GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-16-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-16-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1100.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>935.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
   </device>
   <device>
     <brand_name>Apple</brand_name>
@@ -133191,6 +133191,31 @@
   <device>
     <brand_name>Apple</brand_name>
     <device_name>MacBook Pro 16" (2023)</device_name>
+    <processor>M3 Pro 12-Core CPU 18-Core GPU</processor>
+    <capacity>64GB</capacity>
+    <network></network>
+    <combined>Apple MacBook Pro 16" (2023) M3 Pro 12-Core CPU 18-Core GPU 64GB</combined>
+    <device_type>Mac</device_type>
+    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-16-2023/</url>
+    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-16-2023.jpg</image_url>
+    <prices_likenew>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>1100.00</merchant_price>
+      </price>
+    </prices_likenew>
+    <prices_good>
+      <price>
+        <merchant_name>macmeanoffer</merchant_name>
+        <merchant_price>935.00</merchant_price>
+      </price>
+    </prices_good>
+    <prices_poor/>
+    <prices_faulty/>
+  </device>
+  <device>
+    <brand_name>Apple</brand_name>
+    <device_name>MacBook Pro 16" (2023)</device_name>
     <processor>M2 Max 12-Core CPU 30-Core GPU</processor>
     <capacity>64GB</capacity>
     <network></network>
@@ -133282,31 +133307,6 @@
         <merchant_price>133.00</merchant_price>
       </price>
     </prices_faulty>
-  </device>
-  <device>
-    <brand_name>Apple</brand_name>
-    <device_name>MacBook Pro 16" (2023)</device_name>
-    <processor>M3 Pro 12-Core CPU 18-Core GPU</processor>
-    <capacity>64GB</capacity>
-    <network></network>
-    <combined>Apple MacBook Pro 16" (2023) M3 Pro 12-Core CPU 18-Core GPU 64GB</combined>
-    <device_type>Mac</device_type>
-    <url>https://www.sellcell.com/sell/macs/apple-macbook-pro-16-2023/</url>
-    <image_url>https://d2ckvy9no4h4rj.cloudfront.net/assets/images/devices/009/macbook-pro-16-2023.jpg</image_url>
-    <prices_likenew>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>1100.00</merchant_price>
-      </price>
-    </prices_likenew>
-    <prices_good>
-      <price>
-        <merchant_name>macmeanoffer</merchant_name>
-        <merchant_price>935.00</merchant_price>
-      </price>
-    </prices_good>
-    <prices_poor/>
-    <prices_faulty/>
   </device>
   <device>
     <brand_name>Apple</brand_name>
